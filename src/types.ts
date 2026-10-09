@@ -116,6 +116,8 @@ export interface CraftEssence {
   isBondCe?: boolean;
   bondServantId?: string;
   bondServantName?: string;
+  locked?: boolean;
+  instanceId?: string;
 }
 
 export interface MatchupQuoteEntry {

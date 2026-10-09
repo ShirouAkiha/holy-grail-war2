@@ -55,7 +55,7 @@ export function buildInventoryHub(
   const ownedServants = master.servants || [];
   const servantName = activeServant?.nickname || activeServant?.template?.name || 'Heroic Spirit';
 
-  const ceViewMode = options.ceViewMode || 'all';
+  const ceViewMode = options.ceViewMode || 'owned';
   const ceRarityFilter = options.ceRarityFilter || 'all';
   const ceSearchQuery = (options.ceSearchQuery || '').trim().toLowerCase();
 
@@ -1377,13 +1377,23 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             return null;
           })
           .filter(Boolean) as string[];
-      } else if (lowQuery === 'all') {
-        targetsToFeed = ownedCes.map((_: any, idx: number) => String(idx));
+      } else if (lowQuery === 'all' || lowQuery === 'all_low' || lowQuery === 'safe_all') {
+        // Strict Safeguard: NEVER feed 5★ SSRs, Bond CEs, or locked CEs!
+        targetsToFeed = ownedCes
+          .map((c: any, idx: number) => (c && !c.locked && (c.rarity || 3) <= 3 && !c.isBondCe ? String(idx) : null))
+          .filter(Boolean) as string[];
       } else {
         const matchIdx = ownedCes.findIndex(
           (c: any) => c.name?.toLowerCase().includes(lowQuery) || c.id === query
         );
         if (matchIdx !== -1) {
+          if (ownedCes[matchIdx]?.locked) {
+            await interaction.reply({
+              flags: MessageFlags.Ephemeral,
+              content: `🔒 **${ownedCes[matchIdx].name}** is locked to prevent accidental synthesis! Unlock it first before feeding.`
+            });
+            return;
+          }
           targetsToFeed = [String(matchIdx)];
         }
       }

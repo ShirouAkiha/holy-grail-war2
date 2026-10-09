@@ -145,10 +145,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             targetsToFeed = i.values.map((v: string) => v.replace('feed_ce_', ''));
           } else if (i.customId === 'feed_quick_3star') {
             targetsToFeed = master.craftEssences
-              .map((c: any, idx: number) => (c && (c.rarity || 3) <= 3 ? String(idx) : null))
+              .map((c: any, idx: number) => (c && !c.locked && (c.rarity || 3) <= 3 && !c.isBondCe ? String(idx) : null))
               .filter(Boolean) as string[];
             if (targetsToFeed.length === 0) {
-              await i.reply({ ephemeral: true, content: 'ℹ️ No 3★ or lower Craft Essences found in inventory.' });
+              await i.reply({ ephemeral: true, content: 'ℹ️ No unlocked 3★ or lower Craft Essences found in inventory.' });
               return;
             }
           } else if (i.customId === 'feed_quick_duplicates') {
@@ -159,7 +159,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             const seen = new Set<string>();
             targetsToFeed = master.craftEssences
               .map((c: any, idx: number) => {
-                if (!c || (c.rarity || 3) >= 5) return null; // Protect 5-stars
+                if (!c || c.locked || (c.rarity || 3) >= 5 || c.isBondCe) return null; // Protect 5-stars & locked
                 if ((nameCounts.get(c.name) || 0) > 1) {
                   if (seen.has(c.name)) return String(idx);
                   seen.add(c.name);
@@ -168,7 +168,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
               })
               .filter(Boolean) as string[];
             if (targetsToFeed.length === 0) {
-              await i.reply({ ephemeral: true, content: 'ℹ️ No duplicate 1-4★ Craft Essences found in inventory (5★ SSRs protected).' });
+              await i.reply({ ephemeral: true, content: 'ℹ️ No duplicate 1-4★ Craft Essences found in inventory (5★ SSRs and locked CEs protected).' });
               return;
             }
           } else if (i.customId === 'feed_quick_stats') {
@@ -222,25 +222,41 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (lowQuery === 'all_3star' || lowQuery === '3star' || lowQuery === '3*') {
       targetsToFeed = ownedCes
-        .map((c: any, idx: number) => (c && c.rarity <= 3 ? String(idx) : null))
+        .map((c: any, idx: number) => (c && !c.locked && c.rarity <= 3 && !c.isBondCe ? String(idx) : null))
         .filter(Boolean) as string[];
     } else if (lowQuery === 'duplicates' || lowQuery === 'dupes') {
+      const nameCounts = new Map<string, number>();
+      ownedCes.forEach((c: any) => {
+        if (c) nameCounts.set(c.name, (nameCounts.get(c.name) || 0) + 1);
+      });
       const seen = new Set<string>();
       targetsToFeed = ownedCes
         .map((c: any, idx: number) => {
-          if (!c) return null;
-          if (seen.has(c.id)) return String(idx);
-          seen.add(c.id);
+          if (!c || c.locked || (c.rarity || 3) >= 5 || c.isBondCe) return null; // Protect 5-stars & locked
+          if ((nameCounts.get(c.name) || 0) > 1) {
+            if (seen.has(c.name)) return String(idx);
+            seen.add(c.name);
+          }
           return null;
         })
         .filter(Boolean) as string[];
-    } else if (lowQuery === 'all') {
-      targetsToFeed = ownedCes.map((_: any, idx: number) => String(idx));
+    } else if (lowQuery === 'all' || lowQuery === 'all_low' || lowQuery === 'safe_all') {
+      // Safe Feed All: NEVER feed 5-star CEs, Bond CEs, or locked CEs!
+      targetsToFeed = ownedCes
+        .map((c: any, idx: number) => (c && !c.locked && c.rarity <= 3 && !c.isBondCe ? String(idx) : null))
+        .filter(Boolean) as string[];
     } else {
       const matchIdx = ownedCes.findIndex(
         (c: any) => c.name?.toLowerCase().includes(lowQuery) || c.id === query
       );
       if (matchIdx !== -1) {
+        if (ownedCes[matchIdx]?.locked) {
+          await interaction.reply({
+            ephemeral: true,
+            content: `🔒 **${ownedCes[matchIdx].name}** is locked to prevent accidental synthesis! Unlock it first before feeding.`
+          });
+          return;
+        }
         targetsToFeed = [String(matchIdx)];
       }
     }

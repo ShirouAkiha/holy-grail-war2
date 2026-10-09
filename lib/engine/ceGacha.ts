@@ -90,12 +90,19 @@ export function executeCraftEssenceGachaRoll({
       newCeCount++;
     }
 
-    newMasterCraftEssences.push({ ...chosenCe });
+    const isFiveStarOrBond = targetRarity === 5 || chosenCe.rarity === 5 || chosenCe.isBondCe;
+    const instance: CraftEssence = {
+      ...chosenCe,
+      instanceId: `ce_inst_${chosenCe.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      locked: isFiveStarOrBond ? true : (chosenCe.locked ?? false)
+    };
+
+    newMasterCraftEssences.push(instance);
 
     return {
       type: 'craft_essence',
       rarity: targetRarity,
-      item: chosenCe,
+      item: instance,
       isNew: isFirstTime,
       isRateUp
     };

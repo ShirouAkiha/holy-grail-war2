@@ -268,26 +268,29 @@ function loadFromDisk() {
     );
     if (Array.isArray(savedMasters) && savedMasters.length > 0) {
       for (const m of savedMasters) {
-        // Remove Kaleidoscope from all existing masters' inventories (balance reset)
+        // Synchronize Craft Essences with canonical stats, ensure unique instanceId, and auto-lock 5★ / Bond CEs
         if (m.craftEssences && Array.isArray(m.craftEssences)) {
           m.craftEssences = m.craftEssences
-            .filter(ce => ce && ce.id !== 'ce_kaleidoscope')
-            .map(ce => {
+            .filter(Boolean)
+            .map((ce, idx) => {
               const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ce.id);
-              return canonCe ? { ...canonCe } : ce;
+              const base = canonCe ? { ...canonCe, ...ce } : { ...ce };
+              const isFiveStarOrBond = base.rarity === 5 || base.isBondCe;
+              return {
+                ...base,
+                instanceId: base.instanceId || `ce_inst_${base.id}_${idx}_${Date.now()}`,
+                locked: base.locked !== undefined ? base.locked : isFiveStarOrBond
+              };
             });
         } else {
           m.craftEssences = [];
         }
 
-        // Synchronize master servant instances with canonical stats & strip equipped Kaleidoscope
+        // Synchronize master servant instances with canonical stats & equipped Craft Essences
         if (m.servants && Array.isArray(m.servants)) {
           for (const inst of m.servants) {
             const ceId = inst.equippedCeId || inst.equippedCe?.id;
-            if (ceId === 'ce_kaleidoscope') {
-              inst.equippedCeId = undefined;
-              inst.equippedCe = undefined;
-            } else if (ceId) {
+            if (ceId) {
               const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId) || (inst.equippedCe ? { ...inst.equippedCe } : undefined);
               if (canonCe) {
                 inst.equippedCeId = ceId;
@@ -815,7 +818,6 @@ function normalizeText(text: string): string {
  * Known alias map for Type-Moon & Fate universe Heroic Spirits
  */
 const ALIAS_MAP: Record<string, string[]> = {
-  altera: ['altera', 'attila', 'attila the hun', 'destroyer of civilization', 'etzel', 'saber altera', 'white titan'],
   artoria_pendragon_alter: ['saber alter', 'salter', 'artoria alter', 'black saber', 'alter saber', 'saber_alter', 'dark saber'],
   artoria_pendragon: ['saber', 'seiba', 'king of knights', 'arturia', 'arthur', 'blue saber'],
   nero_claudius: ['nero', 'red saber', 'umu', 'emperor of roses', 'nero claudius', 'rose saber'],
@@ -843,6 +845,7 @@ const ALIAS_MAP: Record<string, string[]> = {
   morg_le_fay: ['morgan', 'queen of faerie', 'ruler of camelot', 'morgan le fay'],
   jeanne_d_arc: ['jeanne', 'ruler', 'holy maiden of orleans', 'la pucelle', 'saint jeanne'],
   jeanne_alter: ['jalter', 'avenger jeanne', 'dragon witch', 'jeanne d\'arc (alter)'],
+  altera: ['altera', 'attila', 'attila the hun', 'great king of destruction', 'destroyer of civilization', 'etzel', 'king of combat', 'photon ray', 'saber altera'],
   sasaki_kojirou: ['kojirou', 'fake assassin', 'swallow slayer', 'gatekeeper', 'tsubame gaeshi'],
   hassan_of_cursed_arm: ['cursed arm', 'true assassin', 'zabaniya', 'hassan'],
   king_hassan: ['first hassan', 'grand assassin', 'old man of the mountain'],

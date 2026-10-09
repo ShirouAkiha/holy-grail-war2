@@ -140,19 +140,25 @@ export function loadMasterProfile(): MasterProfile {
     }
     const parsed: MasterProfile = JSON.parse(raw);
     
-    // Sanitize Craft Essences: remove Kaleidoscope (balance reset) and sync definitions
+    // Synchronize Craft Essences with definitions, ensure unique instanceId, and auto-lock 5★ / Bond CEs
     if (parsed.craftEssences && Array.isArray(parsed.craftEssences)) {
       parsed.craftEssences = parsed.craftEssences
-        .filter(ce => ce && ce.id !== 'ce_kaleidoscope')
-        .map(ce => {
+        .filter(Boolean)
+        .map((ce, idx) => {
           const freshCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ce.id);
-          return freshCe ? { ...freshCe } : ce;
+          const base = freshCe ? { ...freshCe, ...ce } : { ...ce };
+          const isFiveStarOrBond = base.rarity === 5 || base.isBondCe;
+          return {
+            ...base,
+            instanceId: base.instanceId || `ce_inst_${base.id}_${idx}_${Date.now()}`,
+            locked: base.locked !== undefined ? base.locked : isFiveStarOrBond
+          };
         });
     } else {
       parsed.craftEssences = [];
     }
 
-    // Refresh servant templates from current SERVANT_DATABASE / custom servants & strip equipped Kaleidoscope
+    // Refresh servant templates from current SERVANT_DATABASE / custom servants
     const customServants = getCustomServantsFromStorage();
     const allThrone = getAllThroneServants(customServants);
     if (parsed.servants && Array.isArray(parsed.servants)) {
@@ -162,12 +168,9 @@ export function loadMasterProfile(): MasterProfile {
         
         let equippedCe = s.equippedCe;
         let equippedCeId = s.equippedCeId;
-        if (equippedCeId === 'ce_kaleidoscope' || equippedCe?.id === 'ce_kaleidoscope') {
-          equippedCeId = undefined;
-          equippedCe = undefined;
-        } else if (equippedCeId) {
+        if (equippedCeId) {
           const freshCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === equippedCeId);
-          if (freshCe) equippedCe = { ...freshCe };
+          if (freshCe) equippedCe = { ...freshCe, ...equippedCe };
         }
 
         const freshTemplate = fresh ? { ...fresh, ...(s.template?.isCustomOrMeme ? s.template : {}) } : s.template;

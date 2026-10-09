@@ -714,7 +714,7 @@ export default function DiscordEmulator({
   const [invPage, setInvPage] = useState<number>(1);
   const [invSelectedCeId, setInvSelectedCeId] = useState<string | null>(null);
   const [invSelectedServantId, setInvSelectedServantId] = useState<string | null>(null);
-  const [invCeViewMode, setInvCeViewMode] = useState<'all' | 'owned'>('all');
+  const [invCeViewMode, setInvCeViewMode] = useState<'all' | 'owned'>('owned');
   const [invCeRarityFilter, setInvCeRarityFilter] = useState<'all' | 5 | 4 | 3 | 'bond'>('all');
   const [invCeSearchQuery, setInvCeSearchQuery] = useState<string>('');
   const [showInvSearchModal, setShowInvSearchModal] = useState<boolean>(false);
@@ -2600,7 +2600,7 @@ export default function DiscordEmulator({
               { id: 'inv_act_roll_1x_ce', label: 'Roll 1x Again (3 SQ)', style: 'primary', emoji: '🎲' },
               { id: 'inv_act_roll_10x_ce', label: 'Roll 10x Again (30 SQ)', style: 'success', emoji: '💎' },
               { id: 'inv_cat_ces', label: 'Open Inventory', style: 'secondary', emoji: '🛡️' },
-              { id: 'inv_act_feed_duplicates', label: 'Feed Duplicates for EXP', style: 'secondary', emoji: '✨' }
+              { id: 'inv_act_feed_1_3star', label: 'Feed 1-3★ CEs for EXP', style: 'secondary', emoji: '✨' }
             ]
           }
         });
@@ -2714,6 +2714,31 @@ export default function DiscordEmulator({
         .replace('/customise equip', '')
         .replace('/cegacha inventory', '')
         .trim();
+
+      if (rawParams.startsWith('lock') || rawParams.startsWith('unlock')) {
+        const isLockAction = rawParams.startsWith('lock');
+        const ceTarget = rawParams.replace(/^lock\s*/i, '').replace(/^unlock\s*/i, '').trim().toLowerCase();
+        const owned = (master.craftEssences || []).filter(Boolean);
+        const matchIdx = owned.findIndex(c => c.name.toLowerCase().includes(ceTarget) || c.id.toLowerCase() === ceTarget);
+        if (matchIdx !== -1) {
+          const updated = owned.map((c, i) => i === matchIdx ? { ...c, locked: isLockAction } : c);
+          onUpdateMaster({ ...master, craftEssences: updated });
+          addMessage({
+            id: getNextId('bot_lock_cmd_res'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: isLockAction ? `🔒 Craft Essence Locked: ${owned[matchIdx].name}` : `🔓 Craft Essence Unlocked: ${owned[matchIdx].name}`,
+              description: isLockAction
+                ? `**${owned[matchIdx].name}** [★${owned[matchIdx].rarity}] is now protected from all synthesis and feeding.`
+                : `**${owned[matchIdx].name}** [★${owned[matchIdx].rarity}] is now unlocked.`,
+              color: isLockAction ? '#38bdf8' : '#f59e0b'
+            }
+          });
+          postInventoryHub('ces', 1, owned[matchIdx].id);
+          return;
+        }
+      }
 
       if (trimmed.startsWith('/feed') || trimmed.startsWith('/enhance') || trimmed.includes('feed')) {
         const feedArg = trimmed.replace('/feed', '').replace('/enhance', '').replace('/customise feed', '').trim();
@@ -6883,7 +6908,7 @@ export default function DiscordEmulator({
     const q = feedArg.toLowerCase().trim();
 
     if (q === '3star' || q === '1-3star' || q === 'low' || q === 'bronze' || q === 'silver') {
-      indicesToFeed = ownedCes.map((ce, idx) => ((ce.rarity || 3) <= 3 ? idx : -1)).filter(i => i !== -1);
+      indicesToFeed = ownedCes.map((ce, idx) => (!ce || ce.locked || (ce.rarity || 3) > 3 || ce.isBondCe ? -1 : idx)).filter(i => i !== -1);
     } else if (q === 'dupes' || q === 'duplicates' || q === 'dupe') {
       const nameCounts = new Map<string, number>();
       ownedCes.forEach(c => {
@@ -6891,7 +6916,7 @@ export default function DiscordEmulator({
       });
       const seen = new Set<string>();
       indicesToFeed = ownedCes.map((ce, idx) => {
-        if (!ce || (ce.rarity || 3) >= 5) return -1; // Protect 5-star SSRs
+        if (!ce || ce.locked || (ce.rarity || 3) >= 5 || ce.isBondCe) return -1; // Strict 5-star & locked protection
         if ((nameCounts.get(ce.name) || 0) > 1) {
           if (seen.has(ce.name)) {
             return idx;
@@ -6902,12 +6927,57 @@ export default function DiscordEmulator({
         }
         return -1;
       }).filter(i => i !== -1);
-    } else if (q === 'all') {
-      indicesToFeed = ownedCes.map((_, idx) => idx);
+    } else if (q === 'all' || q === 'all_low' || q === 'safe_all') {
+      // Strict Safeguard: NEVER feed 5★ SSRs, Bond CEs, or locked CEs!
+      indicesToFeed = ownedCes.map((ce, idx) => (!ce || ce.locked || (ce.rarity || 3) > 3 || ce.isBondCe ? -1 : idx)).filter(i => i !== -1);
     } else {
+      const cleanQ = q.replace(/_confirmed$/, '').trim();
       // Find matching CE by name
-      const targetIdx = ownedCes.findIndex(ce => ce.name.toLowerCase().includes(q));
+      const targetIdx = ownedCes.findIndex(ce => ce.name.toLowerCase().includes(cleanQ) || ce.id.toLowerCase() === cleanQ);
       if (targetIdx !== -1) {
+        const targetCe = ownedCes[targetIdx];
+        if (targetCe.locked) {
+          addMessage({
+            id: getNextId('bot_feed_locked_err'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🔒 Craft Essence is Locked',
+              description: `**${targetCe.name}** [★${targetCe.rarity}] is **LOCKED** to prevent accidental synthesis!\nTo feed this CE, unlock it first using \`/inventory\` or \`/inventory unlock ${targetCe.name}\`.`,
+              color: '#ef4444'
+            }
+          });
+          return;
+        }
+
+        // Extra confirmation safeguard for 5★ SSR or Bond CE if manually fed
+        if ((targetCe.rarity >= 5 || targetCe.isBondCe) && !feedArg.endsWith('_confirmed')) {
+          addMessage({
+            id: getNextId('bot_feed_5star_warn'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `⚠️ HIGH VALUE ESSENCE WARNING: 5★ ${targetCe.name}`,
+              description:
+                `You are attempting to synthesize **[★${targetCe.rarity}] ${targetCe.name}** into **${activeServant.nickname || activeServant.template?.name || 'Servant'}**!\n\n` +
+                `🚨 **This Craft Essence is extremely rare (5★ SSR / Bond Relic).**\n` +
+                `Once synthesized, it is **permanently destroyed** and converted into EXP.\n\n` +
+                `Are you absolutely sure you want to feed this 5★ Craft Essence?`,
+              color: '#f59e0b',
+              footer: 'Accidental feed safeguard active. Click confirm below only if intentional.'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: `inv_act_confirm_feed_5star_${targetIdx}`, label: `Yes, Feed ${targetCe.name}`, style: 'danger', emoji: '🔥' },
+                { id: 'inv_act_lock_all_5star', label: 'Lock All 5★ (Safe)', style: 'success', emoji: '🔒' },
+                { id: 'inv_cat_ces', label: 'Cancel & Return to Vault', style: 'secondary', emoji: '🛡️' }
+              ]
+            }
+          });
+          return;
+        }
+
         indicesToFeed = [targetIdx];
       }
     }
@@ -7073,6 +7143,18 @@ export default function DiscordEmulator({
         });
       }
 
+      // Sort candidate CEs: Owned items first, then highest rarity first (5★ SSRs prominently on Page 1!), then alphabetical
+      candidateCes.sort((a, b) => {
+        if (effectiveViewMode === 'all') {
+          if (b.count > 0 && a.count === 0) return 1;
+          if (a.count > 0 && b.count === 0) return -1;
+        }
+        const rarA = a.ce?.rarity || 3;
+        const rarB = b.ce?.rarity || 3;
+        if (rarB !== rarA) return rarB - rarA;
+        return (a.ce?.name || '').localeCompare(b.ce?.name || '');
+      });
+
       totalItems = candidateCes.length;
 
       const activeFilterTag = effectiveRarity === 'all'
@@ -7087,7 +7169,7 @@ export default function DiscordEmulator({
       headerBanner =
         commonStatsHeader +
         `\n\n📌 **Filter:** \`${modeTag}\` | \`${activeFilterTag}\`${searchTag}\n` +
-        `*Select any Craft Essence below to **Equip**, **View High-Res Art**, or **Inspect Lore**.*`;
+        `*Select any Craft Essence below to **Equip**, **Toggle Lock (🔒/🔓)**, or **Inspect Lore**.*`;
 
       const currentSelId = selectedId || invSelectedCeId || activeServant?.equippedCeId || candidateCes[0]?.ce?.id;
       const selCe = candidateCes.find(u => u.ce.id === currentSelId)?.ce || (candidateCes.length > 0 ? candidateCes[0].ce : null);
@@ -7108,15 +7190,17 @@ export default function DiscordEmulator({
           const eqBadge = isEq ? ' **[EQUIPPED]**' : '';
           const countBadge = count > 0 ? ` ×${count}` : ' *(Catalog)*';
           const bondBadge = ce.isBondCe ? ' 🎖️' : '';
+          const lockBadge = ce.locked ? ' 🔒' : '';
+          const ssrBadge = (ce.rarity >= 5 || ce.isBondCe) ? ' 🌟' : '';
           const pointer = isSel ? '▶ ' : '• ';
-          return `${pointer}**[${rarityStars}]** **${ce.name}**${bondBadge}${countBadge} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
+          return `${pointer}${lockBadge}${ssrBadge}**[${rarityStars}]** **${ce.name}**${bondBadge}${countBadge} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
         });
 
-        selectPlaceholder = selCe ? `Selected: ${selCe.name} (★${selCe.rarity})` : '🔍 Select a Craft Essence...';
+        selectPlaceholder = selCe ? `Selected: ${selCe.locked ? '🔒 ' : ''}${selCe.name} (★${selCe.rarity})` : '🔍 Select a Craft Essence...';
         selectOptions = candidateCes.slice(0, 25).map(({ ce, count }) => ({
           value: `inv_sel_ce_${ce.id}`,
-          label: `${ce.name}${count > 0 ? ` ×${count}` : ' (Catalog)'} (★${ce.rarity})`,
-          description: `+${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP • ${ce.effectText?.slice(0, 45) || 'Relic'}`
+          label: `${ce.locked ? '🔒 ' : ''}${ce.name}${count > 0 ? ` ×${count}` : ' (Catalog)'} (★${ce.rarity})`,
+          description: `${ce.locked ? '[LOCKED] ' : ''}+${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP • ${ce.effectText?.slice(0, 45) || 'Relic'}`
         }));
       }
     } else if (category === 'servants') {
@@ -7289,9 +7373,11 @@ export default function DiscordEmulator({
         { id: 'inv_page_prev', label: 'Prev', style: 'secondary', emoji: '◀️' },
         { id: 'inv_page_next', label: 'Next', style: 'secondary', emoji: '▶️' },
         { id: 'inv_act_equip_selected', label: 'Equip Selected', style: 'success', emoji: '✅' },
+        { id: 'inv_act_toggle_lock', label: selCe?.locked ? 'Unlock CE 🔓' : 'Lock CE 🔒', style: selCe?.locked ? 'danger' : 'primary', emoji: selCe?.locked ? '🔓' : '🔒' },
+        { id: 'inv_act_lock_all_5star', label: 'Lock All 5★ 🔒', style: 'secondary', emoji: '🛡️' },
+        { id: 'inv_act_feed_selected', label: 'Feed for EXP', style: 'secondary', emoji: '✨' },
         { id: 'inv_act_view_art', label: 'View CE Art', style: 'primary', emoji: '🖼️' },
         { id: 'inv_act_inspect', label: 'Inspect Lore', style: 'secondary', emoji: '📖' },
-        { id: 'inv_act_feed_selected', label: 'Feed for EXP', style: 'primary', emoji: '✨' },
         { id: 'inv_act_unequip', label: 'Unequip', style: 'danger', emoji: '❌' },
         { id: 'inv_quick_gacha', label: 'Gacha Sanctum', style: 'secondary', emoji: '🎲' }
       ];
@@ -7308,8 +7394,9 @@ export default function DiscordEmulator({
     } else if (category === 'feed') {
       actionButtons = [
         { id: 'inv_act_feed_1_3star', label: 'Feed 1-3★ CEs', style: 'success', emoji: '⚡' },
-        { id: 'inv_act_feed_duplicates', label: 'Feed Duplicates', style: 'primary', emoji: '⚡' },
-        { id: 'inv_act_feed_all', label: 'Feed All CEs', style: 'danger', emoji: '🔥' },
+        { id: 'inv_act_feed_duplicates', label: 'Feed Dupes (Safe)', style: 'primary', emoji: '⚡' },
+        { id: 'inv_act_feed_all', label: 'Feed All 1-3★ CEs', style: 'danger', emoji: '🔥' },
+        { id: 'inv_act_lock_all_5star', label: 'Lock All 5★ 🔒', style: 'secondary', emoji: '🛡️' },
         { id: 'inv_act_allocate_stats', label: `Allocate Stats (${activeServant?.availableStatPoints || 0} pts)`, style: 'primary', emoji: '⭐' },
         ...(ownedCes.length === 0 ? [{ id: 'inv_act_claim_practice_ces', label: 'Claim 5 Practice CEs', style: 'secondary' as const, emoji: '🎁' }] : []),
         { id: 'inv_quick_gacha', label: 'Roll Gacha (SQ)', style: 'secondary', emoji: '🎲' }
@@ -9916,8 +10003,58 @@ export default function DiscordEmulator({
           postInventoryHub('ces', invPage);
         }
       }
+      // 4b. Lock / Unlock Actions
+      else if (btnId === 'inv_act_toggle_lock') {
+        const curSel = ownedCes.find(c => c.id === (invSelectedCeId || ownedCes[0]?.id)) || ownedCes[0];
+        if (!curSel) {
+          addMessage({ id: getNextId('bot_err'), sender: 'bot', timestamp: 'Just now', embed: { title: '⚠️ No Craft Essence Selected', description: 'Select an essence from the list to toggle lock status.', color: '#ef4444' } });
+          return;
+        }
+        const isNowLocked = !curSel.locked;
+        const updatedCes = ownedCes.map(c => c.id === curSel.id ? { ...c, locked: isNowLocked } : c);
+        onUpdateMaster({ ...master, craftEssences: updatedCes });
+        addMessage({
+          id: getNextId('bot_lock_success'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: isNowLocked ? `🔒 Craft Essence Locked: ${curSel.name}` : `🔓 Craft Essence Unlocked: ${curSel.name}`,
+            description: isNowLocked
+              ? `**${curSel.name}** [★${curSel.rarity}] is now **LOCKED**.\nIt is strictly protected from synthesis and cannot be fed.`
+              : `**${curSel.name}** [★${curSel.rarity}] is now **UNLOCKED**.\nIt can now be selected for synthesis or feeding.`,
+            color: isNowLocked ? '#38bdf8' : '#f59e0b'
+          }
+        });
+        postInventoryHub('ces', invPage, curSel.id);
+      } else if (btnId === 'inv_act_lock_all_5star') {
+        let count = 0;
+        const updatedCes = ownedCes.map(c => {
+          if ((c.rarity === 5 || c.isBondCe) && !c.locked) {
+            count++;
+            return { ...c, locked: true };
+          }
+          return c;
+        });
+        onUpdateMaster({ ...master, craftEssences: updatedCes });
+        addMessage({
+          id: getNextId('bot_lock_all_success'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `🛡️ 5★ Safeguard Applied`,
+            description: `All **5★ SSR and Bond Craft Essences** in your vault are now **LOCKED** (🔒 ${count} newly protected).\nThey are safe from all batch synthesis and accidental feeds!`,
+            color: '#22c55e'
+          }
+        });
+        postInventoryHub(invCategory, invPage);
+      }
       // 5. Feed Actions
-      else if (btnId === 'inv_act_feed_selected') {
+      else if (btnId.startsWith('inv_act_confirm_feed_5star_')) {
+        const rawIdx = parseInt(btnId.replace('inv_act_confirm_feed_5star_', ''), 10);
+        if (!isNaN(rawIdx) && ownedCes[rawIdx]) {
+          executeDirectFeed(`${ownedCes[rawIdx].name}_confirmed`);
+        }
+      } else if (btnId === 'inv_act_feed_selected') {
         const targetCe = ownedCes.find(c => c.id === (invSelectedCeId || ownedCes[0]?.id)) || ownedCes[0];
         if (targetCe) {
           executeDirectFeed(targetCe.name);
@@ -10252,7 +10389,7 @@ export default function DiscordEmulator({
             type: 'buttons',
             items: [
               { id: 'inv_act_roll_10x_ce', label: 'Roll 10x Again (30 SQ)', style: 'success', emoji: '💎' },
-              { id: 'inv_act_feed_duplicates', label: 'Feed Duplicates for EXP', style: 'primary', emoji: '⚡' },
+              { id: 'inv_act_feed_1_3star', label: 'Feed 1-3★ CEs for EXP', style: 'primary', emoji: '⚡' },
               { id: 'inv_cat_ces', label: 'View Inventory', style: 'secondary', emoji: '🛡️' }
             ]
           }

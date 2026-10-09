@@ -41,7 +41,10 @@ import {
   Trash2,
   ChevronRight,
   TrendingUp,
-  Plus
+  Plus,
+  Lock,
+  Unlock,
+  AlertTriangle
 } from 'lucide-react';
 import { normalizeMediaUrl } from '../lib/utils/mediaResolver';
 
@@ -99,6 +102,8 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
   // Craft Essence Feeding & Synthesis State
   const [workshopCeTab, setWorkshopCeTab] = useState<'feed' | 'equip'>('feed');
   const [selectedFeedIndices, setSelectedFeedIndices] = useState<number[]>([]);
+  const [feedFilter, setFeedFilter] = useState<'all' | '1-3' | '4' | '5' | 'dupes' | 'locked'>('all');
+  const [confirmFiveStarFeed, setConfirmFiveStarFeed] = useState<boolean>(false);
   const [feedResult, setFeedResult] = useState<{
     message: string;
     expGained: number;
@@ -207,7 +212,48 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
     }
   };
 
+  const handleToggleLockCe = (index: number) => {
+    const owned = (master.craftEssences || []).filter(Boolean);
+    if (!owned[index]) return;
+    const target = owned[index];
+    const isNowLocked = !target.locked;
+    const updatedCes = owned.map((c, i) => (i === index ? { ...c, locked: isNowLocked } : c));
+    onUpdateMaster({ ...master, craftEssences: updatedCes });
+    if (isNowLocked) {
+      setSelectedFeedIndices(prev => prev.filter(i => i !== index));
+    }
+  };
+
+  const handleLockAllFiveStarCes = () => {
+    const owned = (master.craftEssences || []).filter(Boolean);
+    let lockedCount = 0;
+    const updatedCes = owned.map(c => {
+      if ((c.rarity === 5 || c.isBondCe) && !c.locked) {
+        lockedCount++;
+        return { ...c, locked: true };
+      }
+      return c;
+    });
+    onUpdateMaster({ ...master, craftEssences: updatedCes });
+    setSelectedFeedIndices(prev => prev.filter(i => !updatedCes[i]?.locked));
+    setFeedResult({
+      message: `🔒 Safeguard Active: Locked ${lockedCount} 5★/Bond Craft Essence(s) against accidental synthesis.`,
+      expGained: 0,
+      oldLevel: currentServant.level || 1,
+      newLevel: currentServant.level || 1,
+      statPointsGained: 0
+    });
+    setTimeout(() => setFeedResult(null), 4000);
+  };
+
   const handleToggleSelectCe = (index: number) => {
+    const owned = (master.craftEssences || []).filter(Boolean);
+    const target = owned[index];
+    if (target?.locked) {
+      setFeedError(`"${target.name}" is locked. Click the lock icon to unlock it first if you wish to feed.`);
+      setTimeout(() => setFeedError(null), 3000);
+      return;
+    }
     setSelectedFeedIndices(prev =>
       prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
     );
@@ -215,14 +261,19 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
 
   const handleSelectAllCes = () => {
     const owned = (master.craftEssences || []).filter(Boolean);
-    setSelectedFeedIndices(owned.map((_, i) => i));
+    // Strict Safety: ONLY selects unlocked 1-3★ low rarity CEs, NEVER locked or 4-5★
+    const safeIndices = owned
+      .map((ce, i) => ({ ce, i }))
+      .filter(({ ce }) => !ce.locked && (ce?.rarity || 3) <= 3 && !ce.isBondCe)
+      .map(({ i }) => i);
+    setSelectedFeedIndices(safeIndices);
   };
 
   const handleSelectLowRarityCes = () => {
     const owned = (master.craftEssences || []).filter(Boolean);
     const lowRarity = owned
       .map((ce, i) => ({ ce, i }))
-      .filter(({ ce }) => (ce?.rarity || 3) <= 3)
+      .filter(({ ce }) => !ce.locked && (ce?.rarity || 3) <= 3 && !ce.isBondCe)
       .map(({ i }) => i);
     setSelectedFeedIndices(lowRarity);
   };
@@ -236,7 +287,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
     const seen = new Set<string>();
     const dupeIndices: number[] = [];
     owned.forEach((ce, i) => {
-      if (!ce || (ce.rarity || 3) >= 5) return; // Strict 5-star protection
+      if (!ce || ce.locked || (ce.rarity || 3) >= 5 || ce.isBondCe) return; // Strict 5-star & locked protection
       if ((nameCounts.get(ce.name) || 0) > 1) {
         if (seen.has(ce.name)) {
           dupeIndices.push(i);
@@ -250,6 +301,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
 
   const handleClearCeSelection = () => {
     setSelectedFeedIndices([]);
+    setConfirmFiveStarFeed(false);
   };
 
   const handleExecuteFeed = () => {
@@ -257,6 +309,18 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
     if (selectedFeedIndices.length === 0) {
       setFeedError('Please select at least one Craft Essence to feed.');
       setTimeout(() => setFeedError(null), 3000);
+      return;
+    }
+
+    // Check if any selected CE is 5★ SSR or Bond CE
+    const hasFiveStar = selectedFeedIndices.some(idx => {
+      const ce = owned[idx];
+      return ce && (ce.rarity === 5 || ce.isBondCe);
+    });
+
+    if (hasFiveStar && !confirmFiveStarFeed) {
+      setFeedError('⚠️ Warning: 5★ SSR or Bond CE selected! Please check the confirmation box below to proceed.');
+      setTimeout(() => setFeedError(null), 4000);
       return;
     }
 
@@ -275,6 +339,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
       });
 
       setSelectedFeedIndices([]);
+      setConfirmFiveStarFeed(false);
       setFeedError(null);
       setFeedResult({
         message: `✨ Enhancement Complete! Fed ${result.fedEssences.length} Craft Essence${result.fedEssences.length > 1 ? 's' : ''}.`,
@@ -293,6 +358,17 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
 
   const handleFeedSingle = (index: number) => {
     const owned = (master.craftEssences || []).filter(Boolean);
+    const target = owned[index];
+    if (target?.locked) {
+      setFeedError(`"${target.name}" is locked. Unlock it first before feeding.`);
+      setTimeout(() => setFeedError(null), 3000);
+      return;
+    }
+    if ((target?.rarity === 5 || target?.isBondCe) && !confirmFiveStarFeed) {
+      setFeedError(`⚠️ Cannot feed 5★ "${target.name}" without explicit confirmation! Use batch feed with confirmation checked.`);
+      setTimeout(() => setFeedError(null), 4000);
+      return;
+    }
     try {
       const result = feedCraftEssences(currentServant, [String(index)], owned);
 
@@ -1006,13 +1082,64 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
               const projectedLevel = projectedExpInfo.level;
               const projectedLevelsGained = Math.max(0, projectedLevel - currentLvl);
               const projectedStatPoints = projectedLevelsGained * 10;
+              const hasFiveStarSelected = selectedCes.some(ce => ce.rarity === 5 || ce.isBondCe);
+              const totalLockedCount = ownedCes.filter(c => c.locked).length;
+
+              // Filtered list with original indices
+              const nameCounts = new Map<string, number>();
+              ownedCes.forEach(c => {
+                if (c) nameCounts.set(c.name, (nameCounts.get(c.name) || 0) + 1);
+              });
+
+              const filteredCesWithIndex = ownedCes.map((ce, idx) => ({ ce, idx })).filter(({ ce }) => {
+                if (!ce) return false;
+                if (feedFilter === '1-3') return (ce.rarity || 3) <= 3 && !ce.isBondCe;
+                if (feedFilter === '4') return ce.rarity === 4 && !ce.isBondCe;
+                if (feedFilter === '5') return ce.rarity === 5 || ce.isBondCe;
+                if (feedFilter === 'locked') return ce.locked;
+                if (feedFilter === 'dupes') return (nameCounts.get(ce.name) || 0) > 1;
+                return true;
+              });
 
               return (
                 <div className="space-y-3">
+                  {/* Category Filter Pills & Global Protection */}
+                  <div className="flex items-center justify-between text-[11px] font-mono flex-wrap gap-2 pb-1 border-b border-[#1c1c1c]">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {[
+                        { id: 'all' as const, label: `All (${ownedCes.length})` },
+                        { id: '1-3' as const, label: '1-3★ Low' },
+                        { id: '4' as const, label: '4★ SR' },
+                        { id: '5' as const, label: '5★ SSR' },
+                        { id: 'dupes' as const, label: 'Dupes' },
+                        { id: 'locked' as const, label: `🔒 Locked (${totalLockedCount})` }
+                      ].map(f => (
+                        <button
+                          key={f.id}
+                          onClick={() => setFeedFilter(f.id)}
+                          className={`px-2 py-0.5 rounded-sm text-[10px] font-mono uppercase tracking-wider transition ${
+                            feedFilter === f.id
+                              ? 'bg-[#d4af37] text-black font-bold'
+                              : 'bg-[#141414] text-white/60 hover:text-white border border-[#222]'
+                          }`}
+                        >
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleLockAllFiveStarCes}
+                      className="px-2 py-0.5 rounded-sm bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] text-[10px] font-mono uppercase tracking-wider border border-[#38bdf8]/40 flex items-center gap-1"
+                      title="Lock all 5★ SSR and Bond CEs against accidental feeding"
+                    >
+                      <Lock className="w-3 h-3" /> Lock All 5★
+                    </button>
+                  </div>
+
                   {/* Selection Toolbar */}
                   <div className="flex items-center justify-between text-[11px] font-mono">
                     <span className="text-white/60">
-                      Inventory: <strong className="text-white">{ownedCes.length}</strong> CEs
+                      Showing: <strong className="text-white">{filteredCesWithIndex.length}</strong> CEs
                     </span>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <button
@@ -1034,7 +1161,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                         disabled={ownedCes.length === 0}
                         className="px-2 py-0.5 rounded-sm bg-[#161616] hover:bg-[#222] text-white/80 text-[10px] uppercase tracking-wider border border-[#333] disabled:opacity-30"
                       >
-                        Select All
+                        Select All 1-3★
                       </button>
                       {selectedFeedIndices.length > 0 && (
                         <button
@@ -1065,38 +1192,61 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                         Or roll in /cegacha using Saint Quartz 💎
                       </p>
                     </div>
+                  ) : filteredCesWithIndex.length === 0 ? (
+                    <div className="p-4 rounded-lg bg-[#111] border border-[#222] text-center text-xs font-mono text-white/40">
+                      No Craft Essences match the selected filter tab.
+                    </div>
                   ) : (
                     <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                      {ownedCes.map((ce, idx) => {
+                      {filteredCesWithIndex.map(({ ce, idx }) => {
                         const isSelected = selectedFeedIndices.includes(idx);
                         const isEquipped = currentServant.equippedCeId === ce.id;
                         const expVal = getCeExpValue(ce);
+                        const isLocked = Boolean(ce.locked);
+                        const isSSR = ce.rarity === 5 || ce.isBondCe;
 
                         return (
                           <div
                             key={`${ce.id}_${idx}`}
-                            onClick={() => handleToggleSelectCe(idx)}
-                            className={`p-2.5 rounded-lg border text-xs font-mono flex items-center justify-between cursor-pointer transition ${
-                              isSelected
-                                ? 'bg-[#1e1a0e] border-[#d4af37] text-white shadow-md'
-                                : 'bg-[#111] border-[#1c1c1c] text-white/80 hover:bg-[#161616]'
+                            onClick={() => {
+                              if (!isLocked) handleToggleSelectCe(idx);
+                            }}
+                            className={`p-2.5 rounded-lg border text-xs font-mono flex items-center justify-between transition ${
+                              isLocked
+                                ? 'bg-[#0f141c] border-[#1e293b] text-white/70'
+                                : isSelected
+                                ? 'bg-[#1e1a0e] border-[#d4af37] text-white shadow-md cursor-pointer'
+                                : 'bg-[#111] border-[#1c1c1c] text-white/80 hover:bg-[#161616] cursor-pointer'
                             }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <input
                                 type="checkbox"
                                 checked={isSelected}
+                                disabled={isLocked}
                                 onChange={() => {}} // Handled by parent div
-                                className="accent-[#d4af37] w-3.5 h-3.5 rounded cursor-pointer"
+                                className={`w-3.5 h-3.5 rounded ${
+                                  isLocked ? 'cursor-not-allowed opacity-30' : 'accent-[#d4af37] cursor-pointer'
+                                }`}
                               />
                               <div className="min-w-0">
                                 <div className="font-serif italic text-white flex items-center gap-1.5 truncate">
                                   <span className="truncate">{ce.name}</span>
-                                  <span className="text-[#d4af37] text-[10px] shrink-0">
+                                  <span className={`text-[10px] shrink-0 font-mono ${isSSR ? 'text-[#f59e0b] font-bold' : 'text-[#d4af37]'}`}>
                                     {'★'.repeat(ce.rarity || 3)}
                                   </span>
+                                  {isSSR && (
+                                    <span className="px-1 py-0.2 rounded text-[8px] bg-[#f59e0b]/20 text-[#f59e0b] border border-[#f59e0b]/40 shrink-0 font-mono font-bold">
+                                      5★ SSR
+                                    </span>
+                                  )}
+                                  {isLocked && (
+                                    <span className="px-1 py-0.2 rounded text-[8px] bg-sky-950/80 text-sky-400 border border-sky-600/40 shrink-0 font-mono flex items-center gap-0.5">
+                                      <Lock className="w-2.5 h-2.5" /> LOCKED
+                                    </span>
+                                  )}
                                   {isEquipped && (
-                                    <span className="px-1 py-0.2 rounded text-[9px] bg-[#22c55e]/20 text-[#22c55e] border border-[#22c55e]/40 shrink-0">
+                                    <span className="px-1 py-0.2 rounded text-[8px] bg-[#22c55e]/20 text-[#22c55e] border border-[#22c55e]/40 shrink-0 font-mono">
                                       EQUIPPED
                                     </span>
                                   )}
@@ -1108,16 +1258,38 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0 ml-2">
+                              {/* Lock Toggle Button */}
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleToggleLockCe(idx);
+                                }}
+                                className={`p-1 rounded-sm border transition ${
+                                  isLocked
+                                    ? 'bg-sky-950/60 border-sky-500/50 text-sky-400 hover:bg-sky-900/60'
+                                    : 'bg-[#181818] border-[#333] text-white/40 hover:text-white'
+                                }`}
+                                title={isLocked ? 'Unlock Craft Essence' : 'Lock Craft Essence (Prevent Synthesis)'}
+                              >
+                                {isLocked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+                              </button>
+
                               <span className="text-[11px] font-mono font-bold text-[#d4af37] bg-[#1a180e] px-1.5 py-0.5 rounded border border-[#d4af37]/20">
                                 +{expVal.toLocaleString()} EXP
                               </span>
                               <button
                                 type="button"
+                                disabled={isLocked}
                                 onClick={e => {
                                   e.stopPropagation();
                                   handleFeedSingle(idx);
                                 }}
-                                className="px-2 py-0.5 rounded-sm bg-[#222] hover:bg-[#d4af37] hover:text-black text-white/80 font-mono text-[10px] uppercase tracking-wider font-bold transition"
+                                className={`px-2 py-0.5 rounded-sm font-mono text-[10px] uppercase tracking-wider font-bold transition ${
+                                  isLocked
+                                    ? 'bg-[#1a1a1a] text-white/30 border border-[#222] cursor-not-allowed'
+                                    : 'bg-[#222] hover:bg-[#d4af37] hover:text-black text-white/80'
+                                }`}
                               >
                                 Feed 1x
                               </button>
@@ -1157,9 +1329,36 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                         </div>
                       </div>
 
+                      {/* High-Rarity 5★ Warning Alert */}
+                      {hasFiveStarSelected && (
+                        <div className="p-2.5 rounded-lg bg-[#2a1306] border border-[#f59e0b]/70 space-y-2 text-xs font-mono text-[#f59e0b] animate-fadeIn">
+                          <div className="flex items-center gap-1.5 font-bold">
+                            <AlertTriangle className="w-4 h-4 text-[#f59e0b] shrink-0" />
+                            <span>⚠️ 5★ SSR / Bond CE Selected!</span>
+                          </div>
+                          <p className="text-[11px] text-white/80">
+                            You have selected one or more 5★ SSR Craft Essences. They are exceptionally rare and cannot be restored once consumed.
+                          </p>
+                          <label className="flex items-center gap-2 cursor-pointer text-[11px] text-[#f59e0b] select-none">
+                            <input
+                              type="checkbox"
+                              checked={confirmFiveStarFeed}
+                              onChange={e => setConfirmFiveStarFeed(e.target.checked)}
+                              className="accent-[#f59e0b] w-3.5 h-3.5 rounded"
+                            />
+                            <span className="font-semibold underline">I understand and explicitly confirm consuming 5★ Craft Essences</span>
+                          </label>
+                        </div>
+                      )}
+
                       <button
                         onClick={handleExecuteFeed}
-                        className="w-full py-2 rounded-sm bg-gradient-to-r from-[#d4af37] to-[#eab308] hover:from-[#c49f27] hover:to-[#ca8a04] text-black font-serif font-bold text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-1.5"
+                        disabled={hasFiveStarSelected && !confirmFiveStarFeed}
+                        className={`w-full py-2 rounded-sm font-serif font-bold text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-1.5 ${
+                          hasFiveStarSelected && !confirmFiveStarFeed
+                            ? 'bg-[#333] text-white/40 cursor-not-allowed border border-[#444]'
+                            : 'bg-gradient-to-r from-[#d4af37] to-[#eab308] hover:from-[#c49f27] hover:to-[#ca8a04] text-black cursor-pointer'
+                        }`}
                       >
                         <Sparkles className="w-4 h-4" /> Synthesize & Feed ({selectedFeedIndices.length} Essences)
                       </button>

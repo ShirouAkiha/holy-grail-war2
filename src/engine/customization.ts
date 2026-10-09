@@ -318,24 +318,30 @@ export function feedCraftEssences(
 
     // If it's a valid original array index, consume that exact index
     if (!isNaN(asNum) && Number.isInteger(asNum) && asNum >= 0 && asNum < originalList.length && !consumedIndices.has(asNum)) {
+      const candidate = originalList[asNum];
+      if (candidate.locked) {
+        throw new Error(`Cannot synthesize locked Craft Essence: "${candidate.name}". Please unlock it first in Inventory or Workshop.`);
+      }
       consumedIndices.add(asNum);
-      const consumed = originalList[asNum];
-      fedEssences.push(consumed);
-      totalExpGained += getCeExpValue(consumed);
+      fedEssences.push(candidate);
+      totalExpGained += getCeExpValue(candidate);
       continue;
     }
 
-    // Otherwise match by exact ID, or name, among unconsumed items
+    // Otherwise match by instanceId, exact ID, or name, among unconsumed items
     const matchIdx = originalList.findIndex((c: any, i: number) => {
       if (consumedIndices.has(i) || !c) return false;
-      return c.id === targetStr || c.name?.toLowerCase() === targetStr.toLowerCase();
+      return c.instanceId === targetStr || c.id === targetStr || c.name?.toLowerCase() === targetStr.toLowerCase();
     });
 
     if (matchIdx !== -1) {
+      const candidate = originalList[matchIdx];
+      if (candidate.locked) {
+        throw new Error(`Cannot synthesize locked Craft Essence: "${candidate.name}". Please unlock it first in Inventory or Workshop.`);
+      }
       consumedIndices.add(matchIdx);
-      const consumed = originalList[matchIdx];
-      fedEssences.push(consumed);
-      totalExpGained += getCeExpValue(consumed);
+      fedEssences.push(candidate);
+      totalExpGained += getCeExpValue(candidate);
     }
   }
 
