@@ -4064,10 +4064,324 @@ export const TAMAMO_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const ALTERA_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'altera_bond_event_1',
+    servantTemplateId: 'altera',
+    requiredBondLevel: 1,
+    title: "Night of the White Titan & Good Civilization",
+    subtitle: "Bond Level 1 Interlude • Rooftop with the Destroyer",
+    description: "On a quiet rooftop overlooking the city, Altera questions why she was summoned and reflects upon her purpose as a weapon of destruction.",
+    rewardBondExp: 300,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'altera_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Altera',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Master. The perimeter is secured. The night air of this country is quiet... too quiet. It feels fragile, like glass.",
+        choices: [
+          {
+            id: 'c1_choice1',
+            text: "Fragile? Perfect time to drop an expensive vase and see what happens.",
+            response: "Senseless breakage yields no tactical advantage. That attitude... is a bad civilization.",
+            bondExpGain: 150,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_choice2',
+            text: "It's peaceful, Altera. Try breathing it in instead of measuring structural integrity.",
+            response: "Breathing... yes. The air contains oxygen and dust. Yet my chest feels unnecessarily heavy.",
+            bondExpGain: 175,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_choice3',
+            text: "If it's glass, does that mean you brought a hammer, or are you the hammer?",
+            response: "I am the hammer. I am the edge. I am the impact that reduces form into dust.",
+            bondExpGain: 200,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Altera',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Tell me, Master. Why did you summon me to this city? Look around. There are shrines, towers, lights. All of it is civilization waiting to be undone.",
+        choices: [
+          {
+            id: 'c2_choice1',
+            text: "Because when you need a job done, you don't call a handyman—you call a wrecking ball with great hair.",
+            response: "My hair... has no combative function. Your humor fails to calculate the severity of my nature.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_choice2',
+            text: "I summoned you, Altera. The person, not just the disaster report.",
+            response: "The person... That word sounds alien when applied to this frame. You speak of illusions.",
+            bondExpGain: 200,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_choice3',
+            text: "To be fair, the real estate market here could use a little aggressive downsizing.",
+            response: "You make jokes about destruction while standing directly in front of the engine that causes it.",
+            bondExpGain: 175,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Altera',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "I have no past that resembles yours. In the Caucasus cavern, I awoke not as a daughter, but as a weapon already sharpened. I was raised only to march.",
+        choices: [
+          {
+            id: 'c3_choice1',
+            text: "Sounds like my childhood, except replace 'marching' with 'failing math quizzes'.",
+            response: "Failing education is a bad civilization. But your comparison lacks any equivalent lethal yield.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_choice2',
+            text: "You were a child found alone in the dark. That doesn't make you a machine, Altera.",
+            response: "The Hun elder saw the markings on my flesh. He knew I was meant to reap, not to play.",
+            bondExpGain: 200,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_choice3',
+            text: "Marching builds calves. But seriously, did nobody ever hand you a toy or a snack?",
+            response: "They offered me tributes and weapons. Sweets were... deemed unnecessary for a sword.",
+            bondExpGain: 175,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Altera',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Even now, looking at the streetlights below, a calculation runs in my mind. How many strikes to shatter the grid. How many sweeps of the Photon Ray to flatten the district. It never stops.",
+        choices: [
+          {
+            id: 'c4_choice1',
+            text: "If you flatten the district, where are we supposed to get midnight convenience store snacks?",
+            response: "Convenience stores... Warm buns and brightly colored boxes. Erasing them would be... a bad civilization.",
+            bondExpGain: 200,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_choice2',
+            text: "Calculations are just noise in your head. What do you actually want to do with your hands right now?",
+            response: "My hands? They hold the hilt. When they are empty, they feel... purposeless. Clumsy.",
+            bondExpGain: 175,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_choice3',
+            text: "Zero strikes, please. My deposit on this apartment was non-refundable.",
+            response: "Financial contracts. Mortgages. Bureaucracy. Truly, modern humanity creates torment out of thin air.",
+            bondExpGain: 150,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Altera',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "You treat my presence so lightly. Do you not grasp what I truly am? Far older than the Huns... I am the remnant of the White Titan. The reaper of the gods themselves.",
+        choices: [
+          {
+            id: 'c5_choice1',
+            text: "Titan, alien drone, God-slayer... honestly, that's just Tuesday in a Holy Grail War.",
+            response: "Your threshold for existential dread is unnervingly defective, Master.",
+            bondExpGain: 150,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_choice2',
+            text: "Fourteen thousand years ago is ancient history. Right now, you're standing on a roof with me.",
+            response: "Fourteen thousand years... to me, it feels like yesterday's ash. Yet your voice pulls me into the present.",
+            bondExpGain: 200,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_choice3',
+            text: "So you're saying your resume has zero gaps and excellent references?",
+            response: "I do not seek employment. I exist to fulfill the harvest. Why must you describe terror as paperwork?",
+            bondExpGain: 175,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Altera',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "When I destroyed the Age of the Gods, I felt nothing. But as a Servant in this form, something aches inside this chest. A malfunction. An error code that mimics sadness.",
+        choices: [
+          {
+            id: 'c6_choice1',
+            text: "That's not an error code, Altera. That's just having a soul. Sucks, doesn't it?",
+            response: "A soul... If I possess one, it was forged out of scorched earth and broken marble.",
+            bondExpGain: 175,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_choice2',
+            text: "Have you tried turning yourself off and on again? No? Alright, fine, let's talk about the ache.",
+            response: "Rebooting a Heroic Spirit spiritual core requires desummoning. Do not suggest fatal diagnostics.",
+            bondExpGain: 150,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_choice3',
+            text: "It hurts because you're realizing you like things you can't hit with a sword.",
+            response: "Things I cannot strike... Yes. Like the sound of this quiet wind. Striking it achieves nothing.",
+            bondExpGain: 200,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Altera',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "I look at the people walking below. They laugh, share warmth, buy trivial things, and grow old. Is such a life... permitted for a mechanism like me?",
+        choices: [
+          {
+            id: 'c7_choice1',
+            text: "Permitted? Who's gonna stop you, the Fun Police? Let 'em try fighting you.",
+            response: "The law enforcement of this era could not bar my path. But... that was not the permission I sought.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'c7_choice2',
+            text: "You don't need permission to exist, Altera. You just need to choose what you want to protect.",
+            response: "To protect... instead of dismantle. The concept feels inverted, yet strangely steady.",
+            bondExpGain: 200,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'c7_choice3',
+            text: "Depends. Can you eat an ice cream cone without calling dairy culture a bad civilization?",
+            response: "Sweet milk frozen into cream... That is undeniably a good civilization. I would spare it.",
+            bondExpGain: 175,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_8'
+          }
+        ]
+      },
+      {
+        id: 'scene_8',
+        speakerName: 'Altera',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Master. You deflect my heavy questions with foolish words, yet... my mind grows still when you speak. You do not flinch from the destroyer.",
+        choices: [
+          {
+            id: 'c8_choice1',
+            text: "Why flinch? If I'm gonna get vaporized by an alien laser, I might as well go out with a one-liner.",
+            response: "Dying for a punchline... Such a foolish, human way to face the end. It is bizarrely comforting.",
+            bondExpGain: 175,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 'c8_choice2',
+            text: "Because I see Altera, not the apocalypse. And I like the person standing here.",
+            response: "...Altera. You say my name as if it belongs to someone precious. My chest feels warm. It is not an attack.",
+            bondExpGain: 225,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 'c8_choice3',
+            text: "Flinching burns calories, and honestly, bad jokes are my primary defense mechanism.",
+            response: "A fragile defense. But against my quiet sorrow, your foolish jokes seem... impenetrable.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_9'
+          }
+        ]
+      },
+      {
+        id: 'scene_9',
+        speakerName: 'Altera',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "When this Holy Grail War concludes, whatever becomes of the world... promise me one thing. Continue to speak to me not as a weapon, but like this.",
+        choices: [
+          {
+            id: 'c9_choice1',
+            text: "Only if you promise not to vaporize my favorite ramen shop when they get your order wrong.",
+            response: "Ramen... A rich broth with noodles. If they make an error, I will only issue a stern warning.",
+            bondExpGain: 200,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_epilogue'
+          },
+          {
+            id: 'c9_choice2',
+            text: "I promise. We'll find all the 'good civilizations' in this world together, step by step.",
+            response: "Together... Yes. Let us find them. That sounds like a journey worth defending.",
+            bondExpGain: 250,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_epilogue'
+          },
+          {
+            id: 'c9_choice3',
+            text: "Deal. Though you're stuck listening to my terrible puns for the duration of the contract.",
+            response: "Your puns are terrible civilization. But... as long as you are the one speaking them, I will listen.",
+            bondExpGain: 200,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_epilogue'
+          }
+        ]
+      },
+      {
+        id: 'scene_epilogue',
+        speakerName: 'Altera',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "The night wind feels less fragile now. When I stand beside you, this body ceases to feel like merely an instrument of ruin. Let us return, Master. There is still much of this civilization to witness."
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
 export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
+  altera: ALTERA_BOND_EVENTS,
+  attila: ALTERA_BOND_EVENTS,
+  etzel: ALTERA_BOND_EVENTS,
+  saber_altera: ALTERA_BOND_EVENTS,
   artoria_pendragon: ARTORIA_BOND_EVENTS,
   gilgamesh: GILGAMESH_BOND_EVENTS,
   gilgamesh_archer: GILGAMESH_BOND_EVENTS,
@@ -4130,10 +4444,12 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
  * so testing and gameplay works seamlessly for ANY servant in the game!
  */
 export function generateGenericBondEvent(
-  servant: ServantTemplate | MasterServantInstance,
+  servant: ServantTemplate | MasterServantInstance | any,
   targetBondLevel: number = 1
 ): BondEvent {
-  const template = 'template' in servant ? servant.template : servant;
+  const template = (typeof servant === 'object' && servant !== null && 'template' in servant)
+    ? servant.template
+    : (typeof servant === 'object' && servant !== null ? servant : { id: String(servant), name: String(servant), servantClass: 'Saber' });
   const name = template.name || 'Heroic Spirit';
   const servantClass = template.servantClass || 'Saber';
   const avatarUrl = template.avatarUrl;
@@ -4188,9 +4504,11 @@ export function generateGenericBondEvent(
  * Returns all available Bond Events for a given servant instance based on template ID and bond level.
  */
 export function getBondEventsForServant(
-  servant: MasterServantInstance
+  servant: MasterServantInstance | any
 ): BondEvent[] {
-  const templateId = servant.templateId || servant.template?.id || servant.id;
+  const templateId = typeof servant === 'string'
+    ? servant.toLowerCase().trim()
+    : (servant?.templateId || servant?.template?.id || servant?.id || '').toLowerCase().trim();
   const curated = SERVANT_BOND_EVENT_DATABASE[templateId];
 
   if (curated && curated.length > 0) {
@@ -4199,8 +4517,8 @@ export function getBondEventsForServant(
 
   // Fallback generic bond event for testing & custom servants (always level 1 so it is immediately playable!)
   return [
-    generateGenericBondEvent(servant.template || servant, 1),
-    generateGenericBondEvent(servant.template || servant, 5)
+    generateGenericBondEvent(servant?.template || servant, 1),
+    generateGenericBondEvent(servant?.template || servant, 5)
   ];
 }
 
@@ -4358,6 +4676,50 @@ export function getNextSceneIndex(event: BondEvent, currentSceneIdx: number, cho
  * Unlocked dialogue quotes database associated with Bond levels.
  */
 export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
+  altera: [
+    {
+      id: 'altera_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'Servant, Saber. I have answered your summon. I am a weapon. I exist to destroy... Direct me toward the enemy.'
+    },
+    {
+      id: 'altera_bond_line_1',
+      title: 'Bond 1: The Remnant',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'I am a weapon. Destroyer of Civilization. Do not stand too close, Master, lest you be caught in the harvest.'
+    },
+    {
+      id: 'altera_bond_2',
+      title: 'Bond 2: Good Civilization',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: 'Convenience stores, warm buns, hot broth... The things you show me in this era are undeniably good civilization.'
+    },
+    {
+      id: 'altera_bond_3',
+      title: 'Bond 3: Empty Hands',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: 'When my hands are empty of the sword, they felt clumsy. But when you take them into yours, they feel calm.'
+    },
+    {
+      id: 'altera_bond_4',
+      title: 'Bond 4: The Ache Inside',
+      category: 'bond_4',
+      requiredBondLevel: 4,
+      quoteText: 'The error code in my chest... you told me it was a soul. If so, it beats only to protect our shared covenant.'
+    },
+    {
+      id: 'altera_bond_5',
+      title: 'Bond 5: Together',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: 'I am no longer merely the King of Destruction. As long as you speak to me, Master, I am Altera.'
+    }
+  ],
   artoria_pendragon: [
     {
       id: 'artoria_summon',
@@ -5395,6 +5757,42 @@ export function getServantGiftReaction(
   const cleanId = rawId.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
   const reactions: Record<string, Record<string, { responseText: string; emotion: 'happy' | 'flustered' | 'amused' | 'thoughtful' }>> = {
+    altera: {
+      chaldea_tea: {
+        responseText: "Warm tea. The steam rises into the night air. Drinking this slowly... is good civilization.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "A feast? Roasted meats and sweet buns... Eating together with Master is undeniably good civilization.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A concentrated core of planetary mana. My spirit origin absorbs the vitality. Photon Ray is recharged.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A relic from the ancient era. I remember shattering temples like this... but holding it from you feels peaceful.",
+        emotion: 'thoughtful'
+      }
+    },
+    attila: {
+      chaldea_tea: {
+        responseText: "Warm tea. The steam rises into the night air. Drinking this slowly... is good civilization.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "A feast? Roasted meats and sweet buns... Eating together with Master is undeniably good civilization.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A concentrated core of planetary mana. My spirit origin absorbs the vitality. Photon Ray is recharged.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A relic from the ancient era. I remember shattering temples like this... but holding it from you feels peaceful.",
+        emotion: 'thoughtful'
+      }
+    },
     artoria_pendragon: {
       chaldea_tea: {
         responseText: "Tea with Master? ...Ah, the aroma is wonderful. Taking a brief respite with you reminds me of peaceful afternoons in Britain.",
@@ -6282,6 +6680,14 @@ export function getServantSparringDebrief(
   const cleanId = rawId.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
   const drills: Record<string, { responseText: string; emotion: 'happy' | 'amused' | 'thoughtful' }> = {
+    altera: {
+      responseText: "Your movements are steady. You did not flinch from the swing of Photon Ray. A Master who stands firm before the destroyer... is good civilization.",
+      emotion: 'thoughtful'
+    },
+    attila: {
+      responseText: "Your movements are steady. You did not flinch from the swing of Photon Ray. A Master who stands firm before the destroyer... is good civilization.",
+      emotion: 'thoughtful'
+    },
     artoria_pendragon: {
       responseText: "Good stance, Master! Your footwork has improved considerably. When we face enemy Servants, trust my blade and stay behind my shield.",
       emotion: 'thoughtful'
