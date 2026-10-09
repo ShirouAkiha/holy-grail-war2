@@ -1017,7 +1017,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'evade',
         value: 30,
         duration: 3,
-        icon: '👁️'
+        icon: '👁️',
+        quote: 'I see right through your moves! Eye of the Mind, True!'
       },
       {
         id: 'hawkeye_b_plus',
@@ -1027,7 +1028,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'crit_stars',
         value: 100,
         duration: 3,
-        icon: '🎯'
+        icon: '🎯',
+        quote: 'High-altitude vantage locked on target! Hawkeye, maximum precision!'
       },
       {
         id: 'circuit_connect_ex',
@@ -1037,7 +1039,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         value: 50,
         duration: 1,
-        icon: '⚡'
+        icon: '⚡',
+        quote: 'Magic Circuits connected! Reconfiguring Noble Phantasm projection parameters!'
       }
     ],
     passives: [
@@ -1060,7 +1063,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       name: 'Unlimited Blade Works: Infinite Creation of Swords',
       rank: 'E-A',
       cardType: '???',
-      chant: 'I am the bone of my sword. Steel is my body and fire is my blood... UNLIMITED BLADE WORKS!',
+      chant: 'I am the bone of my sword. Steel is my body, and fire is my blood. I have created over a thousand blades. Unknown to Death, nor known to Life... UNLIMITED BLADE WORKS!',
       description: 'Deals damage that ignores defense buffs to all enemies.',
       effect: 'Deals damage that ignores defense buffs to all enemies.',
       target: 'aoe',
@@ -1069,9 +1072,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     },
     lore: 'A nameless Guardian forged in steel and idealism who commands the pinnacle of projection magecraft.',
     summonQuote: 'Servant Archer. I have answered your summons. Well, let\'s see how far your ideals take us.',
-    battleStartQuote: 'Trace on. Replicating the ultimate armaments.',
-    victoryQuote: 'Just another cleanup job. Don\'t get cocky, Master.',
-    defeatQuote: 'My steel has cracked... A fitting end for a fake.',
+    battleStartQuote: 'Trace on. Structural analysis complete—replicating infinite armaments.',
+    victoryQuote: 'An iron will is sharper than any blade. Clean victory, Master.',
+    defeatQuote: 'My forged body crumbles... A fitting end for a counterfeit hero.',
     avatarUrl: 'https://ella.janitorai.com/media-approved/iA3boFrqm1VqSxH7GJPQL.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/iA3boFrqm1VqSxH7GJPQL.webp',
     spriteUrl: 'https://ella.janitorai.com/media-approved/8asG22pYOXYVxYyHPrU2h.webp'

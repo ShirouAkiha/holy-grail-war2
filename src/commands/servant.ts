@@ -1061,16 +1061,16 @@ export function attachServantCollector(
             };
           } else if (val === 'preset_emiya_ubw') {
             presetQuotes = {
-              noblePhantasm: 'I am the bone of my sword... UNLIMITED BLADE WORKS!',
-              battleStart: 'Analyzing structural blueprint... All blades stand ready.',
-              victory: 'An iron will is sharper than any steel. Victory secured.',
-              defeat: 'My entire life was Unlimited Blade Works... I falter here...',
-              busterChain: 'Caladbolg II, overcharge projection! Shatter the perimeter!',
+              noblePhantasm: 'I am the bone of my sword. Steel is my body, and fire is my blood... UNLIMITED BLADE WORKS!',
+              battleStart: 'Trace on. Structural analysis complete—replicating infinite armaments.',
+              victory: 'An iron will is sharper than any blade. Clean victory, Master.',
+              defeat: 'My forged body crumbles... A fitting end for a counterfeit hero.',
+              busterChain: 'Caladbolg II, Broken Phantasm! Shatter the perimeter!',
               artsChain: 'Tracing the origin, replicating craftsmanship... Steel is my body!',
-              quickChain: 'Kanshou and Bakuya, dual arc trajectory! Intercepting flanks!',
+              quickChain: 'Kanshou and Bakuya, Crane Wing Three-Realm Strike!',
               summon: 'Servant Archer. I have answered your call. Leave the tactics to me.',
               critHit: 'Structural analysis complete... Weak point shattered!',
-              skill: 'Magecraft projection engaged. Reenacting divine phantasm.',
+              skill: 'Magic Circuits connected! Reconfiguring Noble Phantasm projection parameters!',
               commandSeal: 'Reinforcing spirit origin! Rho Aias, hold the line!'
             };
           } else if (val === 'preset_gilgamesh_king') {

@@ -247,37 +247,42 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
   emiya: {
     buster: [
       "I am the bone of my sword... Steel is my body and fire is my blood!",
-      "Caladbolg II, overcharge projection! Shatter the perimeter!",
+      "Caladbolg II! Broken Phantasm—shatter!",
       "Structural analysis complete: Maximum crushing force applied!",
-      "Reinforcement magic at full output. Taste cold wrought iron!"
+      "Reinforcement magic at full output! Taste cold wrought iron!",
+      "Overcharging projection output... Take this!"
     ],
     arts: [
-      "Analyzing structural blueprint... Reinforcement projection sequence complete.",
-      "Tracing the origin, replicating the craftsmanship... All blades align.",
+      "Trace on. Analyzing structural blueprint and replicating craftsmanship.",
+      "I have created over a thousand blades. Unknown to Death, nor known to Life.",
       "Reading enemy tactical spacing. Setting mystic landmines across the lane.",
-      "A bowman who fights in melee... My prana circuit remains stable."
+      "A bowman who fights in melee... My prana circuit remains stable.",
+      "Withstood pain to create many weapons... All blades, align!"
     ],
     quick: [
       "Kanshou and Bakuya, dual arc trajectory! Intercepting the blind spot!",
       "Crane Wing Three-Realm Strike! Slicing through your blind flanks!",
       "High-speed interception! Firing six arrows along parabolic trajectories!",
-      "Defensive breach spotted. Closing the distance in an eye-blink!"
+      "Defensive breach spotted. Closing the distance in an eye-blink!",
+      "Twin blades drawn! Continuous slash trajectory!"
     ],
     mixed: [
       "Executing Master's strategy. Projection systems standing by.",
-      "Don't worry Master, I've seen battles far worse than this.",
+      "Don't worry, Master. I've survived far worse battlefields than this.",
       "Adapting weapon choice to enemy combat style. Advancing now.",
-      "An iron will is sharper than any blade. Let's finish this cleanly."
+      "An iron will is sharper than any blade. Let's finish this cleanly.",
+      "There is no shame in a fake outperforming the original."
     ],
     desperation: [
-      "Tracing last projection... As long as I can draw breath, the forge still burns!",
+      "Tracing last projection... As long as I draw breath, the forge still burns!",
       "My entire life was Unlimited Blade Works... I will not falter here!",
-      "Master, give the order! I'll hold the line with every blade I have!"
+      "Master, give the order! I'll hold the line with every blade I have!",
+      "So this is as far as my forged body can go... Not yet!"
     ],
     skills: [
-      "I see right through you. Eye of the Mind, True!",
-      "Locked on target. Hawkeye, maximum vantage!",
-      "Magic Circuits connected... Altering Noble Phantasm projection parameters!"
+      "I see right through your moves! Eye of the Mind, True!",
+      "High-altitude vantage locked on target! Hawkeye, maximum precision!",
+      "Magic Circuits connected! Reconfiguring Noble Phantasm projection parameters!"
     ]
   },
 
