@@ -1013,7 +1013,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'eye_of_the_mind_true_ex',
         name: 'Eye of the Mind (True) EX',
         cooldown: 6,
-        description: 'Grants self Evasion for 1 turn. Increases own attack by 30% for 3 turns. Increases own defense by 30% for 3 turns. Gains 40 critical stars.',
+        description: 'Grants self Evasion for 1 turn. Increases own attack by 30% for 3 turns. Increases own defense by 30% for 3 turns. Gains 20 critical stars.',
         effectType: 'evade',
         value: 30,
         duration: 3,

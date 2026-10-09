@@ -1372,8 +1372,8 @@ function activateCombatantSkill(
       appliedRound: currentRound,
       appliedTurnUserId: combatant.userId
     });
-    combatant.critStars = Math.min(50, (combatant.critStars || 0) + 40);
-    logText = `👁️ **${sName}** activated **${skill.name}**! (Evade [1T], +30% ATK [3T], +30% DEF [3T], +40 Critical Stars!)${quoteLine}`;
+    combatant.critStars = Math.min(50, (combatant.critStars || 0) + 20);
+    logText = `👁️ **${sName}** activated **${skill.name}**! (Evade [1T], +30% ATK [3T], +30% DEF [3T], +20 Critical Stars!)${quoteLine}`;
   } else if (skill.id === 'hawkeye_b_plus' || /hawkeye/i.test(skill.name)) {
     combatant.activeBuffs.push({
       name: `${skill.name} (Star Gen Rate Up)`,

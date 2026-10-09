@@ -2041,7 +2041,7 @@ async function runRaidBattle(
           let buffLog = '';
           if (skillObj?.id === 'eye_of_the_mind_true_ex' || /eye of the mind \(true\) ex/i.test(sName)) {
             // Emiya S1: Eye of the Mind (True) EX
-            // Grants self Evasion for 1 turn. Increases own attack by 30% for 3 turns. Increases own defense by 30% for 3 turns. Gains 40 critical stars.
+            // Grants self Evasion for 1 turn. Increases own attack by 30% for 3 turns. Increases own defense by 30% for 3 turns. Gains 20 critical stars.
             active.activeBuffs = active.activeBuffs || [];
             active.activeBuffs.push({
               name: `${sName} (Evade)`,
@@ -2061,8 +2061,8 @@ async function runRaidBattle(
               value: 30,
               remainingTurns: 3
             });
-            active.critStars = (active.critStars || 0) + 40;
-            buffLog = `(🛡️ Granted Evade [1T], ⚔️ +30% ATK [3T], 🛡️ +30% DEF [3T], ★ +40 Critical Stars!)`;
+            active.critStars = (active.critStars || 0) + 20;
+            buffLog = `(🛡️ Granted Evade [1T], ⚔️ +30% ATK [3T], 🛡️ +30% DEF [3T], ★ +20 Critical Stars!)`;
           } else if (skillObj?.id === 'hawkeye_b_plus' || /hawkeye/i.test(sName)) {
             // Emiya S2: Hawkeye B+
             // Increases own critical star generation rate by 100% for 3 turns. Increases own critical damage by 100% for 3 turns.
