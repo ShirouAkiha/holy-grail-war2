@@ -21,6 +21,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 1. ARTORIA PENDRAGON (SABER)
   // =========================================================================
   artoria_pendragon: {
+    altera: {
+      intro: "Yield your sword, Scourge of God. While I draw breath, the dignity and honor of humanity shall not be reduced to ash!",
+      retort: "Honor is a name given to binding covenants. It builds walls and temples. As long as it stands... I must level it.",
+      tag: "HONOR VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "An exact reflection of myself? Britain's fate is a burden meant for one king alone. Draw Excalibur!",
       retort: "If you truly carry the will of the King of Knights, you know this path permits no hesitation. Show me your resolve!",
@@ -127,6 +132,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 2. GILGAMESH (ARCHER)
   // =========================================================================
   gilgamesh_archer: {
+    altera: {
+      intro: "To think a fragment of Sefar still wanders the earth. Gaze upon the treasures of mankind, beast, and know your utter obsolescence!",
+      retort: "Treasures gathered into a treasury form a vault of vanity. It shines brightly... which only means it must be smashed into dust.",
+      tag: "VAULT OF HEAVEN VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "Still drowning in your hopeless ideals, Saber? Cease this futile struggle. Lay down your blade and accept your place as the finest jewel in my garden.",
       retort: "I would rather see Excalibur shattered than allow Britain's pride to be locked away in your vault. Draw your sword, King of Heroes!",
@@ -233,6 +243,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 3. SCÁTHACH (LANCER)
   // =========================================================================
   scathach_lancer: {
+    altera: {
+      intro: "Show me the true ferocity of the alien star, warrior. Do not hold back, for I seek a force capable of breaching the immortal flesh.",
+      retort: "You stand as a monumental pillar guarding the boundary of the dead. Pillars are built to hold structures. You will be cleared.",
+      tag: "DUN SCAITH VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "A king who carries the weight of a dying star upon her shoulders. Let us see if that pure, unyielding resolve can withstand two spears born in shadow.",
       retort: "Gatekeeper of Dún Scáith. The oaths I swore to Britain will not bend before the cold stillness of your realm. Prepare yourself!",
@@ -420,6 +435,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 5. JEANNE D'ARC ALTER (AVENGER)
   // =========================================================================
   jeanne_alter: {
+    altera: {
+      intro: "Out of my way, pale doll! If anyone gets to turn this miserable world into a cinder, it’s going to be me!",
+      retort: "Your fury is noisy. It still demands an audience. Ruin requires neither vengeance nor theatre—only erasure.",
+      tag: "BLACK FLAMES VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "Oh, look at the spotless, shining King of Knights. How utterly nauseating. Let’s see how pretty that chivalry looks after I roast you alive.",
       retort: "Spite is not conviction, Avenger. Swing your hatred all you want, but an undisciplined flame will never pierce my armor.",
@@ -597,6 +617,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 7. ARTORIA PENDRAGON ALTER (SABER)
   // =========================================================================
   artoria_pendragon_alter: {
+    altera: {
+      intro: "A mindless instrument of ruin? How hollow. If you intend to erase this kingdom, step forward and taste raw tyranny.",
+      retort: "You rule over blackened soil and call it dominion. Whether painted gold or stained in soot... an empire remains bad civilization.",
+      tag: "TYRANNY VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "A king who starves her own heart to feed her people will only leave them with ashes. Let me show you the weight of the reality you ignored.",
       retort: "You abandoned the oath we swore to the very end! I will not let a tyrant wear my face and mock the knights who fell for Britain!",
@@ -776,6 +801,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 9. EMIYA (ARCHER)
   // =========================================================================
   emiya_archer: {
+    altera: {
+      intro: "An unstoppable calamity from the distant past. Typical. I always seem to draw the opponents that make self-preservation impossible.",
+      retort: "A blacksmith of phantom steel. Your endless blades are proof of mortal persistence. I shall break every projection.",
+      tag: "PHANTOM STEEL VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "Still swinging that sword for a dream that will never answer back, Saber? You haven't changed in the slightest.",
       retort: "My path was chosen without deceit, Archer. If you have abandoned your pride as a hero, then fall before Excalibur!",
@@ -877,6 +907,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 10. HERACLES (BERSERKER)
   // =========================================================================
   heracles_berserker: {
+    altera: {
+      intro: "■■■■■■■■■ーーーッ!!",
+      retort: "A raging wall of muscle and divine blessings. A monument to human endurance. I will dismantle all twelve lives.",
+      tag: "GOD HAND VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "■■■■■■■■■■■■———!!",
       retort: "Great Heracles. Even stripped of reason by the madness of your class, your mythical stature remains unblemished. Come!",
@@ -978,6 +1013,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 11. CÚ CHULAINN (LANCER)
   // =========================================================================
   cu_chulainn_lancer: {
+    altera: {
+      intro: "They call you the Scourge of God, eh? Good. Let's find out if that photon blade of yours can parry a thrust that reverses cause and effect!",
+      retort: "A hero from the land of thorns. Your heart beats with wild momentum, yet you wear armor forged by men. It will be pierced.",
+      tag: "GAE BOLG VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "Still keeping that invisible blade tucked under your cloak, King of Knights? Come on, let's skip the small talk and see if you can parry my thrust this time!",
       retort: "Hound of Culann. Your spear is deadly, but as long as this wind conceals my blade, you shall not gain a single step.",
@@ -1155,6 +1195,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 13. ADIOSA (FOREIGNER / DRAGON ENVOY)
   // =========================================================================
   adiosa_dragon_envoy: {
+    altera: {
+      intro: "*Nok zul kri. Aeth'ra ruk'thar... Vael'ix krag.*",
+      retort: "A primordial dragon that answers only to planetary balance. You carry no laws, no cities, no culture. You are simple ruin... just like me.",
+      tag: "DRAGON PRUNER VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "⟨ Skar zhal, Krav'nok! ⟩ A golden mortal carrying a fragment of the Red Dragon... So tiny and fragile. It makes my claws itch to crush you.",
       retort: "What unfathomable dragon entity is this?! The pressure of her aura rivals the vortex of Camelot! Excalibur, protect Britain!",
@@ -1282,6 +1327,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 15. AMAMIYA NO CHIHAYA TENKOHIME (SABER / ANCIENT KYUBI GUARDIAN)
   // =========================================================================
   amamiya_no_chihaya_tenkohime: {
+    altera: {
+      intro: "H-Halt right there, stranger! Washi protects this holy ground! Step one inch closer to the torii gate and Amazakura will slice your hair off, ja!",
+      retort: "Torii gates mark sacred borders; borders delineate territory and cities. Even in ruin, your shrine fosters belief. Bad civilization.",
+      tag: "TORII GATE VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "King of Knights! Washi's Amazakura shall test thy chivalry! ...A-And keep those muddy steel boots away from washi's clean shrine tatami!",
       retort: "A kitsune swordswoman of divine lineage? Your instinctual draw is remarkably swift. Let our blades cross with honor!",
@@ -1389,6 +1439,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
     }
   },
   lucia_lyozes: {
+    altera: {
+      intro: "Stand down, wanderer. I have mapped the trajectory of your next five strides. If you cross this threshold, my lance will strike true.",
+      retort: "Clairvoyance used to calculate tactical defense. You strategize to preserve a command post. Calculation and fortification will be torn apart.",
+      tag: "PRESCIENT LANCE VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "King of Knights. Your chivalric ideals are noble, but on an apocalyptic battlefield, hesitation born of honor will get your comrades killed. Show me your conviction!",
       retort: "Princess of Sylvanryth. I see the weight of fallen comrades in your eyes. I accept your vanguard challenge with Excalibur!",
@@ -1509,6 +1564,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 17. LUVRIA GREENHARTE (CASTER / THE "HERO", STRONGEST MAGE OF LYOZES)
   // =========================================================================
   luvria_greenharte: {
+    altera: {
+      intro: "Thou carryest a mighty light, fair star-blade, but thou facest the Hero of Sylvanryth! Tarry no further—lest I nullify thine will to advance!",
+      retort: "You speak with grand titles and weave laws of negation. You call yourself a 'Hero' to safeguard towns. That title... is bad civilization.",
+      tag: "SYLVANRYTH HERO VS SCOURGE OF GOD"
+    },
     // 1. VS LUCIA LYOZES
     lucia: {
       intro: "Lucia! Are we truly sparring? Please do not make that terrifying face; I promise not to erase the ground beneath your boots this time~",
@@ -1873,6 +1933,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 19. ARTORIA CASTER (CASTORIA)
   // =========================================================================
   artoria_caster: {
+    altera: {
+      intro: "Please, wait! I don't want to fight some ancient planetary calamity! Can't we just sit down and talk this through?!",
+      retort: "Words cultivate agreements; agreements build society. Cease your plea, fairy of the bell. Discussion... is bad civilization.",
+      tag: "FAERIE PLEA VS SCOURGE OF GOD"
+    },
     artoria_pendragon: {
       intro: "W-Wait, is that really the King of Knights?! S-So dignified and flawless... Ah, looking at her makes my knees shake, but I can't look bad here! E-Excuse me, please don't hit too hard!",
       retort: "You carry the burden of an entire world upon those small shoulders. Stand tall, Child of Prophecy—let me see the conviction behind your staff!",
@@ -2019,6 +2084,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // 19. VAN GOGH (FOREIGNER)
   // =========================================================================
   van_gogh: {
+    altera: {
+      intro: "A-Ah, don't look at me like that! The swirls... the starry lights of the void... they want to drown everything in black and blue ink!",
+      retort: "You carry an alien madness that sketches and creates. Creation births civilization. Therefore, your canvas must be scrubbed.",
+      tag: "STARRY NIGHT VS SCOURGE OF GOD"
+    },
     van_gogh: {
       intro: "N-No... nonono! Another imposter?! Another fake Gogh-chan standing there giggling?! Looking at you is like looking into a cracked mirror smeared with yellow bile! Which one of us is the bigger failure?! Ehehe... AHAHAA!",
       retort: "Two sunflowers staring at a sun that isn't even there... Ehehe... It's double the Gogh, double the woe! If there are two of us, Master will definitely throw us both in the incinerator! Let's wipe each other clean off the canvas!",
@@ -2116,6 +2186,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
     }
   },
   tamamo_no_mae: {
+    altera: {
+      intro: "Hold it right there! A good wife spends hours preparing a peaceful home, and I will not let an uncultured alien smash my dinner table!",
+      retort: "A beast draping herself in hearth and domesticity. The concept of marriage itself is an organized mortal rite. Bad civilization.",
+      tag: "HEARTH & HOME VS SCOURGE OF GOD"
+    },
     tamamo_no_mae: {
       intro: "Mikon?! Another fox maiden claiming to be Master's one and only dedicated wife?! Unforgivable! There can only be one perfect bride in this household!",
       retort: "How bold of a counterfeit fox to challenge the genuine article! Let us see whose cooking and divine mantras hold supreme authority!",
@@ -2216,10 +2291,96 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       retort: "S-Such blinding, warm solar divinity... Apollo's light was scorching and cruel, but your sunlight... it feels so comforting. P-Please don't burn my petals!",
       tag: "SOLAR GODDESS & THE SUNFLOWER NYMPH"
     }
+  },
+
+  // =========================================================================
+  // 23. ALTERA (SABER)
+  // =========================================================================
+  altera: {
+    artoria_pendragon: {
+      intro: "The King of Knights. A symbol of chivalry, order, and high courts. You are civilization itself. Therefore... you must be undone.",
+      retort: "I bear the hopes of Camelot upon my blade. It is not something that yields to simple ruin, Scourge of God!",
+      tag: "SCOURGE VS KING OF KNIGHTS"
+    },
+    artoria_pendragon_alter: {
+      intro: "A blackened core. Your rule was carved through terror and tyrant laws. It is still a construct... still civilization.",
+      retort: "Spare me the philosophy, alien. Ruin or tyrant, the only law on this field is who gets severed first.",
+      tag: "SCOURGE VS BLACKENED TYRANT"
+    },
+    artoria_caster: {
+      intro: "Staff bearer of the fae. Your pilgrimage created purpose... created history. That makes you bad civilization.",
+      retort: "Wait, bad civilization?! I was just trying not to get executed by Morgan! W-Why is that photon sword glowing so bright?!",
+      tag: "SCOURGE VS FAERIE PILGRIM"
+    },
+    jeanne_alter: {
+      intro: "Flames born of resentment. An imitation forged from human sorrow. You burn, yet you build nothing.",
+      retort: "Hah! I don't give a damn about building anything! All I do is burn—and you are next in the furnace!",
+      tag: "SCOURGE VS DRAGON WITCH"
+    },
+    gilgamesh_archer: {
+      intro: "The oldest king. The vault that gathered all fruits of mortal intellect. You are the origin point of bad civilization.",
+      retort: "Insolent remnant of the white titan! You dare speak of civilization to the one who laid its foundation? Kneel before your betters!",
+      tag: "SCOURGE VS GOLDEN KING"
+    },
+    emiya_archer: {
+      intro: "You forge weapons out of concepts. A walking monument to mortal survival and craft. It must be dismantled.",
+      retort: "Good grief. I’ve been called a pest and a counterfeit, but 'bad civilization' is a first. Don't expect me to hold back.",
+      tag: "SCOURGE VS PHANTOM FORGE"
+    },
+    cu_chulainn_lancer: {
+      intro: "Hound of Ulster. Your spear carries the wild nature of beasts, yet you fight under the mantle of a warrior's honor.",
+      retort: "Honor or bloodlust, it all ends the same way. Drop the stiff lecture, girl—let’s see if that rainbow light can pierce Gáe Bulg!",
+      tag: "SCOURGE VS HOUND OF ULSTER"
+    },
+    scathach_lancer: {
+      intro: "Gatekeeper of the Land of Shadows. You dwell outside of human time, yet you breed champions. You foster civilization.",
+      retort: "A destroyer from the stars... Magnificent. Let us test if that unearthly blade possesses the weight to grant me death.",
+      tag: "SCOURGE VS LAND OF SHADOWS"
+    },
+    heracles_berserker: {
+      intro: "Twelve trials etched into human myth. A hero carved from mortal ambition. The structure of your legend will fall.",
+      retort: "■■■■■■■■■ーーー!!",
+      tag: "SCOURGE VS TWELVE TRIALS"
+    },
+    van_gogh: {
+      intro: "A fragment of the abyss intertwined with yellow flowers. Paint and madness. You depict civilization through weeping eyes.",
+      retort: "Ehehe... yellow, stars, black paint... even the Scourge sees the canvas! Please... don't scrub away the colors, de-he-he!",
+      tag: "SCOURGE VS STARRY CANVAS"
+    },
+    tamamo_no_mae: {
+      intro: "A solar beast playing the role of a modest bride. The masquerade itself is a mortal tradition. Bad civilization.",
+      retort: "Eeeek! Calling a dedicated maiden's heart 'bad civilization'?! How utterly unromantic! Prepare for a divine celestial kicking, missy!",
+      tag: "SCOURGE VS DEVOTED BRIDE"
+    },
+    altera: {
+      intro: "You hesitate. Your grip on the photon edge wavers because you look upon these mortals with longing. A weapon that dreams... is broken.",
+      retort: "I am not broken. I know the ruin I bring... but even a tool may choose what is precious. Stand down, shadow of Mars.",
+      tag: "MIRROR OF DESTROYERS"
+    },
+    luvria_greenharte: {
+      intro: "Your eyes nullify the concepts that bind the world. You dissolve laws, yet you fight to preserve a fragile peace. Contradictory.",
+      retort: "Contradictions make the world splendid, star-child! Besides, if thou bringest ruin to my people's quiet days... I shall simply nullify thine victory.",
+      tag: "SCOURGE VS CONCEPT NULLIFIER"
+    },
+    lucia_lyozes: {
+      intro: "A commander scarred by calamitous mana cores. You build defenses, order, and parties to shelter mortals. It is futile.",
+      retort: "I've already witnessed what runaway ruin looks like. Your sword strikes five seconds from now—and I have no intention of letting it land.",
+      tag: "SCOURGE VS PRESCIENT COMMANDER"
+    },
+    adiosa_dragon_envoy: {
+      intro: "Primordial draconic entity. You weed mortal soil like an invasive garden. You and I share the same instinct: erasure.",
+      retort: "*Drazk'hlor krav'nok. Ruk'thar zhal.*",
+      tag: "SCOURGE VS PRIMORDIAL PRUNER"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "A divine fox girl carrying a sealed shrine. Clinging to mortal memories of a town that abandoned you. Bad civilization.",
+      retort: "H-Hii! Washi no jinja is not bad anything, ja! Put that rainbow stick away or... or Amazakura will slice it to ribbons, ja nee!",
+      tag: "SCOURGE VS SHRINE GUARDIAN"
+    }
   }
 };
 
-// Also alias amamiya, lucia, luvria, edmond, castoria, typhon, van_gogh, and tamamo in the database
+// Also alias amamiya, lucia, luvria, edmond, castoria, typhon, van_gogh, tamamo, and altera in the database
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['amamiya'] = SERVANT_MATCHUP_DATABASE.amamiya_no_chihaya_tenkohime;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['lucia'] = SERVANT_MATCHUP_DATABASE.lucia_lyozes;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['luvria'] = SERVANT_MATCHUP_DATABASE.luvria_greenharte;
@@ -2231,6 +2392,10 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['clytie'] = SERVANT_MATCHUP_DATABASE.van_gogh;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['tamamo'] = SERVANT_MATCHUP_DATABASE.tamamo_no_mae;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['tamamo_no_mae'] = SERVANT_MATCHUP_DATABASE.tamamo_no_mae;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['attila'] = SERVANT_MATCHUP_DATABASE.altera;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['etzel'] = SERVANT_MATCHUP_DATABASE.altera;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['attila_the_hun'] = SERVANT_MATCHUP_DATABASE.altera;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['saber_altera'] = SERVANT_MATCHUP_DATABASE.altera;
 
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.
