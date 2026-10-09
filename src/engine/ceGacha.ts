@@ -96,20 +96,17 @@ export function executeUnifiedGachaRoll({
   let newCeCount = 0;
   let servantsPulled = 0;
   let cesPulled = 0;
+  const pulledServantsInThisRoll = new Set<string>();
 
   const pullServant = (): UnifiedGachaResultItem => {
     servantsPulled++;
-    const featuredServants = allServants.filter(s => banner.featuredServantIds?.includes(s.id));
-    let randomTemplate: ServantTemplate;
-    let isRateUp = false;
-
-    if (featuredServants.length > 0 && Math.random() < 0.5) {
-      randomTemplate = featuredServants[Math.floor(Math.random() * featuredServants.length)];
-      isRateUp = true;
-    } else {
+    let randomTemplate = allServants[Math.floor(Math.random() * allServants.length)];
+    let attempts = 0;
+    while (pulledServantsInThisRoll.has(randomTemplate.id) && attempts < 10) {
       randomTemplate = allServants[Math.floor(Math.random() * allServants.length)];
+      attempts++;
     }
-
+    pulledServantsInThisRoll.add(randomTemplate.id);
     const isAlreadyOwned = ownedTemplateIds.has(randomTemplate.id);
 
     if (!isAlreadyOwned) {

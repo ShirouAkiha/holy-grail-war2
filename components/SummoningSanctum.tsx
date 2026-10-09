@@ -109,10 +109,7 @@ export default function SummoningSanctum({
     setStatusNotice(null);
 
     setTimeout(() => {
-      const alteraInPool = allThrone.find(s => s.id === 'altera');
-      const randomTemplate = (alteraInPool && Math.random() < 0.45)
-        ? alteraInPool
-        : allThrone[Math.floor(Math.random() * allThrone.length)];
+      const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
       let curServants = master.servants ? [...master.servants] : [];
       const isOwned = curServants.some(s => (s.templateId || s.template?.id) === randomTemplate.id);
 
@@ -177,12 +174,16 @@ export default function SummoningSanctum({
       const resultsArr: any[] = [];
       let primaryNew: ServantTemplate | null = null;
       let totalPrisms = 0;
+      const pulledServantsInThisRoll = new Set<string>();
 
       for (let i = 0; i < 10; i++) {
-        const alteraInPool = allThrone.find(s => s.id === 'altera');
-        const randomTemplate = (alteraInPool && Math.random() < 0.35)
-          ? alteraInPool
-          : allThrone[Math.floor(Math.random() * allThrone.length)];
+        let randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+        let attempts = 0;
+        while (pulledServantsInThisRoll.has(randomTemplate.id) && attempts < 10) {
+          randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+          attempts++;
+        }
+        pulledServantsInThisRoll.add(randomTemplate.id);
         const isOwned = curServants.some(s => (s.templateId || s.template?.id) === randomTemplate.id);
 
         resultsArr.push({

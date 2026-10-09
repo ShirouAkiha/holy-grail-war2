@@ -10405,11 +10405,8 @@ export default function DiscordEmulator({
         }
 
         if (gachaCategory === 'servants' || gachaBanner === 'throne_servants') {
-          // 1x Servant Summon (Featuring Altera Rate-Up)
-          const alteraInPool = allThrone.find(s => s.id === 'altera');
-          const randomTemplate = (alteraInPool && Math.random() < 0.45)
-            ? alteraInPool
-            : allThrone[Math.floor(Math.random() * allThrone.length)];
+          // 1x Servant Summon
+          const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
           const curServants = master.servants || [];
           const isOwned = curServants.some((s: any) => (s.template?.id || s.id) === randomTemplate.id);
 
@@ -10510,12 +10507,16 @@ export default function DiscordEmulator({
           let newCount = 0;
           const lines: string[] = [];
           const multiResults: any[] = [];
+          const pulledServantsInThisRoll = new Set<string>();
 
           for (let i = 0; i < 10; i++) {
-            const alteraInPool = allThrone.find(s => s.id === 'altera');
-            const randomTemplate = (alteraInPool && Math.random() < 0.35)
-              ? alteraInPool
-              : allThrone[Math.floor(Math.random() * allThrone.length)];
+            let randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+            let attempts = 0;
+            while (pulledServantsInThisRoll.has(randomTemplate.id) && attempts < 10) {
+              randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+              attempts++;
+            }
+            pulledServantsInThisRoll.add(randomTemplate.id);
             const isOwned = curServants.some((s: any) => (s.template?.id || s.id) === randomTemplate.id);
 
             multiResults.push({
