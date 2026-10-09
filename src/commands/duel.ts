@@ -2060,8 +2060,14 @@ function activateCombatantSkill(
       value: 30,
       remainingTurns: 3
     });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Buster Up)`,
+      type: 'buff_buster',
+      value: 30,
+      remainingTurns: 3
+    });
     combatant.critStars = Math.min(50, (combatant.critStars || 0) + 15);
-    logText = `🌟 **${sName}** activated **${skill.name}**! (+30% ATK [3T], +15 Critical Stars)${quoteLine}`;
+    logText = `🌟 **${sName}** activated **${skill.name}**! (+30% ATK [3T], +30% Buster DMG [3T], +15 Critical Stars)${quoteLine}`;
   } else if (skill.id === 'self_modification_ex' || /self-modification|self modification/i.test(skill.name)) {
     // Jeanne Alter S1: Self-Modification EX
     combatant.activeBuffs.push({

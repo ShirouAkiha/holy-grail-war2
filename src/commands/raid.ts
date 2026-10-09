@@ -2157,7 +2157,7 @@ async function runRaidBattle(
             buffLog = `(⚡ +30% NP Gauge, 💖 +7,000 HP, 💥 +30% Crit DMG [3T], 🛡️ +120% Debuff Resist [3T], ★ +300% Star Drop [1T]!)`;
           } else if (skillObj?.id === 'star_emblem_ex' || /star emblem/i.test(sName)) {
             // Altera S3: Star Emblem EX
-            // Increases own attack by 30% for 3 turns. Gains 15 critical stars.
+            // Increases own attack by 30% for 3 turns. Increases own Buster performance by 30% for 3 turns. Gains 15 critical stars.
             active.activeBuffs = active.activeBuffs || [];
             active.activeBuffs.push({
               name: `${sName} (ATK Up)`,
@@ -2165,8 +2165,14 @@ async function runRaidBattle(
               value: 30,
               remainingTurns: 3
             });
+            active.activeBuffs.push({
+              name: `${sName} (Buster Up)`,
+              type: 'buster_up',
+              value: 30,
+              remainingTurns: 3
+            });
             active.critStars = (active.critStars || 0) + 15;
-            buffLog = `(⚔️ +30% ATK for 3T, ★ +15 Critical Stars!)`;
+            buffLog = `(⚔️ +30% ATK [3T], 🔴 +30% Buster DMG [3T], ★ +15 Critical Stars!)`;
           } else if (skillObj?.id === 'self_modification_ex' || /self-modification|self modification/i.test(sName)) {
             // Jeanne Alter S1: Self-Modification EX
             active.activeBuffs = active.activeBuffs || [];
