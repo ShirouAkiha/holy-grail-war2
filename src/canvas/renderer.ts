@@ -3346,7 +3346,17 @@ function drawHoveringAttacker(
   ctx.clip();
 
   if (portraitImg) {
-    drawImageCover(ctx, portraitImg, spriteX, spriteY, spriteW, spriteH);
+    const isMerged = isAtlasMergedSprite(portraitImg);
+    if (!isMerged) {
+      // Custom OC artwork: scale down to ~82% scale so bust/torso isn't oversized
+      const cW = Math.round(spriteW * 0.82);
+      const cH = Math.round(spriteH * 0.82);
+      const cX = spriteX + Math.round((spriteW - cW) / 2);
+      const cY = spriteY + (spriteH - cH);
+      drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
+    } else {
+      drawImageCover(ctx, portraitImg, spriteX, spriteY, spriteW, spriteH);
+    }
   } else {
     // Heraldic velvet fallback
     const vGrad = ctx.createLinearGradient(spriteX, spriteY, spriteX, spriteY + spriteH);
@@ -3435,7 +3445,17 @@ function drawHoveringDefender(
   ctx.clip();
 
   if (defenderImg) {
-    drawImageCover(ctx, defenderImg, spriteX, spriteY, spriteW, spriteH);
+    const isMerged = isAtlasMergedSprite(defenderImg);
+    if (!isMerged) {
+      // Custom OC artwork: scale down to ~82% scale so bust/torso isn't oversized
+      const cW = Math.round(spriteW * 0.82);
+      const cH = Math.round(spriteH * 0.82);
+      const cX = spriteX + Math.round((spriteW - cW) / 2);
+      const cY = spriteY + (spriteH - cH);
+      drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
+    } else {
+      drawImageCover(ctx, defenderImg, spriteX, spriteY, spriteW, spriteH);
+    }
   } else {
     // Dark Crimson fallback
     const fbGrad = ctx.createLinearGradient(spriteX, spriteY, spriteX, spriteY + spriteH);
@@ -7473,9 +7493,9 @@ export async function renderVisualNovelCard(
         // - Lucia: same size, lowered a bit
         // - Luvria: same size, positioned higher so face is well above text box
         let scaleMultiplier = 1.0;
-        let baseMaxHFactor = 0.92;
-        let baseMaxWFactor = 0.50;
-        let spriteY = Math.round(height * 0.04);
+        let baseMaxHFactor = 0.82;
+        let baseMaxWFactor = 0.48;
+        let spriteY = Math.round(height * 0.12);
 
         if (isMerged) {
           scaleMultiplier = 1.15;
@@ -7483,18 +7503,21 @@ export async function renderVisualNovelCard(
           baseMaxWFactor = 0.54;
           spriteY = height - (height * baseMaxHFactor * scaleMultiplier);
         } else if (isEdmond || isAdiosa) {
-          scaleMultiplier = 1.5;
-          baseMaxHFactor = 0.92;
-          baseMaxWFactor = 0.60;
-          spriteY = Math.round(height * 0.12);
-        } else if (isLucia) {
-          baseMaxHFactor = 0.92;
-          spriteY = Math.round(height * 0.09);
-        } else if (isLuvria) {
-          scaleMultiplier = 1.3;
-          baseMaxHFactor = 0.95;
+          scaleMultiplier = 1.25;
+          baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.55;
-          spriteY = Math.round(height * -0.29);
+          spriteY = Math.round(height * 0.12);
+        } else if (isLuvria) {
+          scaleMultiplier = 1.1;
+          baseMaxHFactor = 0.88;
+          baseMaxWFactor = 0.50;
+          spriteY = Math.round(height * -0.15);
+        } else {
+          // Custom OC / Non-merged portrait: scale down to 80%
+          scaleMultiplier = 0.82;
+          baseMaxHFactor = 0.80;
+          baseMaxWFactor = 0.48;
+          spriteY = Math.round(height * 0.14);
         }
 
         const maxSpriteH = Math.floor(height * baseMaxHFactor * scaleMultiplier);

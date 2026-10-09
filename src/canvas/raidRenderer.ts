@@ -1091,10 +1091,21 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
     // Render Servant Sprite / Character Art (Upper body & face 100% ABOVE the skill icons, reaction faces stripped)
     if (avatar) {
-      const spriteAreaH = 340;
-      drawServantBattleSprite(ctx, avatar, slotX, panelTopY + 10, panelW, spriteAreaH, {
-        fitMode: 'hero'
-      });
+      const isMerged = isAtlasMergedSprite(avatar);
+      if (!isMerged) {
+        // Custom OC artwork: scale down to ~72% height (245px) anchored lower above skills
+        const customH = 245;
+        const customY = panelTopY + 105;
+        drawServantBattleSprite(ctx, avatar, slotX, customY, panelW, customH, {
+          fitMode: 'contain',
+          isCustomOC: true
+        });
+      } else {
+        const spriteAreaH = 340;
+        drawServantBattleSprite(ctx, avatar, slotX, panelTopY + 10, panelW, spriteAreaH, {
+          fitMode: 'hero'
+        });
+      }
     }
 
     // Authentic FGO Vertical Gradient: Completely clear on field/head -> dark backing only under skills & gauges

@@ -1558,10 +1558,25 @@ function drawHoveringAttacker(
   ctx.fillStyle = auraGrad;
   ctx.fillRect(0, 0, 340, 380);
 
+function checkAtlasSprite(img: any): boolean {
+  if (!img) return false;
+  const src = img.src || img._sourceUrl || '';
+  return String(src).includes('CharaFigure') || Boolean(img._isAtlasMerged);
+}
+
   if (portraitImg) {
     ctx.save();
-    // Soft vignette on the right edge fading into the center clash
-    drawImageCover(ctx, portraitImg, sprX, sprY, sprW, sprH);
+    const isMerged = checkAtlasSprite(portraitImg);
+    if (!isMerged) {
+      // Custom OC artwork: scale down to ~82% scale so bust/torso isn't oversized
+      const cW = Math.round(sprW * 0.82);
+      const cH = Math.round(sprH * 0.82);
+      const cX = sprX + Math.round((sprW - cW) / 2);
+      const cY = sprY + (sprH - cH);
+      drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
+    } else {
+      drawImageCover(ctx, portraitImg, sprX, sprY, sprW, sprH);
+    }
 
     // Right-edge fade gradient so character hovers naturally over the battlefield
     const rFade = ctx.createLinearGradient(sprX + sprW * 0.55, 0, sprX + sprW + 10, 0);
@@ -1655,7 +1670,17 @@ function drawHoveringDefender(
 
   if (defenderImg) {
     ctx.save();
-    drawImageCover(ctx, defenderImg, sprX, sprY, sprW, sprH);
+    const isMerged = checkAtlasSprite(defenderImg);
+    if (!isMerged) {
+      // Custom OC artwork: scale down to ~82% scale so bust/torso isn't oversized
+      const cW = Math.round(sprW * 0.82);
+      const cH = Math.round(sprH * 0.82);
+      const cX = sprX + Math.round((sprW - cW) / 2);
+      const cY = sprY + (sprH - cH);
+      drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
+    } else {
+      drawImageCover(ctx, defenderImg, sprX, sprY, sprW, sprH);
+    }
 
     // Left-edge fade gradient so defender hovers seamlessly over stage
     const lFade = ctx.createLinearGradient(sprX - 10, 0, sprX + sprW * 0.45, 0);
