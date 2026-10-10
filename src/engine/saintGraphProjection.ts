@@ -105,6 +105,7 @@ export function createProjectedServantInstance(
       defeat: template.defeatQuote
     },
     bondLevel: 1,
+    bondExp: 0,
     template
   };
 }

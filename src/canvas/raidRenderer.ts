@@ -314,9 +314,26 @@ function drawFGOSkillIcon(
   cooldownTurns: number,
   isDead: boolean,
   skillObj?: any,
-  iconImg?: any
+  iconImg?: any,
+  isLocked?: boolean
 ) {
   ctx.save();
+
+  if (isLocked) {
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(x, y, size, size);
+    ctx.strokeStyle = '#312e81';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
+
+    ctx.fillStyle = '#818cf8';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔒 Bond 5', x + size / 2, y + size / 2);
+    ctx.restore();
+    return;
+  }
 
   // 1. Outer Golden Frame
   const goldGrad = ctx.createLinearGradient(x, y, x + size, y + size);
@@ -1154,14 +1171,16 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     const skillY = 485;
 
     const servantSkills = p.servant.template?.skills || (p.servant as any).skills || [];
+    const servantBond = p.servant?.bondLevel ?? (p.servant as any)?.template?.bondLevel ?? 1;
 
     for (let s = 0; s < 3; s++) {
       const sX = skillStartX + s * (skillBoxSize + skillGap);
       const cd = p.skillCooldowns?.[s] || 0;
       const skObj = servantSkills[s];
+      const isLocked = s === 2 && servantBond < 5;
       const iconUrl = getStatusIconUrl(skObj?.effectType || skObj?.name || (s === 0 ? 'buff_atk' : s === 1 ? 'arts' : 'crit_stars'));
       const iconImg = buffImageMap?.get(iconUrl);
-      drawFGOSkillIcon(ctx, sX, skillY, skillBoxSize, s, cd, !!p.isDead, skObj, iconImg);
+      drawFGOSkillIcon(ctx, sX, skillY, skillBoxSize, s, cd, !!p.isDead, skObj, iconImg, isLocked);
     }
 
     // 2.5 Active Status Buff/Debuff Badges Row (Position Y: 538)

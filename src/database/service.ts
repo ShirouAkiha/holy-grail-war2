@@ -2453,6 +2453,7 @@ export async function giveServantToMaster(
       defeat: foundTemplate.defeatQuote
     },
     bondLevel: options.bond !== undefined ? options.bond : 1,
+    bondExp: 0,
     template: foundTemplate
   };
 

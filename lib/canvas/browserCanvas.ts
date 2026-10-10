@@ -99,7 +99,7 @@ function drawImageCover(
     sx = (img.naturalWidth - sw) / 2;
   } else {
     sh = img.naturalWidth / targetRatio;
-    sy = Math.max(0, (img.naturalHeight - sh) * 0.12);
+    sy = (img.naturalHeight - sh) / 2;
   }
 
   ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
@@ -5491,7 +5491,7 @@ export async function renderBattleTurnSummary(
 
     // 3 Active Skill Badges
     const p1Skills = activeP1.skills || [];
-    const p1Bond = activeP1.bondLevel !== undefined ? activeP1.bondLevel : 5;
+    const p1Bond = activeP1.servant?.bondLevel ?? activeP1.bondLevel ?? 1;
     [0, 1, 2].forEach((sIdx) => {
       const sBoxX = 432 + sIdx * 64;
       const sBoxY = 16;
@@ -5673,7 +5673,7 @@ export async function renderBattleTurnSummary(
 
     // Skills (y: 604)
     const p2Skills = activeP2.skills || [];
-    const p2Bond = activeP2.bondLevel !== undefined ? activeP2.bondLevel : 3;
+    const p2Bond = activeP2.servant?.bondLevel ?? activeP2.bondLevel ?? 1;
     [0, 1, 2].forEach((sIdx) => {
       const sBoxX = 16 + sIdx * 64;
       const sBoxY = 604;

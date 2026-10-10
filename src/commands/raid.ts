@@ -519,6 +519,7 @@ async function runRaidBattle(
       username: p.username,
       master: p.master,
       servant: s,
+      bondLevel: s.bondLevel || 1,
       currentHp,
       maxHp: calculatedMaxHp,
       npGauge: 0,
