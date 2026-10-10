@@ -1081,9 +1081,9 @@ function drawImageCover(
     sw = img.height * targetRatio;
     sx = (img.width - sw) / 2;
   } else {
-    // Image is taller than target frame: crop vertical overflow
+    // Image is taller than target frame: crop vertical overflow (top-biased so head/face stays in frame)
     sh = img.width / targetRatio;
-    sy = (img.height - sh) / 2;
+    sy = Math.max(0, (img.height - sh) * 0.12);
   }
 
   ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
@@ -7506,13 +7506,13 @@ export async function renderVisualNovelCard(
           scaleMultiplier = 1.10;
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.50;
-          spriteY = Math.round(height * -0.55);
+          spriteY = Math.round(height * 0.02);
           hasCustomY = true;
         } else if (isLucia) {
           scaleMultiplier = 1.05;
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.52;
-          spriteY = Math.round(height * -0.30);
+          spriteY = Math.round(height * 0.05);
           hasCustomY = true;
         } else if (isEdmond || isAdiosa) {
           scaleMultiplier = 1.25;

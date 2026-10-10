@@ -94,7 +94,7 @@ function drawImageCover(
     sx = (img.width - sw) / 2;
   } else {
     sh = img.width / targetRatio;
-    sy = (img.height - sh) / 2;
+    sy = Math.max(0, (img.height - sh) * 0.12);
   }
 
   ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
