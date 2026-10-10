@@ -3444,9 +3444,18 @@ function drawHoveringDefender(
   ctx.clip();
 
   if (defenderImg) {
-    const isLuciaDef = defenderName.toLowerCase().includes('lucia') || defenderName.toLowerCase().includes('lucernalia');
-    const scale = isLuciaDef ? 0.68 : 0.94;
-    const offY = isLuciaDef ? 35 : 0;
+    const defNameLower = defenderName.toLowerCase();
+    const isLuciaDef = defNameLower.includes('lucia') || defNameLower.includes('lucernalia');
+    const isLuvriaDef = defNameLower.includes('luvria');
+    let scale = 0.94;
+    let offY = 0;
+    if (isLuciaDef) {
+      scale = 0.68;
+      offY = 35;
+    } else if (isLuvriaDef) {
+      scale = 0.98;
+      offY = -15;
+    }
     const offX = 0;
 
     const cW = Math.round(spriteW * scale);

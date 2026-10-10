@@ -1094,9 +1094,24 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       const isMerged = isAtlasMergedSprite(avatar);
       if (!isMerged) {
         const servantName = p.servant?.template?.name || p.servant?.nickname || '';
-        const isLucia = servantName.toLowerCase().includes('lucia') || servantName.toLowerCase().includes('lucernalia');
-        const rScale = isLucia ? 0.85 : 1.0;
-        const rOffsetY = isLucia ? 20 : 0;
+        const servantLower = servantName.toLowerCase();
+        const isLucia = servantLower.includes('lucia') || servantLower.includes('lucernalia');
+        const isLuvria = servantLower.includes('luvria');
+        const isEdmond = servantLower.includes('edmond');
+        const isAdiosa = servantLower.includes('adiosa') || servantLower.includes('typhon');
+
+        let rScale = 1.0;
+        let rOffsetY = 0;
+        if (isLucia) {
+          rScale = 0.85;
+          rOffsetY = 20;
+        } else if (isLuvria) {
+          rScale = 1.1;
+          rOffsetY = -15;
+        } else if (isEdmond || isAdiosa) {
+          rScale = 1.15;
+          rOffsetY = 10;
+        }
 
         const baseH = 310;
         const customH = Math.round(baseH * rScale);
