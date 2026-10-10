@@ -38,6 +38,8 @@ export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
   'Sfp4i7TL2cXu0LS-QZxxX.webp': 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp',
   'avatar_lucia_lyozes.webp': 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
   '2PMVd98BaN6Rc9lzVnWyn.webp': 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
+  'sprite_lucia_lyozes.webp': 'https://ella.janitorai.com/media-approved/yF_QPg5zHXgLbxeEfFd0Q.webp',
+  'yF_QPg5zHXgLbxeEfFd0Q.webp': 'https://ella.janitorai.com/media-approved/yF_QPg5zHXgLbxeEfFd0Q.webp',
   'np_lucia_lyozes.gif': 'https://ella.janitorai.com/media-approved/v4h_m7mQL9PwjTmQb_7fg.gif',
   'v4h_m7mQL9PwjTmQb_7fg.gif': 'https://ella.janitorai.com/media-approved/v4h_m7mQL9PwjTmQb_7fg.gif',
   'avatar_luvria_greenharte.webp': 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
