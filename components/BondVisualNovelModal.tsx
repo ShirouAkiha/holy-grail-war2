@@ -239,7 +239,11 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
         <div className="relative inset-0 flex-1 flex flex-col justify-end z-10 overflow-hidden">
           
           {/* RIGHT SIDE CHARACTER SPRITE (Standing ON stage like Kurisu) */}
-          <div className="absolute bottom-[100px] sm:bottom-[120px] right-[4%] sm:right-[8%] md:right-[12%] h-[65%] sm:h-[75%] md:h-[82%] max-h-[720px] z-10 pointer-events-none flex items-end justify-center">
+          <div className={`absolute bottom-[100px] sm:bottom-[120px] right-[4%] sm:right-[8%] md:right-[12%] ${
+            (avatarUrl.toLowerCase().includes('lucia') || (template.id && template.id.includes('lucia')) || (template.name && template.name.toLowerCase().includes('lucia')))
+              ? 'h-[50%] sm:h-[58%] md:h-[65%] max-h-[560px]'
+              : 'h-[65%] sm:h-[75%] md:h-[82%] max-h-[720px]'
+          } z-10 pointer-events-none flex items-end justify-center`}>
             <div className="relative group h-full">
               {/* Soft character aura glow */}
               <div className="absolute inset-0 bg-gradient-to-t from-amber-500/20 via-indigo-500/10 to-transparent rounded-full blur-2xl opacity-60" />

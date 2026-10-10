@@ -21,6 +21,8 @@ export interface ServantDialogueProfile {
   skill3?: string[];
   damage?: string[];
   heavyDamage?: string[];
+  battleStart?: string[];
+  attacks?: string[];
 }
 
 export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = {

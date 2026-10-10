@@ -575,7 +575,7 @@ function seedDefaultMastersIfEmpty() {
           summon: canonServant.summonQuote,
           noblePhantasm: canonServant.noblePhantasm?.chant || 'True Name Unleashed!'
         },
-        bondLevel: 5,
+        bondLevel: 1,
         template: { ...canonServant }
       };
 

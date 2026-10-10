@@ -4997,7 +4997,7 @@ async function startInteractiveDuel(
     'SUMMON INVOCATION',
     p1Class,
     p1AvatarUrl,
-    p1.servant.bondLevel || 5,
+    p1.servant.bondLevel || 1,
     p2Speaker,
     p2AvatarUrl,
     p2Class,
@@ -5014,7 +5014,7 @@ async function startInteractiveDuel(
     'SUMMON INVOCATION',
     p2Class,
     p2AvatarUrl,
-    p2.servant.bondLevel || 5,
+    p2.servant.bondLevel || 1,
     p1Speaker,
     p1AvatarUrl,
     p1Class,
@@ -5075,7 +5075,7 @@ async function startInteractiveDuel(
       'ALLIANCE INVOCATION',
       p1AllyClass,
       p1AllyAvatarUrl,
-      p1Ally.servant.bondLevel || 5,
+      p1Ally.servant.bondLevel || 1,
       p2Speaker,
       p2AvatarUrl,
       p2Class,
@@ -5119,7 +5119,7 @@ async function startInteractiveDuel(
       'ALLIANCE INVOCATION',
       p2AllyClass,
       p2AllyAvatarUrl,
-      p2Ally.servant.bondLevel || 5,
+      p2Ally.servant.bondLevel || 1,
       p1Speaker,
       p1AvatarUrl,
       p1Class,
@@ -6451,7 +6451,7 @@ async function startInteractiveDuel(
         const skillQuote = res.quote || getServantSkillQuote(actor.servant, skillIdx);
         const sClass = actor.servant.template?.servantClass || 'Saber';
         const avatarUrl = getCombatantSpriteUrl(actor) || actor.avatarUrl;
-        const bondLevel = actor.servant.bondLevel || 5;
+        const bondLevel = actor.servant.bondLevel || 1;
         const skillType = res.skillType || 'Buff';
         const effectsText = (res as any).effectsText || res.log.replace(/[*_~`]/g, '');
 
@@ -6788,7 +6788,7 @@ async function startInteractiveDuel(
           playerDialogue.tag,
           attacker.servant.template?.servantClass || 'Saber',
           getCombatantSpriteUrl(attacker) || attacker.avatarUrl,
-          attacker.servant.bondLevel || 5,
+          attacker.servant.bondLevel || 1,
           defender.servant.nickname || defender.servant.template?.name || 'Opponent',
           getCombatantSpriteUrl(defender) || defender.avatarUrl,
           defender.servant.template?.servantClass || 'Saber',
@@ -6908,7 +6908,7 @@ async function finishDuel(
   const loserName = primaryLoser.servant.nickname || primaryLoser.servant.template?.name || 'Heroic Spirit';
   const loserClass = primaryLoser.servant.template?.servantClass || 'Saber';
   const loserAvatarUrl = getCombatantSpriteUrl(primaryLoser) || primaryLoser.servant.template?.avatarUrl;
-  const loserBond = primaryLoser.servant.bondLevel || 5;
+  const loserBond = primaryLoser.servant.bondLevel || 1;
   const loserDefeatQuote = primaryLoser.servant.customQuotes?.defeat || primaryLoser.servant.template?.defeatQuote || "Master... I have failed you in battle...";
 
   // 1. Process immediate Auto-Consume Evacuations
@@ -7538,7 +7538,7 @@ async function finishDuel(
     'VICTORY INVOCATION',
     winnerClass,
     winnerAvatarUrl,
-    primaryWinner.servant.bondLevel || 5,
+    primaryWinner.servant.bondLevel || 1,
     loserName,
     loserAvatarUrl,
     primaryLoser.servant.template?.servantClass || 'Lancer',

@@ -1910,6 +1910,18 @@ async function runRaidBattle(
         sIdx = parseInt(i.customId.replace('raid_skill_', ''), 10);
       }
 
+      if (sIdx === 2) {
+        const currentBondLevel = active.servant.bondLevel || 1;
+        if (currentBondLevel < 5) {
+          const sName = active.servant.nickname || active.servant.template?.name || 'Servant';
+          await i.reply({
+            content: `🔒 **Skill 3 Locked!** **${sName}** is currently **Bond Lv. ${currentBondLevel}/10**. Servants must reach **Bond Level 5** to unlock their 3rd Personal Skill. Build bond through \`/talk\`, gifts, or battles!`,
+            flags: MessageFlags.Ephemeral
+          }).catch(() => {});
+          return;
+        }
+      }
+
       if (active.skillCooldowns[sIdx] === 0) {
         const skillObj = active.servant.template?.skills?.[sIdx];
         const sName = skillObj?.name || `Skill ${sIdx + 1}`;

@@ -97,7 +97,7 @@ export function getInitialMasterProfile(): MasterProfile {
       victory: 'A worthy clash. Walk with honor, Master.',
       defeat: 'My resolve... was not enough...'
     },
-    bondLevel: 4,
+    bondLevel: 1,
     bondExp: 0,
     bondCap: 10,
     maxLevel: 90,
@@ -105,7 +105,7 @@ export function getInitialMasterProfile(): MasterProfile {
     fouHp: 0,
     fouAtk: 0,
     completedBondEvents: [],
-    unlockedDialogueIds: ['artoria_summon', 'artoria_bond_1', 'artoria_bond_2', 'artoria_bond_3', 'artoria_bond_4'],
+    unlockedDialogueIds: ['artoria_summon', 'artoria_bond_1'],
     template: defaultServantTemplate
   };
 

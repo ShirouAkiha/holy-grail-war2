@@ -97,7 +97,7 @@ export default function SummoningSanctum({
       atk: s.baseAtk || 11500,
       npName: s.noblePhantasm?.name || '',
       npChant: s.noblePhantasm?.chant || '',
-      npCard: s.noblePhantasm?.cardType || 'Buster',
+      npCard: s.noblePhantasm?.cardType === 'Arts' ? 'Arts' : s.noblePhantasm?.cardType === 'Quick' ? 'Quick' : 'Buster',
       summonQuote: s.summonQuote || '',
       lore: s.lore || ''
     });

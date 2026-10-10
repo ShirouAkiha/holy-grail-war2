@@ -75,7 +75,9 @@ export type PassiveSkillType =
   | 'dragonforge_ignition'
   | 'existence_outside_the_domain'
   | 'curse_of_sunflower'
-  | 'insanity';
+  | 'insanity'
+  | 'self_replenishment'
+  | (string & {});
 
 export interface PassiveSkill {
   name: string;
@@ -113,17 +115,39 @@ export interface CraftEssence {
   passiveType: 'starting_np' | 'buster_up' | 'arts_up' | 'quick_up' | 'crit_dmg' | 'hp_regen' | string;
   passiveValue: number;
   artworkUrl?: string;
+  imageUrl?: string;
+  cardArtUrl?: string;
   isBondCe?: boolean;
   bondServantId?: string;
   bondServantName?: string;
   locked?: boolean;
   instanceId?: string;
+  isEmber?: boolean;
+  isExpCard?: boolean;
+  isExp?: boolean;
 }
 
 export interface MatchupQuoteEntry {
   intro?: string;
   retort?: string;
   tag?: string;
+}
+
+export interface ServantSpriteConfig {
+  servantId: string;
+  servantName?: string;
+  // Visual Novel Interludes & Bond Scenes
+  vnScale?: number;       // Sizing multiplier (e.g. 0.85 = 85%, 1.0 = 100%)
+  vnOffsetY?: number;     // Vertical shift in px (positive shifts down, negative shifts up)
+  vnOffsetX?: number;     // Horizontal shift in px
+  // Duel Arena & Combat Clashes
+  combatScale?: number;   // Sizing multiplier (e.g. 1.30 = 130%)
+  combatOffsetY?: number; // Vertical shift in px
+  combatOffsetX?: number; // Horizontal shift in px
+  // Raid Battlefield Participants
+  raidScale?: number;     // Sizing multiplier (e.g. 1.35 = 135%)
+  raidOffsetY?: number;   // Vertical shift in px
+  raidOffsetX?: number;   // Horizontal shift in px
 }
 
 export interface ServantTemplate {
@@ -152,6 +176,7 @@ export interface ServantTemplate {
   isCustomOrMeme?: boolean;
   selectedAscensionStage?: 1 | 2 | 3 | 4 | 'costume' | string;
   matchupDialogues?: Record<string, MatchupQuoteEntry>;
+  spriteConfig?: ServantSpriteConfig;
 }
 
 export interface MasterServantInstance {
@@ -163,6 +188,7 @@ export interface MasterServantInstance {
   cardArtUrl?: string;
   spriteUrl?: string;
   customArtworkUrl?: string;
+  spriteConfig?: ServantSpriteConfig;
   selectedAscensionStage?: 1 | 2 | 3 | 4 | 'costume' | string;
   level: number;
   experience: number;
@@ -217,7 +243,7 @@ export interface BondChoice {
   text: string;
   response: string;
   bondExpGain: number;
-  reactionEmotion?: 'happy' | 'thoughtful' | 'surprised' | 'flustered' | 'determined' | 'amused' | 'stern' | 'smug' | 'angry' | 'excited';
+  reactionEmotion?: 'happy' | 'thoughtful' | 'surprised' | 'flustered' | 'determined' | 'amused' | 'stern' | 'smug' | 'angry' | 'excited' | 'calm' | (string & {});
   nextSceneId?: string;
 }
 

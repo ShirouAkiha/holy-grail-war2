@@ -59,6 +59,13 @@ import {
 import { startWarRecruitment, igniteWarFromRecruitment, cancelRecruitmentCall, resumePendingRecruitment } from '../engine/warRecruitmentService';
 import { WarRules, MasterProfile } from '../types';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
+import {
+  getServantSpriteConfig,
+  setServantSpriteConfig,
+  resetServantSpriteConfig,
+  normalizeSpriteServantId,
+  getAllServantSpriteConfigs
+} from '../utils/spriteConfig';
 
 interface AnnounceDraft {
   presetKey: string;
@@ -559,6 +566,65 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub
+      .setName('sprite')
+      .setDescription('Configure custom servant sprite size and position (VN, Duel, Raid)')
+      .addStringOption(opt =>
+        opt
+          .setName('servant')
+          .setDescription('Servant Name or ID (e.g. Lucia, Luvria, Adiosa, Edmond, Amamiya)')
+          .setRequired(true)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('vn_scale')
+          .setDescription('Visual Novel scale percentage (e.g. 85 for 85%, 100 for 100%)')
+          .setMinValue(40)
+          .setMaxValue(200)
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('vn_y')
+          .setDescription('Visual Novel Y offset in pixels (e.g. +120 moves lower to stage floor)')
+          .setMinValue(-300)
+          .setMaxValue(300)
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('combat_scale')
+          .setDescription('Duel scale percentage (e.g. 130 for 130%, 86 for 86%)')
+          .setMinValue(40)
+          .setMaxValue(200)
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('combat_y')
+          .setDescription('Duel Y offset in pixels (positive moves lower, negative moves higher)')
+          .setMinValue(-200)
+          .setMaxValue(200)
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('raid_scale')
+          .setDescription('Raid scale percentage (e.g. 135 for 135%, 100 for 100%)')
+          .setMinValue(40)
+          .setMaxValue(200)
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('raid_y')
+          .setDescription('Raid Y offset in pixels')
+          .setMinValue(-200)
+          .setMaxValue(200)
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
       .setName('economy')
       .setDescription('Manage currency minting, inventory resets, and vault wipes')
       .addStringOption(opt =>
@@ -677,6 +743,46 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   const category = (subcommand as any) || (interaction.options.getString('category') as any) || 'war';
+
+  // --- /admin sprite ---
+  if (subcommand === 'sprite') {
+    const servantName = interaction.options.getString('servant', true);
+    const vnScaleInt = interaction.options.getInteger('vn_scale');
+    const vnY = interaction.options.getInteger('vn_y');
+    const combatScaleInt = interaction.options.getInteger('combat_scale');
+    const combatY = interaction.options.getInteger('combat_y');
+    const raidScaleInt = interaction.options.getInteger('raid_scale');
+    const raidY = interaction.options.getInteger('raid_y');
+
+    const norm = normalizeSpriteServantId(servantName);
+    const current = getServantSpriteConfig(norm);
+
+    const updated = setServantSpriteConfig({
+      servantId: norm,
+      servantName: current.servantName || servantName,
+      vnScale: vnScaleInt !== null && vnScaleInt !== undefined ? vnScaleInt / 100 : current.vnScale,
+      vnOffsetY: vnY !== null && vnY !== undefined ? vnY : current.vnOffsetY,
+      combatScale: combatScaleInt !== null && combatScaleInt !== undefined ? combatScaleInt / 100 : current.combatScale,
+      combatOffsetY: combatY !== null && combatY !== undefined ? combatY : current.combatOffsetY,
+      raidScale: raidScaleInt !== null && raidScaleInt !== undefined ? raidScaleInt / 100 : current.raidScale,
+      raidOffsetY: raidY !== null && raidY !== undefined ? raidY : current.raidOffsetY
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🎨 SPRITE CONFIGURATION APPLIED — ${updated.servantName || norm}`)
+      .setDescription(
+        `✅ Updated individual sprite sizing and coordinate offsets for **${updated.servantName || norm}**:\n\n` +
+        `• 📖 **Visual Novel Stage:** Scale: \`${Math.round((updated.vnScale || 1.0) * 100)}%\` | Y-Offset: \`${(updated.vnOffsetY || 0) >= 0 ? '+' : ''}${updated.vnOffsetY || 0}px\`\n` +
+        `• ⚔️ **Duel Arena:** Scale: \`${Math.round((updated.combatScale || 1.0) * 100)}%\` | Y-Offset: \`${(updated.combatOffsetY || 0) >= 0 ? '+' : ''}${updated.combatOffsetY || 0}px\`\n` +
+        `• 🔱 **Raid Battlefield:** Scale: \`${Math.round((updated.raidScale || 1.0) * 100)}%\` | Y-Offset: \`${(updated.raidOffsetY || 0) >= 0 ? '+' : ''}${updated.raidOffsetY || 0}px\`\n\n` +
+        `*Changes saved to disk and applied across all web and bot battle renderers.*`
+      )
+      .setColor(0xa855f7)
+      .setFooter({ text: `Overseer ${interaction.user.username} • Custom Servant Sprite Studio` });
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
 
   // --- /admin timer ---
   if (subcommand === 'timer') {

@@ -149,7 +149,7 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
   const [dialogueSpeaker, setDialogueSpeaker] = useState(activeServant?.template.name || 'Artoria Pendragon');
   const [dialogueClass, setDialogueClass] = useState<string>(activeServant?.template.servantClass || 'Saber');
   const [dialogueAvatarUrl, setDialogueAvatarUrl] = useState(activeServant?.template.avatarUrl || '');
-  const [dialogueBond, setDialogueBond] = useState<number | string>(activeServant?.bondLevel || 10);
+  const [dialogueBond, setDialogueBond] = useState<number | string>(activeServant?.bondLevel || 1);
   const [dialogueText, setDialogueText] = useState(
     activeServant?.customQuotes.summon || 'I ask of you: Are you my Master?'
   );
@@ -832,7 +832,7 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
                         setDialogueSpeaker(s.template.name);
                         setDialogueClass(s.template.servantClass);
                         setDialogueAvatarUrl(s.template.avatarUrl);
-                        setDialogueBond(s.bondLevel || 10);
+                        setDialogueBond(s.bondLevel || 1);
                         if (s.customQuotes.summon) setDialogueText(s.customQuotes.summon);
                       }
                     }}
