@@ -6,6 +6,7 @@ import { getClassIconUrl } from '../data/classIcons';
 import { getStatusIconUrl } from '../data/statusIcons';
 import { resolveAscensionSprite } from '../data/servantAscensions';
 import { drawServantBattleSprite, isAtlasMergedSprite, loadImage } from './renderer';
+import { getServantSpriteConfig } from '../utils/spriteConfig';
 import fs from 'fs';
 import { getCanvasModule } from './canvasLoader';
 
@@ -1093,36 +1094,22 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     if (avatar) {
       const isMerged = isAtlasMergedSprite(avatar);
       if (!isMerged) {
-        const servantName = (p.servant?.template?.name || p.servant?.nickname || '').toLowerCase();
-        const templateId = (p.servant?.template?.id || p.servant?.templateId || '').toLowerCase();
-        const isAdiosa = templateId.includes('adiosa') || servantName.includes('adiosa') || (avatar.width / avatar.height > 1.35);
-        const isLucia = templateId.includes('lucia') || servantName.includes('lucia') || servantName.includes('lucernalia');
+        const servantName = p.servant?.template?.name || p.servant?.nickname || '';
+        const templateId = p.servant?.template?.id || p.servant?.templateId || servantName;
+        const cfg = getServantSpriteConfig(templateId || servantName);
 
-        if (isAdiosa) {
-          // Adiosa wide landscape sprite: scale by height (~330px) so she stands at full heroic stature with draconic wings spread
-          const adiosaH = 330;
-          const scale = adiosaH / avatar.height;
-          const adiosaW = Math.round(avatar.width * scale);
-          const adiosaX = slotX + Math.round((panelW - adiosaW) / 2);
-          const adiosaY = panelTopY + 20;
-          ctx.drawImage(avatar, adiosaX, adiosaY, adiosaW, adiosaH);
-        } else if (isLucia) {
-          // Lucia's waist-up bust portrait: scale slightly (~260px) so head size matches other servants on the battlefield
-          const customH = 260;
-          const customY = panelTopY + 80;
-          drawServantBattleSprite(ctx, avatar, slotX, customY, panelW, customH, {
-            fitMode: 'contain',
-            isCustomOC: true
-          });
-        } else {
-          // Custom OC artwork: scaled gracefully (~310px height)
-          const customH = 310;
-          const customY = panelTopY + 40;
-          drawServantBattleSprite(ctx, avatar, slotX, customY, panelW, customH, {
-            fitMode: 'contain',
-            isCustomOC: true
-          });
-        }
+        const rScale = cfg.raidScale || cfg.combatScale || 1.0;
+        const rOffsetY = cfg.raidOffsetY !== undefined ? cfg.raidOffsetY : (cfg.combatOffsetY || 0);
+        const rOffsetX = cfg.raidOffsetX || cfg.combatOffsetX || 0;
+
+        const baseH = 310;
+        const customH = Math.round(baseH * rScale);
+        const customY = panelTopY + 40 + rOffsetY;
+        const customX = slotX + rOffsetX;
+
+        drawServantBattleSprite(ctx, avatar, customX, customY, panelW, customH, {
+          fitMode: 'contain'
+        });
       } else {
         const spriteAreaH = 340;
         drawServantBattleSprite(ctx, avatar, slotX, panelTopY + 10, panelW, spriteAreaH, {

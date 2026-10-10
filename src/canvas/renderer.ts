@@ -15,6 +15,7 @@ import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
 import { getStatusIconUrl, STATUS_ICON_URLS } from '../data/statusIcons';
 import { getClassIconUrl, CLASS_ICON_URLS } from '../data/classIcons';
+import { getServantSpriteConfig } from '../utils/spriteConfig';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -3346,17 +3347,16 @@ function drawHoveringAttacker(
   ctx.clip();
 
   if (portraitImg) {
-    const isMerged = isAtlasMergedSprite(portraitImg);
-    if (!isMerged) {
-      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
-      const cW = Math.round(spriteW * 0.94);
-      const cH = Math.round(spriteH * 0.94);
-      const cX = spriteX + Math.round((spriteW - cW) / 2);
-      const cY = spriteY + (spriteH - cH);
-      drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
-    } else {
-      drawImageCover(ctx, portraitImg, spriteX, spriteY, spriteW, spriteH);
-    }
+    const cfg = getServantSpriteConfig(servantName);
+    const scale = cfg.combatScale || 1.0;
+    const offY = cfg.combatOffsetY || 0;
+    const offX = cfg.combatOffsetX || 0;
+
+    const cW = Math.round(spriteW * 0.94 * scale);
+    const cH = Math.round(spriteH * 0.94 * scale);
+    const cX = spriteX + Math.round((spriteW - cW) / 2) + offX;
+    const cY = spriteY + (spriteH - cH) + offY;
+    drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
   } else {
     // Heraldic velvet fallback
     const vGrad = ctx.createLinearGradient(spriteX, spriteY, spriteX, spriteY + spriteH);
@@ -3445,17 +3445,16 @@ function drawHoveringDefender(
   ctx.clip();
 
   if (defenderImg) {
-    const isMerged = isAtlasMergedSprite(defenderImg);
-    if (!isMerged) {
-      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
-      const cW = Math.round(spriteW * 0.94);
-      const cH = Math.round(spriteH * 0.94);
-      const cX = spriteX + Math.round((spriteW - cW) / 2);
-      const cY = spriteY + (spriteH - cH);
-      drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
-    } else {
-      drawImageCover(ctx, defenderImg, spriteX, spriteY, spriteW, spriteH);
-    }
+    const cfg = getServantSpriteConfig(defenderName);
+    const scale = cfg.combatScale || 1.0;
+    const offY = cfg.combatOffsetY || 0;
+    const offX = cfg.combatOffsetX || 0;
+
+    const cW = Math.round(spriteW * 0.94 * scale);
+    const cH = Math.round(spriteH * 0.94 * scale);
+    const cX = spriteX + Math.round((spriteW - cW) / 2) + offX;
+    const cY = spriteY + (spriteH - cH) + offY;
+    drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
   } else {
     // Dark Crimson fallback
     const fbGrad = ctx.createLinearGradient(spriteX, spriteY, spriteX, spriteY + spriteH);

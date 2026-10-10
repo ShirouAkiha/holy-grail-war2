@@ -11,6 +11,7 @@ import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
 import { calculateCombatantBuffSummary } from '@/src/utils/combatBuffHelper';
 import { STATUS_ICON_URLS, getStatusIconUrl } from '@/src/data/statusIcons';
 import { CLASS_ICON_URLS, getClassIconUrl } from '@/src/data/classIcons';
+import { getServantSpriteConfig } from '../data/servantSpriteConfigs';
 
 // Helper to draw a 5-pointed vector star
 function drawVectorStar(
@@ -1566,17 +1567,16 @@ function checkAtlasSprite(img: any): boolean {
 
   if (portraitImg) {
     ctx.save();
-    const isMerged = checkAtlasSprite(portraitImg);
-    if (!isMerged) {
-      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
-      const cW = Math.round(sprW * 0.94);
-      const cH = Math.round(sprH * 0.94);
-      const cX = sprX + Math.round((sprW - cW) / 2);
-      const cY = sprY + (sprH - cH);
-      drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
-    } else {
-      drawImageCover(ctx, portraitImg, sprX, sprY, sprW, sprH);
-    }
+    const cfg = getServantSpriteConfig(servantName);
+    const scale = cfg?.combatScale || cfg?.duelScale || cfg?.vnScale || 1.0;
+    const offY = cfg?.combatOffsetY || cfg?.duelOffsetY || cfg?.vnOffsetY || 0;
+    const offX = cfg?.combatOffsetX || cfg?.vnOffsetX || 0;
+
+    const cW = Math.round(sprW * 0.94 * scale);
+    const cH = Math.round(sprH * 0.94 * scale);
+    const cX = sprX + Math.round((sprW - cW) / 2) + offX;
+    const cY = sprY + (sprH - cH) + offY;
+    drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
 
     // Right-edge fade gradient so character hovers naturally over the battlefield
     const rFade = ctx.createLinearGradient(sprX + sprW * 0.55, 0, sprX + sprW + 10, 0);
@@ -1670,17 +1670,16 @@ function drawHoveringDefender(
 
   if (defenderImg) {
     ctx.save();
-    const isMerged = checkAtlasSprite(defenderImg);
-    if (!isMerged) {
-      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
-      const cW = Math.round(sprW * 0.94);
-      const cH = Math.round(sprH * 0.94);
-      const cX = sprX + Math.round((sprW - cW) / 2);
-      const cY = sprY + (sprH - cH);
-      drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
-    } else {
-      drawImageCover(ctx, defenderImg, sprX, sprY, sprW, sprH);
-    }
+    const cfg = getServantSpriteConfig(defenderName);
+    const scale = cfg?.combatScale || cfg?.duelScale || cfg?.vnScale || 1.0;
+    const offY = cfg?.combatOffsetY || cfg?.duelOffsetY || cfg?.vnOffsetY || 0;
+    const offX = cfg?.combatOffsetX || cfg?.vnOffsetX || 0;
+
+    const cW = Math.round(sprW * 0.94 * scale);
+    const cH = Math.round(sprH * 0.94 * scale);
+    const cX = sprX + Math.round((sprW - cW) / 2) + offX;
+    const cY = sprY + (sprH - cH) + offY;
+    drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
 
     // Left-edge fade gradient so defender hovers seamlessly over stage
     const lFade = ctx.createLinearGradient(sprX - 10, 0, sprX + sprW * 0.45, 0);

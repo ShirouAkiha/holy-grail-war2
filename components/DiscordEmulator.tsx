@@ -15,6 +15,7 @@ import {
   CraftEssence
 } from '../lib/types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getServantAvatarAndCardArt } from '../lib/data/servants';
+import { getServantSpriteConfig } from '../lib/data/servantSpriteConfigs';
 import { getAllThroneServants, saveCustomServantsToStorage } from '../lib/state/gameState';
 import { getNoblePhantasmGif, getNoblePhantasmChant, setCustomNpAnimationInMemory, setCustomNpAnimationsBatch } from '../lib/data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../lib/utils/mediaResolver';
@@ -278,16 +279,29 @@ function DiscordVNCard({
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
 
       {/* LAYER 2: Character Sprite Layer (Right-aligned, 85% height, anchored to bottom) */}
-      {avatarUrl && (
-        <div className="absolute right-6 sm:right-12 bottom-0 h-[85%] max-w-[45%] z-10 flex items-end">
-          <img
-            src={avatarUrl}
-            alt={speakerName}
-            className="h-full w-auto object-contain object-bottom filter drop-shadow-[0_16px_32px_rgba(0,0,0,0.95)]"
-            referrerPolicy="no-referrer"
-          />
-        </div>
-      )}
+      {avatarUrl && (() => {
+        const spriteCfg = getServantSpriteConfig(speakerName);
+        const vnScale = spriteCfg?.vnScale || 1.0;
+        const vnOffsetY = spriteCfg?.vnOffsetY || 0;
+        const vnOffsetX = spriteCfg?.vnOffsetX || 0;
+
+        return (
+          <div
+            className="absolute right-6 sm:right-12 bottom-0 h-[85%] max-w-[45%] z-10 flex items-end"
+            style={{
+              transform: `scale(${vnScale}) translate(${vnOffsetX}px, ${vnOffsetY}px)`,
+              transformOrigin: 'bottom center'
+            }}
+          >
+            <img
+              src={avatarUrl}
+              alt={speakerName}
+              className="h-full w-auto object-contain object-bottom filter drop-shadow-[0_16px_32px_rgba(0,0,0,0.95)]"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        );
+      })()}
 
       {/* LAYER 3: Top-Left HUD (Phone / Date Widget e.g. "8/13 (FRI)") */}
       <div className="relative z-20 m-4 sm:m-5 px-4 py-2.5 w-56 sm:w-64 bg-slate-900/85 backdrop-blur-sm border border-slate-400/40 rounded shadow-lg">
@@ -7077,6 +7091,7 @@ export default function DiscordEmulator({
     const itemsPerPage = 8;
     let selectPlaceholder = '🔍 Select an item to interact...';
     let selectOptions: { value: string; label: string; description?: string; emoji?: string }[] = [];
+    let selCe: any = null;
 
     const activeCeInfo = activeServant?.equippedCe
       ? `• **Equipped CE:** [★${activeServant.equippedCe.rarity}] **${activeServant.equippedCe.name}** (+${activeServant.equippedCe.atkBonus || 0} ATK / +${activeServant.equippedCe.hpBonus || 0} HP)`
@@ -7181,7 +7196,7 @@ export default function DiscordEmulator({
         `*Select any Craft Essence below to **Equip**, **Toggle Lock (🔒/🔓)**, or **Inspect Lore**.*`;
 
       const currentSelId = selectedId || invSelectedCeId || activeServant?.equippedCeId || candidateCes[0]?.ce?.id;
-      const selCe = candidateCes.find(u => u.ce.id === currentSelId)?.ce || (candidateCes.length > 0 ? candidateCes[0].ce : null);
+      selCe = candidateCes.find(u => u.ce.id === currentSelId)?.ce || (candidateCes.length > 0 ? candidateCes[0].ce : null);
 
       if (candidateCes.length === 0) {
         itemLines = [

@@ -4,10 +4,15 @@ export interface ServantSpriteConfig {
   vnScale?: number;        // Visual Novel UI Scale Factor (e.g. 0.84, 1.0, 1.25)
   vnOffsetY?: number;      // Visual Novel UI Vertical Offset in px (e.g. -20, 0, +15)
   vnOffsetX?: number;      // Visual Novel UI Horizontal Offset in px
+  combatScale?: number;    // Duel/Combat Scale Factor
+  combatOffsetY?: number;  // Duel/Combat Vertical Offset
+  combatOffsetX?: number;  // Duel/Combat Horizontal Offset
   duelScale?: number;      // Duel Combat Slot Scale Factor (e.g. 0.94, 1.15, 1.20)
   duelOffsetY?: number;    // Duel Combat Slot Vertical Offset in px
+  raidScale?: number;      // Raid Scale Factor
   raidHeight?: number;     // Raid Battlefield Sprite Height in px (e.g. 310, 370)
   raidOffsetY?: number;    // Raid Battlefield Vertical Offset in px
+  raidOffsetX?: number;    // Raid Battlefield Horizontal Offset in px
   updatedAt?: number;
   customBy?: string;
 }
@@ -90,19 +95,35 @@ export function loadSpriteConfigsFromStorage(): void {
   if (typeof window === 'undefined') return;
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!raw) return;
-    const arr: ServantSpriteConfig[] = JSON.parse(raw);
-    if (Array.isArray(arr)) {
-      for (const item of arr) {
-        if (item && item.servantId) {
-          inMemorySpriteConfigs.set(item.servantId.toLowerCase(), item);
-          if (item.servantName) inMemorySpriteConfigs.set(item.servantName.toLowerCase(), item);
+    if (raw) {
+      const arr: ServantSpriteConfig[] = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        for (const item of arr) {
+          if (item && item.servantId) {
+            inMemorySpriteConfigs.set(item.servantId.toLowerCase(), item);
+            if (item.servantName) inMemorySpriteConfigs.set(item.servantName.toLowerCase(), item);
+          }
         }
       }
     }
   } catch (err) {
     console.error('Failed to parse sprite configs from localStorage:', err);
   }
+
+  // Synchronize with server endpoint asynchronously
+  fetch('/api/servants/sprites')
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && Array.isArray(data.configs)) {
+        for (const item of data.configs) {
+          if (item && item.servantId) {
+            inMemorySpriteConfigs.set(item.servantId.toLowerCase(), item);
+            if (item.servantName) inMemorySpriteConfigs.set(item.servantName.toLowerCase(), item);
+          }
+        }
+      }
+    })
+    .catch(() => {});
 }
 
 let onSaveCallback: ((configs: ServantSpriteConfig[]) => void) | null = null;
