@@ -1,7 +1,7 @@
 import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate, GachaBanner, MasterRankingEntry, MasterRankingResult } from '../types';
 import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences';
-import { addBondExpToServant, getBondLevelFromExp, BOND_EXP_TABLE } from '../../lib/engine/bondEvents';
+import { addBondExpToServant } from '../../lib/engine/bondEvents';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { downloadMediaToLocal } from '../utils/localMedia';
 import { encryptSecret } from '../utils/cryptoSecurity';
@@ -78,28 +78,9 @@ function writeJsonAtomic(filePath: string, data: any, backupPrefix?: string): vo
     const serialized = JSON.stringify(data, null, 2);
 
     // If writing non-empty data, maintain an automatic backup in data/backups/
-    if (backupPrefix && (Array.isArray(data) ? data.length > 0 : Boolean(data))) {
+    if (backupPrefix && Array.isArray(data) ? data.length > 0 : Boolean(data)) {
       const backupPath = path.join(BACKUPS_DIR, `${backupPrefix}.latest.json`);
-      let shouldOverwriteBackup = true;
-
-      // SAFETY SHIELD: Never overwrite a backup containing real players with bot seeds only!
-      if (backupPrefix === 'masters' && fs.existsSync(backupPath)) {
-        try {
-          const existingBackup = JSON.parse(fs.readFileSync(backupPath, 'utf-8'));
-          if (Array.isArray(existingBackup) && existingBackup.length > 0) {
-            const existingRealCount = existingBackup.filter((m: any) => !String(m.discordId).startsWith('master_')).length;
-            const incomingRealCount = Array.isArray(data) ? data.filter((m: any) => !String(m.discordId).startsWith('master_')).length : 0;
-            if (existingRealCount > 0 && incomingRealCount === 0) {
-              console.warn('[Database Safety Shield] Preserved existing backup containing real players; refused to overwrite with bot seeds.');
-              shouldOverwriteBackup = false;
-            }
-          }
-        } catch {}
-      }
-
-      if (shouldOverwriteBackup) {
-        fs.writeFileSync(backupPath, serialized, 'utf-8');
-      }
+      fs.writeFileSync(backupPath, serialized, 'utf-8');
     }
 
     // Atomic write to prevent partial file writes on process restart
@@ -118,37 +99,6 @@ function writeJsonAtomic(filePath: string, data: any, backupPrefix?: string): vo
 function readJsonWithBackupFallback<T>(filePath: string, backupPrefix: string, fallbackDefault: T): T {
   ensureDataDirectory();
   const backupPath = path.join(BACKUPS_DIR, `${backupPrefix}.latest.json`);
-
-  // SAFETY: If main masters.json lacks real players but backup has real players, prioritize backup!
-  if (backupPrefix === 'masters' && fs.existsSync(backupPath)) {
-    try {
-      const bRaw = fs.readFileSync(backupPath, 'utf-8');
-      if (bRaw && bRaw.trim().length > 0) {
-        const bParsed = JSON.parse(bRaw);
-        if (Array.isArray(bParsed) && bParsed.length > 0) {
-          const bReal = bParsed.filter((m: any) => !String(m.discordId).startsWith('master_'));
-          if (bReal.length > 0) {
-            let mainRealCount = 0;
-            if (fs.existsSync(filePath)) {
-              try {
-                const mData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-                if (Array.isArray(mData)) {
-                  mainRealCount = mData.filter((m: any) => !String(m.discordId).startsWith('master_')).length;
-                }
-              } catch {}
-            }
-            if (mainRealCount === 0) {
-              console.warn(`[Database Auto-Recovery] Restored ${bReal.length} real player profiles from persistent backup ${path.basename(backupPath)}!`);
-              writeJsonAtomic(filePath, bParsed, backupPrefix);
-              return bParsed as T;
-            }
-          }
-        }
-      }
-    } catch (bErr) {
-      console.error('[Database] Error checking backup for real player recovery:', bErr);
-    }
-  }
 
   if (fs.existsSync(filePath)) {
     try {
@@ -318,143 +268,121 @@ function loadFromDisk() {
     );
     if (Array.isArray(savedMasters) && savedMasters.length > 0) {
       for (const m of savedMasters) {
-        try {
-          // Synchronize Craft Essences with canonical stats, ensure unique instanceId, and auto-lock 5★ / Bond CEs (excluding EXP Embers)
-          if (m.craftEssences && Array.isArray(m.craftEssences)) {
-            m.craftEssences = m.craftEssences
-              .filter(Boolean)
-              .map((ce, idx) => {
-                const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ce.id);
-                const base = canonCe ? { ...canonCe, ...ce } : { ...ce };
-                const isEmberCard = Boolean(
-                  base.isEmber ||
-                  base.isExpCard ||
-                  base.isExp ||
-                  (base.id && String(base.id).toLowerCase().includes('ember')) ||
-                  (base.name && (base.name.includes('Wisdom') || base.name.includes('Blaze') || base.name.includes('Spark') || base.name.includes('Ember') || base.name.includes('Hellfire')))
-                );
-                const isFiveStarOrBond = !isEmberCard && (base.rarity === 5 || base.isBondCe);
-                return {
-                  ...base,
-                  instanceId: base.instanceId || `ce_inst_${base.id}_${idx}_${Date.now()}`,
-                  locked: isEmberCard ? false : (base.locked !== undefined ? base.locked : isFiveStarOrBond)
-                };
-              });
-          } else {
-            m.craftEssences = [];
-          }
-
-          // Synchronize master servant instances with canonical stats & equipped Craft Essences
-          if (m.servants && Array.isArray(m.servants)) {
-            for (const inst of m.servants) {
-              if (typeof inst.bondExp !== 'number' || inst.bondExp === 0) {
-                if (typeof inst.bondLevel === 'number' && inst.bondLevel > 1) {
-                  inst.bondExp = BOND_EXP_TABLE[inst.bondLevel] || 0;
-                } else {
-                  inst.bondExp = 0;
-                }
-              }
-              inst.bondLevel = typeof inst.bondLevel === 'number' && inst.bondLevel > 0 
-                ? inst.bondLevel 
-                : getBondLevelFromExp(inst.bondExp);
-              const ceId = inst.equippedCeId || inst.equippedCe?.id;
-              if (ceId) {
-                const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId) || (inst.equippedCe ? { ...inst.equippedCe } : undefined);
-                if (canonCe) {
-                  inst.equippedCeId = ceId;
-                  inst.equippedCe = { ...canonCe };
-                }
-              }
-
-              const templateId = inst.templateId || inst.template?.id || inst.id;
-              const instAny = inst as any;
-              const canonical = SERVANT_DATABASE.find(
-                s => s.id === templateId || 
-                     (s.name && instAny.name && s.name.toLowerCase() === instAny.name.toLowerCase()) ||
-                     (s.name && instAny.nickname && s.name.toLowerCase() === instAny.nickname.toLowerCase()) ||
-                     (s.name && inst.template?.name && s.name.toLowerCase() === inst.template.name.toLowerCase())
+        // Synchronize Craft Essences with canonical stats, ensure unique instanceId, and auto-lock 5★ / Bond CEs (excluding EXP Embers)
+        if (m.craftEssences && Array.isArray(m.craftEssences)) {
+          m.craftEssences = m.craftEssences
+            .filter(Boolean)
+            .map((ce, idx) => {
+              const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ce.id);
+              const base = canonCe ? { ...canonCe, ...ce } : { ...ce };
+              const isEmberCard = Boolean(
+                base.isEmber ||
+                base.isExpCard ||
+                base.isExp ||
+                (base.id && String(base.id).toLowerCase().includes('ember')) ||
+                (base.name && (base.name.includes('Wisdom') || base.name.includes('Blaze') || base.name.includes('Spark') || base.name.includes('Ember') || base.name.includes('Hellfire')))
               );
-              if (canonical) {
-                const customSaved = savedServantsMap.get(canonical.id);
-                const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(inst, Array.from(savedServantsMap.values()));
-                inst.template = {
-                  ...(inst.template || {}),
-                  ...canonical,
-                  ...(customSaved || {}),
-                  avatarUrl,
-                  cardArtUrl,
-                  baseHp: customSaved?.baseHp || canonical.baseHp,
-                  baseAtk: customSaved?.baseAtk || canonical.baseAtk,
-                  baseStats: customSaved?.baseStats || canonical.baseStats,
-                  skills: customSaved?.skills || canonical.skills,
-                  noblePhantasm: {
-                    ...(inst.template?.noblePhantasm || {}),
-                    ...canonical.noblePhantasm,
-                    ...(customSaved?.noblePhantasm || {}),
-                    gifUrl: canonical.noblePhantasm?.gifUrl || inst.template?.noblePhantasm?.gifUrl,
-                    animationUrl: canonical.noblePhantasm?.gifUrl || inst.template?.noblePhantasm?.animationUrl
-                  }
-                };
-                inst.avatarUrl = avatarUrl;
-                inst.cardArtUrl = cardArtUrl;
-              } else {
-                const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(inst, Array.from(savedServantsMap.values()));
-                inst.avatarUrl = avatarUrl;
-                inst.cardArtUrl = cardArtUrl;
-                if (inst.template) {
-                  inst.template.avatarUrl = avatarUrl;
-                  inst.template.cardArtUrl = cardArtUrl;
-                }
+              const isFiveStarOrBond = !isEmberCard && (base.rarity === 5 || base.isBondCe);
+              return {
+                ...base,
+                instanceId: base.instanceId || `ce_inst_${base.id}_${idx}_${Date.now()}`,
+                locked: isEmberCard ? false : (base.locked !== undefined ? base.locked : isFiveStarOrBond)
+              };
+            });
+        } else {
+          m.craftEssences = [];
+        }
+
+        // Synchronize master servant instances with canonical stats & equipped Craft Essences
+        if (m.servants && Array.isArray(m.servants)) {
+          for (const inst of m.servants) {
+            inst.bondExp = typeof inst.bondExp === 'number' ? inst.bondExp : 0;
+            inst.bondLevel = getBondLevelFromExp(inst.bondExp);
+            const ceId = inst.equippedCeId || inst.equippedCe?.id;
+            if (ceId) {
+              const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId) || (inst.equippedCe ? { ...inst.equippedCe } : undefined);
+              if (canonCe) {
+                inst.equippedCeId = ceId;
+                inst.equippedCe = { ...canonCe };
               }
             }
-          }
-          if (m.customApiConfig) {
-            if (m.customApiConfig.geminiKey) m.customApiConfig.geminiKey = encryptSecret(m.customApiConfig.geminiKey);
-            if (m.customApiConfig.groqKey) m.customApiConfig.groqKey = encryptSecret(m.customApiConfig.groqKey);
-            if (m.customApiConfig.openrouterKey) m.customApiConfig.openrouterKey = encryptSecret(m.customApiConfig.openrouterKey);
-            if (m.customApiConfig.deepseekKey) m.customApiConfig.deepseekKey = encryptSecret(m.customApiConfig.deepseekKey);
-            if (m.customApiConfig.mistralKey) m.customApiConfig.mistralKey = encryptSecret(m.customApiConfig.mistralKey);
-            if (m.customApiConfig.nanogptKey) m.customApiConfig.nanogptKey = encryptSecret(m.customApiConfig.nanogptKey);
-            if (m.customApiConfig.customKey) m.customApiConfig.customKey = encryptSecret(m.customApiConfig.customKey);
-          }
 
-          // Data hygiene: Safe mode battles and duels were previously incrementing grailWarWins instead of duelsWon.
-          // Migrate battle wins from inflated grailWarWins to duelsWon for real server players.
-          if (m.grailWarWins && m.grailWarWins > 0) {
-            const isLoreSeed = m.id?.startsWith('master_master_') || m.discordId?.startsWith('master_');
-            if (!isLoreSeed) {
-              // Real Discord player: transfer all battle victories to duelsWon and reset grailWarWins to 0
-              m.duelsWon = Math.max(m.duelsWon || 0, m.grailWarWins);
-              m.grailWarWins = 0;
+            const templateId = inst.templateId || inst.template?.id || inst.id;
+            const instAny = inst as any;
+            const canonical = SERVANT_DATABASE.find(
+              s => s.id === templateId || 
+                   (s.name && instAny.name && s.name.toLowerCase() === instAny.name.toLowerCase()) ||
+                   (s.name && instAny.nickname && s.name.toLowerCase() === instAny.nickname.toLowerCase()) ||
+                   (s.name && inst.template?.name && s.name.toLowerCase() === inst.template.name.toLowerCase())
+            );
+            if (canonical) {
+              const customSaved = savedServantsMap.get(canonical.id);
+              const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(inst, Array.from(savedServantsMap.values()));
+              inst.template = {
+                ...(inst.template || {}),
+                ...canonical,
+                ...(customSaved || {}),
+                avatarUrl,
+                cardArtUrl,
+                baseHp: customSaved?.baseHp || canonical.baseHp,
+                baseAtk: customSaved?.baseAtk || canonical.baseAtk,
+                baseStats: customSaved?.baseStats || canonical.baseStats,
+                skills: customSaved?.skills || canonical.skills,
+                noblePhantasm: {
+                  ...(inst.template?.noblePhantasm || {}),
+                  ...canonical.noblePhantasm,
+                  ...(customSaved?.noblePhantasm || {}),
+                  gifUrl: canonical.noblePhantasm?.gifUrl || inst.template?.noblePhantasm?.gifUrl,
+                  animationUrl: canonical.noblePhantasm?.gifUrl || inst.template?.noblePhantasm?.animationUrl
+                }
+              };
+              inst.avatarUrl = avatarUrl;
+              inst.cardArtUrl = cardArtUrl;
+            } else {
+              const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(inst, Array.from(savedServantsMap.values()));
+              inst.avatarUrl = avatarUrl;
+              inst.cardArtUrl = cardArtUrl;
+              if (inst.template) {
+                inst.template.avatarUrl = avatarUrl;
+                inst.template.cardArtUrl = cardArtUrl;
+              }
             }
-          }
-          m.totalBattleWins = (m.duelsWon || 0) + (m.servantKills || 0);
-
-          masterStore.set(m.discordId, m);
-        } catch (mErr) {
-          console.error(`[Database] Error restoring master profile ${m?.discordId || 'unknown'}:`, mErr);
-          if (m && m.discordId) {
-            masterStore.set(m.discordId, m);
           }
         }
+        if (m.customApiConfig) {
+          if (m.customApiConfig.geminiKey) m.customApiConfig.geminiKey = encryptSecret(m.customApiConfig.geminiKey);
+          if (m.customApiConfig.groqKey) m.customApiConfig.groqKey = encryptSecret(m.customApiConfig.groqKey);
+          if (m.customApiConfig.openrouterKey) m.customApiConfig.openrouterKey = encryptSecret(m.customApiConfig.openrouterKey);
+          if (m.customApiConfig.deepseekKey) m.customApiConfig.deepseekKey = encryptSecret(m.customApiConfig.deepseekKey);
+          if (m.customApiConfig.mistralKey) m.customApiConfig.mistralKey = encryptSecret(m.customApiConfig.mistralKey);
+          if (m.customApiConfig.nanogptKey) m.customApiConfig.nanogptKey = encryptSecret(m.customApiConfig.nanogptKey);
+          if (m.customApiConfig.customKey) m.customApiConfig.customKey = encryptSecret(m.customApiConfig.customKey);
+        }
+
+        // Data hygiene: Safe mode battles and duels were previously incrementing grailWarWins instead of duelsWon.
+        // Migrate battle wins from inflated grailWarWins to duelsWon for real server players.
+        if (m.grailWarWins && m.grailWarWins > 0) {
+          const isLoreSeed = m.id?.startsWith('master_master_') || m.discordId?.startsWith('master_');
+          if (!isLoreSeed) {
+            // Real Discord player: transfer all battle victories to duelsWon and reset grailWarWins to 0
+            m.duelsWon = Math.max(m.duelsWon || 0, m.grailWarWins);
+            m.grailWarWins = 0;
+          }
+        }
+        m.totalBattleWins = (m.duelsWon || 0) + (m.servantKills || 0);
+
+        masterStore.set(m.discordId, m);
       }
       // Save upgraded master profiles atomically
       saveMastersToDisk();
     }
-    const realPlayerCount = Array.from(masterStore.values()).filter(m => !String(m.discordId).startsWith('master_')).length;
-    console.log(`[Database] Successfully loaded ${masterStore.size} master profiles (${realPlayerCount} real players) from disk.`);
-    isMastersLoadSuccessful = true;
   } catch (err) {
     console.error('[Database] Failed to load persistent data from disk:', err);
   }
 
-  // Only seed default iconic Masters if store is empty AND disk load succeeded cleanly
-  if (isMastersLoadSuccessful && masterStore.size < 5) {
-    seedDefaultMastersIfEmpty();
-  }
+  // Seed default iconic Masters if store is empty or has only placeholder
+  seedDefaultMastersIfEmpty();
 }
-
-let isMastersLoadSuccessful = false;
 
 /**
  * Seeds legendary Masters across multiple server sectors so the leaderboards (Server & Global)
@@ -462,14 +390,6 @@ let isMastersLoadSuccessful = false;
  */
 function seedDefaultMastersIfEmpty() {
   if (masterStore.size >= 5) return;
-  if (fs.existsSync(MASTERS_FILE)) {
-    try {
-      const stats = fs.statSync(MASTERS_FILE);
-      if (stats.size > 20) {
-        return;
-      }
-    } catch {}
-  }
 
   const defaultMastersSeed: Array<{
     discordId: string;
@@ -688,9 +608,7 @@ function seedDefaultMastersIfEmpty() {
     }
   }
 
-  if (!fs.existsSync(MASTERS_FILE)) {
-    saveMastersToDisk();
-  }
+  saveMastersToDisk();
 }
 
 // Immediately load disk state when module initializes

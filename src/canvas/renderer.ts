@@ -1081,9 +1081,9 @@ function drawImageCover(
     sw = img.height * targetRatio;
     sx = (img.width - sw) / 2;
   } else {
-    // Image is taller than target frame: crop vertical overflow (top-biased so head/face stays in frame)
+    // Image is taller than target frame: crop vertical overflow
     sh = img.width / targetRatio;
-    sy = Math.max(0, (img.height - sh) * 0.12);
+    sy = (img.height - sh) / 2;
   }
 
   ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
@@ -6550,7 +6550,7 @@ export async function renderBattleTurnSummary(
 
     // 3 Active Skill Badges with authentic Skill Status Icons
     const p1Skills = activeP1.skills || [];
-    const p1Bond = (activeP1 as any).servant?.bondLevel ?? activeP1.bondLevel ?? 1;
+    const p1Bond = activeP1.servant?.bondLevel ?? activeP1.bondLevel ?? 1;
     [0, 1, 2].forEach((sIdx) => {
       const sBoxX = 432 + sIdx * 64;
       const sBoxY = 16;
@@ -6747,7 +6747,7 @@ export async function renderBattleTurnSummary(
 
     // Skills (y: 604) with authentic Skill Status Icons
     const p2Skills = activeP2.skills || [];
-    const p2Bond = (activeP2 as any).servant?.bondLevel ?? activeP2.bondLevel ?? 1;
+    const p2Bond = activeP2.servant?.bondLevel ?? activeP2.bondLevel ?? 1;
     [0, 1, 2].forEach((sIdx) => {
       const sBoxX = 16 + sIdx * 64;
       const sBoxY = 604;
@@ -7506,13 +7506,13 @@ export async function renderVisualNovelCard(
           scaleMultiplier = 1.10;
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.50;
-          spriteY = Math.round(height * 0.02);
+          spriteY = Math.round(height * -0.55);
           hasCustomY = true;
         } else if (isLucia) {
           scaleMultiplier = 1.05;
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.52;
-          spriteY = Math.round(height * 0.05);
+          spriteY = Math.round(height * -0.30);
           hasCustomY = true;
         } else if (isEdmond || isAdiosa) {
           scaleMultiplier = 1.25;
