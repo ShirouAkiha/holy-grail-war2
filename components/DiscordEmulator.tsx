@@ -15,7 +15,6 @@ import {
   CraftEssence
 } from '../lib/types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getServantAvatarAndCardArt } from '../lib/data/servants';
-import { getServantSpriteConfig } from '../lib/data/servantSpriteConfigs';
 import { getAllThroneServants, saveCustomServantsToStorage } from '../lib/state/gameState';
 import { getNoblePhantasmGif, getNoblePhantasmChant, setCustomNpAnimationInMemory, setCustomNpAnimationsBatch } from '../lib/data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../lib/utils/mediaResolver';
@@ -279,29 +278,16 @@ function DiscordVNCard({
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
 
       {/* LAYER 2: Character Sprite Layer (Right-aligned, 85% height, anchored to bottom) */}
-      {avatarUrl && (() => {
-        const spriteCfg = getServantSpriteConfig(speakerName);
-        const vnScale = spriteCfg?.vnScale || 1.0;
-        const vnOffsetY = spriteCfg?.vnOffsetY || 0;
-        const vnOffsetX = spriteCfg?.vnOffsetX || 0;
-
-        return (
-          <div
-            className="absolute right-6 sm:right-12 bottom-0 h-[85%] max-w-[45%] z-10 flex items-end"
-            style={{
-              transform: `translate(${vnOffsetX}px, ${vnOffsetY}px) scale(${vnScale})`,
-              transformOrigin: 'bottom center'
-            }}
-          >
-            <img
-              src={avatarUrl}
-              alt={speakerName}
-              className="h-full w-auto object-contain object-bottom filter drop-shadow-[0_16px_32px_rgba(0,0,0,0.95)]"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-        );
-      })()}
+      {avatarUrl && (
+        <div className="absolute right-6 sm:right-12 bottom-0 h-[85%] max-w-[45%] z-10 flex items-end">
+          <img
+            src={avatarUrl}
+            alt={speakerName}
+            className="h-full w-auto object-contain object-bottom filter drop-shadow-[0_16px_32px_rgba(0,0,0,0.95)]"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      )}
 
       {/* LAYER 3: Top-Left HUD (Phone / Date Widget e.g. "8/13 (FRI)") */}
       <div className="relative z-20 m-4 sm:m-5 px-4 py-2.5 w-56 sm:w-64 bg-slate-900/85 backdrop-blur-sm border border-slate-400/40 rounded shadow-lg">

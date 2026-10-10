@@ -11,7 +11,6 @@ import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
 import { calculateCombatantBuffSummary } from '@/src/utils/combatBuffHelper';
 import { STATUS_ICON_URLS, getStatusIconUrl } from '@/src/data/statusIcons';
 import { CLASS_ICON_URLS, getClassIconUrl } from '@/src/data/classIcons';
-import { getServantSpriteConfig } from '../data/servantSpriteConfigs';
 
 // Helper to draw a 5-pointed vector star
 function drawVectorStar(
@@ -1567,14 +1566,12 @@ function checkAtlasSprite(img: any): boolean {
 
   if (portraitImg) {
     ctx.save();
-    const cfg = getServantSpriteConfig(servantName);
-    const scale = cfg?.combatScale || cfg?.duelScale || cfg?.vnScale || 1.0;
-    const offY = cfg?.combatOffsetY || cfg?.duelOffsetY || cfg?.vnOffsetY || 0;
-    const offX = cfg?.combatOffsetX || cfg?.vnOffsetX || 0;
-
-    const cW = Math.round(sprW * 0.94 * scale);
-    const cH = Math.round(sprH * 0.94 * scale);
-    const cX = sprX + Math.round((sprW - cW) / 2) + offX;
+    const isLucia = (servantName || '').toLowerCase().includes('lucia') || (servantName || '').toLowerCase().includes('lucernalia');
+    const scale = isLucia ? 0.68 : 0.94;
+    const offY = isLucia ? 35 : 0;
+    const cW = Math.round(sprW * scale);
+    const cH = Math.round(sprH * scale);
+    const cX = sprX + Math.round((sprW - cW) / 2);
     const cY = sprY + (sprH - cH) + offY;
     drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
 
@@ -1670,14 +1667,12 @@ function drawHoveringDefender(
 
   if (defenderImg) {
     ctx.save();
-    const cfg = getServantSpriteConfig(defenderName);
-    const scale = cfg?.combatScale || cfg?.duelScale || cfg?.vnScale || 1.0;
-    const offY = cfg?.combatOffsetY || cfg?.duelOffsetY || cfg?.vnOffsetY || 0;
-    const offX = cfg?.combatOffsetX || cfg?.vnOffsetX || 0;
-
-    const cW = Math.round(sprW * 0.94 * scale);
-    const cH = Math.round(sprH * 0.94 * scale);
-    const cX = sprX + Math.round((sprW - cW) / 2) + offX;
+    const isLucia = (defenderName || '').toLowerCase().includes('lucia') || (defenderName || '').toLowerCase().includes('lucernalia');
+    const scale = isLucia ? 0.68 : 0.94;
+    const offY = isLucia ? 35 : 0;
+    const cW = Math.round(sprW * scale);
+    const cH = Math.round(sprH * scale);
+    const cX = sprX + Math.round((sprW - cW) / 2);
     const cY = sprY + (sprH - cH) + offY;
     drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
 

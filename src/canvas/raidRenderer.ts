@@ -6,7 +6,6 @@ import { getClassIconUrl } from '../data/classIcons';
 import { getStatusIconUrl } from '../data/statusIcons';
 import { resolveAscensionSprite } from '../data/servantAscensions';
 import { drawServantBattleSprite, isAtlasMergedSprite, loadImage } from './renderer';
-import { getServantSpriteConfig } from '../utils/spriteConfig';
 import fs from 'fs';
 import { getCanvasModule } from './canvasLoader';
 
@@ -1095,19 +1094,15 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       const isMerged = isAtlasMergedSprite(avatar);
       if (!isMerged) {
         const servantName = p.servant?.template?.name || p.servant?.nickname || '';
-        const templateId = p.servant?.template?.id || p.servant?.templateId || servantName;
-        const cfg = getServantSpriteConfig(templateId || servantName);
-
-        const rScale = cfg.raidScale || cfg.combatScale || 1.0;
-        const rOffsetY = cfg.raidOffsetY !== undefined ? cfg.raidOffsetY : (cfg.combatOffsetY || 0);
-        const rOffsetX = cfg.raidOffsetX || cfg.combatOffsetX || 0;
+        const isLucia = servantName.toLowerCase().includes('lucia') || servantName.toLowerCase().includes('lucernalia');
+        const rScale = isLucia ? 0.85 : 1.0;
+        const rOffsetY = isLucia ? 20 : 0;
 
         const baseH = 310;
         const customH = Math.round(baseH * rScale);
         const customY = panelTopY + 40 + rOffsetY;
-        const customX = slotX + rOffsetX;
 
-        drawServantBattleSprite(ctx, avatar, customX, customY, panelW, customH, {
+        drawServantBattleSprite(ctx, avatar, slotX, customY, panelW, customH, {
           fitMode: 'contain'
         });
       } else {

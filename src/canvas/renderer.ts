@@ -7510,7 +7510,7 @@ export async function renderVisualNovelCard(
           scaleMultiplier = 1.1;
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.50;
-          spriteY = Math.round(height * -0.15);
+          spriteY = Math.round(height * -0.55);
         } else {
           // Standard Custom OC / Non-merged portrait: full scale
           scaleMultiplier = 1.0;

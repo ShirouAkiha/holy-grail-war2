@@ -12,7 +12,6 @@ import {
   addBondExpToServant,
   splitDialogueIntoChunks
 } from '../lib/engine/bondEvents';
-import { getServantSpriteConfig } from '../lib/data/servantSpriteConfigs';
 import { Sparkles, Award, ChevronRight, Volume2, Shield, Heart, CheckCircle2, RotateCcw } from 'lucide-react';
 
 interface BondVisualNovelModalProps {
@@ -239,43 +238,28 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
       {!isEventFinished ? (
         <div className="relative inset-0 flex-1 flex flex-col justify-end z-10 overflow-hidden">
           
-          {/* RIGHT SIDE CHARACTER SPRITE (Standing ON stage like Kurisu) */}
-          {(() => {
-            const spriteCfg = getServantSpriteConfig(currentScene.speakerName || template.id || template.name);
-            const vnScale = spriteCfg?.vnScale || 1.0;
-            const vnOffsetY = spriteCfg?.vnOffsetY || 0;
-            const vnOffsetX = spriteCfg?.vnOffsetX || 0;
+          {/* RIGHT SIDE CHARACTER SPRITE */}
+          <div className="absolute bottom-[100px] sm:bottom-[120px] right-[4%] sm:right-[8%] md:right-[12%] h-[60%] sm:h-[70%] md:h-[75%] max-h-[640px] z-10 pointer-events-none flex items-end justify-center">
+            <div className="relative group h-full">
+              {/* Soft character aura glow */}
+              <div className="absolute inset-0 bg-gradient-to-t from-amber-500/20 via-indigo-500/10 to-transparent rounded-full blur-2xl opacity-60" />
+              
+              {/* Full height character sprite */}
+              <img
+                src={avatarUrl}
+                alt={currentScene.speakerName || template.name}
+                className="h-full w-auto object-contain object-bottom filter drop-shadow-[0_20px_40px_rgba(0,0,0,0.9)] transition-all duration-300 transform group-hover:scale-[1.01]"
+                referrerPolicy="no-referrer"
+              />
 
-            return (
-              <div
-                className="absolute bottom-[100px] sm:bottom-[120px] right-[4%] sm:right-[8%] md:right-[12%] h-[65%] sm:h-[75%] md:h-[82%] max-h-[720px] z-10 pointer-events-none flex items-end justify-center"
-                style={{
-                  transform: `translate(${vnOffsetX}px, ${vnOffsetY}px) scale(${vnScale})`,
-                  transformOrigin: 'bottom center'
-                }}
-              >
-                <div className="relative group h-full">
-                  {/* Soft character aura glow */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-amber-500/20 via-indigo-500/10 to-transparent rounded-full blur-2xl opacity-60" />
-                  
-                  {/* Full height character sprite */}
-                  <img
-                    src={avatarUrl}
-                    alt={currentScene.speakerName || template.name}
-                    className="h-full w-auto object-contain object-bottom filter drop-shadow-[0_20px_40px_rgba(0,0,0,0.9)] transition-all duration-300 transform group-hover:scale-[1.01]"
-                    referrerPolicy="no-referrer"
-                  />
-
-                  {/* Emotion Badge */}
-                  {reactionEmotion && (
-                    <div className="absolute top-4 left-4 px-3 py-1 rounded-sm border border-amber-400/60 bg-slate-950/90 text-amber-300 text-xs font-mono font-bold backdrop-blur-md shadow-2xl animate-bounce">
-                      ✨ {reactionEmotion.toUpperCase()}
-                    </div>
-                  )}
+              {/* Emotion Badge */}
+              {reactionEmotion && (
+                <div className="absolute top-4 left-4 px-3 py-1 rounded-sm border border-amber-400/60 bg-slate-950/90 text-amber-300 text-xs font-mono font-bold backdrop-blur-md shadow-2xl animate-bounce">
+                  ✨ {reactionEmotion.toUpperCase()}
                 </div>
-              </div>
-            );
-          })()}
+              )}
+            </div>
+          </div>
 
           {/* CHOICE SELECTION OVERLAY (Spacious, Centered Fate/Steins;Gate Visual Novel Choice Cards) */}
           {currentScene.choices && currentScene.choices.length > 0 && !selectedChoice && isLastChunk && !choiceResponseText && (
