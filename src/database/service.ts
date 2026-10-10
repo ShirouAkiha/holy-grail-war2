@@ -1,7 +1,7 @@
 import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate, GachaBanner, MasterRankingEntry, MasterRankingResult } from '../types';
 import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences';
-import { addBondExpToServant, getBondLevelFromExp } from '../../lib/engine/bondEvents';
+import { addBondExpToServant, getBondLevelFromExp, BOND_EXP_TABLE } from '../../lib/engine/bondEvents';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { downloadMediaToLocal } from '../utils/localMedia';
 import { encryptSecret } from '../utils/cryptoSecurity';
