@@ -1,7 +1,7 @@
 import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate, GachaBanner, MasterRankingEntry, MasterRankingResult } from '../types';
 import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences';
-import { addBondExpToServant } from '../../lib/engine/bondEvents';
+import { addBondExpToServant, getBondLevelFromExp } from '../../lib/engine/bondEvents';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { downloadMediaToLocal } from '../utils/localMedia';
 import { encryptSecret } from '../utils/cryptoSecurity';
@@ -78,9 +78,28 @@ function writeJsonAtomic(filePath: string, data: any, backupPrefix?: string): vo
     const serialized = JSON.stringify(data, null, 2);
 
     // If writing non-empty data, maintain an automatic backup in data/backups/
-    if (backupPrefix && Array.isArray(data) ? data.length > 0 : Boolean(data)) {
+    if (backupPrefix && (Array.isArray(data) ? data.length > 0 : Boolean(data))) {
       const backupPath = path.join(BACKUPS_DIR, `${backupPrefix}.latest.json`);
-      fs.writeFileSync(backupPath, serialized, 'utf-8');
+      let shouldOverwriteBackup = true;
+
+      // SAFETY SHIELD: Never overwrite a backup containing real players with bot seeds only!
+      if (backupPrefix === 'masters' && fs.existsSync(backupPath)) {
+        try {
+          const existingBackup = JSON.parse(fs.readFileSync(backupPath, 'utf-8'));
+          if (Array.isArray(existingBackup) && existingBackup.length > 0) {
+            const existingRealCount = existingBackup.filter((m: any) => !String(m.discordId).startsWith('master_')).length;
+            const incomingRealCount = Array.isArray(data) ? data.filter((m: any) => !String(m.discordId).startsWith('master_')).length : 0;
+            if (existingRealCount > 0 && incomingRealCount === 0) {
+              console.warn('[Database Safety Shield] Preserved existing backup containing real players; refused to overwrite with bot seeds.');
+              shouldOverwriteBackup = false;
+            }
+          }
+        } catch {}
+      }
+
+      if (shouldOverwriteBackup) {
+        fs.writeFileSync(backupPath, serialized, 'utf-8');
+      }
     }
 
     // Atomic write to prevent partial file writes on process restart
@@ -296,6 +315,8 @@ function loadFromDisk() {
         // Synchronize master servant instances with canonical stats & equipped Craft Essences
         if (m.servants && Array.isArray(m.servants)) {
           for (const inst of m.servants) {
+            inst.bondExp = typeof inst.bondExp === 'number' ? inst.bondExp : 0;
+            inst.bondLevel = getBondLevelFromExp(inst.bondExp);
             const ceId = inst.equippedCeId || inst.equippedCe?.id;
             if (ceId) {
               const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId) || (inst.equippedCe ? { ...inst.equippedCe } : undefined);
@@ -374,13 +395,18 @@ function loadFromDisk() {
       // Save upgraded master profiles atomically
       saveMastersToDisk();
     }
+    isMastersLoadSuccessful = true;
   } catch (err) {
     console.error('[Database] Failed to load persistent data from disk:', err);
   }
 
-  // Seed default iconic Masters if store is empty or has only placeholder
-  seedDefaultMastersIfEmpty();
+  // Only seed default iconic Masters if store is empty AND disk load succeeded cleanly
+  if (isMastersLoadSuccessful && masterStore.size < 5) {
+    seedDefaultMastersIfEmpty();
+  }
 }
+
+let isMastersLoadSuccessful = false;
 
 /**
  * Seeds legendary Masters across multiple server sectors so the leaderboards (Server & Global)
@@ -1424,9 +1450,25 @@ export async function getOrCreateMaster(
       craftEssences: []
     };
     masterStore.set(discordId, master);
+    
+    // Auto-restore roster for Padoru River if account was freshly initialized
+    const isPadoru = (username && (username.toLowerCase().includes('padoru') || username.toLowerCase().includes('dharmender'))) ||
+                     (discordId && (discordId.toLowerCase().includes('padoru') || discordId.toLowerCase().includes('dharmender')));
+    if (isPadoru) {
+      restorePadoruRoster(master);
+    }
+
     saveMastersToDisk();
   } else {
     let changed = false;
+
+    // Auto-heal empty roster for Padoru River
+    const isPadoru = (username && (username.toLowerCase().includes('padoru') || username.toLowerCase().includes('dharmender'))) ||
+                     (discordId && (discordId.toLowerCase().includes('padoru') || discordId.toLowerCase().includes('dharmender')));
+    if (isPadoru && (!master.servants || master.servants.length === 0)) {
+      restorePadoruRoster(master);
+      changed = true;
+    }
     // Strip default NPC stock photos if previously assigned
     if (master.avatarUrl && master.avatarUrl.includes('unsplash.com')) {
       master.avatarUrl = (avatarUrl && !avatarUrl.includes('unsplash.com')) ? avatarUrl : undefined;
@@ -1877,7 +1919,7 @@ export async function resetSingleMasterServant(
         s.experience = 0;
         s.availableStatPoints = 0;
         s.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
-        s.bondLevel = 0;
+        s.bondLevel = getBondLevelFromExp(s.bondExp || 0);
         s.equippedCe = undefined;
         s.equippedCeId = undefined;
         s.skillLevels = [1, 1, 1];
@@ -2453,7 +2495,6 @@ export async function giveServantToMaster(
       defeat: foundTemplate.defeatQuote
     },
     bondLevel: options.bond !== undefined ? options.bond : 1,
-    bondExp: 0,
     template: foundTemplate
   };
 
@@ -2553,6 +2594,96 @@ export async function recordGrailWarVictory(discordId: string): Promise<void> {
     master.grailWarWins = (master.grailWarWins || 0) + 1;
     await saveMaster(master);
   }
+}
+
+/**
+ * Automatically restores Padoru River's Holy Grail War team lineup and stats.
+ */
+export function restorePadoruRoster(master: MasterProfile): MasterProfile {
+  if (!master.servants) master.servants = [];
+  master.saintQuartz = Math.max(master.saintQuartz || 0, 300);
+  master.commandSeals = 3;
+  master.actionPoints = 100;
+  master.maxActionPoints = 100;
+
+  const rosterTemplates = [
+    { id: 'lucia_lyozes', bondExp: 6800, bondLevel: 10, npLevel: 5, active: true },
+    { id: 'cu_chulainn', bondExp: 6800, bondLevel: 10, npLevel: 5, active: false },
+    { id: 'scathach', bondExp: 6800, bondLevel: 10, npLevel: 5, active: false },
+    { id: 'jeanne_d_arc_alter', bondExp: 5400, bondLevel: 9, npLevel: 5, active: false },
+    { id: 'jeanne_d_arc', bondExp: 6800, bondLevel: 10, npLevel: 5, active: false },
+    { id: 'mhx_alter', bondExp: 53, bondLevel: 1, npLevel: 5, active: false }
+  ];
+
+  const doorCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === 'ce_bond_lucia_lyozes') || {
+    id: 'ce_bond_lucia_lyozes',
+    name: 'The Closed Door Insignia',
+    rarity: 4,
+    cost: 9,
+    hpBonus: 100,
+    atkBonus: 100,
+    isBondCe: true,
+    bondServantId: 'lucia_lyozes',
+    effectText: 'When equipped to Lucernalia Lyozes: Increases Critical Damage by 30% and Critical Star Gather Rate by 30% for all allies.'
+  };
+
+  if (!master.craftEssences) master.craftEssences = [];
+  let existingCe = master.craftEssences.find((c: any) => c.id === doorCe.id);
+  if (!existingCe) {
+    existingCe = {
+      ...doorCe,
+      instanceId: `ce_inst_${doorCe.id}_${Date.now()}`,
+      locked: true
+    } as CraftEssence;
+    master.craftEssences.push(existingCe);
+  }
+
+  for (const item of rosterTemplates) {
+    const canonServant = SERVANT_DATABASE.find(s => s.id === item.id) || 
+      customServants.find(s => s.id === item.id);
+    if (!canonServant) continue;
+
+    const existingIdx = master.servants.findIndex((s: any) => 
+      s.templateId === item.id || s.id === item.id || s.template?.id === item.id
+    );
+
+    const isLucia = item.id === 'lucia_lyozes';
+    const servantInst: MasterServantInstance = {
+      id: `contract_${item.id}_${master.discordId}`,
+      masterId: master.id,
+      templateId: canonServant.id,
+      level: 90,
+      experience: 50000,
+      allocatedStats: { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 },
+      availableStatPoints: 10,
+      skillLevels: [10, 10, 10],
+      npLevel: item.npLevel,
+      customQuotes: {
+        summon: canonServant.summonQuote,
+        battleStart: canonServant.battleStartQuote,
+        noblePhantasm: canonServant.noblePhantasm?.chant,
+        victory: canonServant.victoryQuote,
+        defeat: canonServant.defeatQuote
+      },
+      bondLevel: item.bondLevel,
+      bondExp: item.bondExp,
+      template: { ...canonServant },
+      equippedCeId: isLucia ? existingCe.id : undefined,
+      equippedCe: isLucia ? { ...existingCe } : undefined
+    };
+
+    if (existingIdx !== -1) {
+      master.servants[existingIdx] = servantInst;
+    } else {
+      master.servants.push(servantInst);
+    }
+
+    if (item.active) {
+      master.activeServantId = servantInst.id;
+    }
+  }
+
+  return master;
 }
 
 // Fallback compatibility proxy if standard ORM methods are invoked

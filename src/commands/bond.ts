@@ -228,8 +228,9 @@ export function buildBondStatusEmbed(master: any, targetServantId?: string) {
   const sTemplate = targetServant.template || targetServant;
   const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
   const servantClass = sTemplate.servantClass || 'Saber';
-  const bondLvl = targetServant.bondLevel || 1;
   const bondExp = targetServant.bondExp || 0;
+  const bondLvl = getBondLevelFromExp(bondExp);
+  targetServant.bondLevel = bondLvl;
   const isActive = targetServant.id === master.activeServantId;
 
   const progress = getBondExpProgress(bondExp);
@@ -364,9 +365,11 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
       const sTemp = s.template || s;
       const sN = s.nickname || sTemp.name || 'Heroic Spirit';
       const sCls = sTemp.servantClass || 'Saber';
-      const sLvl = s.bondLevel || 1;
+      const sExp = s.bondExp || 0;
+      const sLvl = getBondLevelFromExp(sExp);
+      s.bondLevel = sLvl;
       const isAct = s.id === master.activeServantId;
-      const prog = getBondExpProgress(s.bondExp || 0);
+      const prog = getBondExpProgress(sExp);
 
       return {
         label: `${sN} (${sCls})`,
@@ -401,8 +404,9 @@ export function buildBondRosterEmbed(master: any) {
     const sTemp = s.template || s;
     const sN = s.nickname || sTemp.name || 'Heroic Spirit';
     const sCls = sTemp.servantClass || 'Saber';
-    const bondLvl = s.bondLevel || 1;
     const bondExp = s.bondExp || 0;
+    const bondLvl = getBondLevelFromExp(bondExp);
+    s.bondLevel = bondLvl;
     const progress = getBondExpProgress(bondExp);
     const progressBar = renderProgressBar(progress.progressPercent);
     const isAct = s.id === master.activeServantId;
@@ -442,9 +446,11 @@ export function buildBondRosterActionRows(master: any): ActionRowBuilder<any>[] 
       const sTemp = s.template || s;
       const sN = s.nickname || sTemp.name || 'Heroic Spirit';
       const sCls = sTemp.servantClass || 'Saber';
-      const sLvl = s.bondLevel || 1;
+      const sExp = s.bondExp || 0;
+      const sLvl = getBondLevelFromExp(sExp);
+      s.bondLevel = sLvl;
       const isAct = s.id === master.activeServantId;
-      const prog = getBondExpProgress(s.bondExp || 0);
+      const prog = getBondExpProgress(sExp);
 
       return {
         label: `${sN} (${sCls})`,
