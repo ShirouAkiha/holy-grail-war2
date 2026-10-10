@@ -296,6 +296,8 @@ function loadFromDisk() {
         // Synchronize master servant instances with canonical stats & equipped Craft Essences
         if (m.servants && Array.isArray(m.servants)) {
           for (const inst of m.servants) {
+            inst.bondExp = typeof inst.bondExp === 'number' ? inst.bondExp : 0;
+            inst.bondLevel = getBondLevelFromExp(inst.bondExp);
             const ceId = inst.equippedCeId || inst.equippedCe?.id;
             if (ceId) {
               const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId) || (inst.equippedCe ? { ...inst.equippedCe } : undefined);
@@ -1877,7 +1879,7 @@ export async function resetSingleMasterServant(
         s.experience = 0;
         s.availableStatPoints = 0;
         s.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
-        s.bondLevel = 0;
+        s.bondLevel = getBondLevelFromExp(s.bondExp || 0);
         s.equippedCe = undefined;
         s.equippedCeId = undefined;
         s.skillLevels = [1, 1, 1];
@@ -2453,7 +2455,6 @@ export async function giveServantToMaster(
       defeat: foundTemplate.defeatQuote
     },
     bondLevel: options.bond !== undefined ? options.bond : 1,
-    bondExp: 0,
     template: foundTemplate
   };
 
