@@ -1567,8 +1567,8 @@ function checkAtlasSprite(img: any): boolean {
   if (portraitImg) {
     ctx.save();
     const isLucia = (servantName || '').toLowerCase().includes('lucia') || (servantName || '').toLowerCase().includes('lucernalia');
-    const scale = isLucia ? 0.68 : 0.94;
-    const offY = isLucia ? 35 : 0;
+    const scale = isLucia ? 0.85 : 0.94;
+    const offY = isLucia ? -10 : 0;
     const cW = Math.round(sprW * scale);
     const cH = Math.round(sprH * scale);
     const cX = sprX + Math.round((sprW - cW) / 2);
@@ -1668,8 +1668,8 @@ function drawHoveringDefender(
   if (defenderImg) {
     ctx.save();
     const isLucia = (defenderName || '').toLowerCase().includes('lucia') || (defenderName || '').toLowerCase().includes('lucernalia');
-    const scale = isLucia ? 0.68 : 0.94;
-    const offY = isLucia ? 35 : 0;
+    const scale = isLucia ? 0.85 : 0.94;
+    const offY = isLucia ? -10 : 0;
     const cW = Math.round(sprW * scale);
     const cH = Math.round(sprH * scale);
     const cX = sprX + Math.round((sprW - cW) / 2);

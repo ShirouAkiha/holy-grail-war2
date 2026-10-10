@@ -1103,8 +1103,8 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
         let rScale = 1.0;
         let rOffsetY = 0;
         if (isLucia) {
-          rScale = 0.85;
-          rOffsetY = 20;
+          rScale = 1.0;
+          rOffsetY = -15;
         } else if (isLuvria) {
           rScale = 1.1;
           rOffsetY = -15;

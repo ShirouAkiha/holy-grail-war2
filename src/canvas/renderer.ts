@@ -3347,8 +3347,8 @@ function drawHoveringAttacker(
 
   if (portraitImg) {
     const isLucia = servantName.toLowerCase().includes('lucia') || servantName.toLowerCase().includes('lucernalia');
-    const scale = isLucia ? 0.68 : 0.94;
-    const offY = isLucia ? 35 : 0;
+    const scale = isLucia ? 0.85 : 0.94;
+    const offY = isLucia ? -10 : 0;
     const offX = 0;
 
     const cW = Math.round(spriteW * scale);
@@ -3450,8 +3450,8 @@ function drawHoveringDefender(
     let scale = 0.94;
     let offY = 0;
     if (isLuciaDef) {
-      scale = 0.68;
-      offY = 35;
+      scale = 0.85;
+      offY = -10;
     } else if (isLuvriaDef) {
       scale = 0.98;
       offY = -15;
@@ -7503,23 +7503,23 @@ export async function renderVisualNovelCard(
         let hasCustomY = false;
 
         if (isLuvria) {
+          scaleMultiplier = 1.10;
+          baseMaxHFactor = 0.88;
+          baseMaxWFactor = 0.50;
+          spriteY = Math.round(height * -0.55);
+          hasCustomY = true;
+        } else if (isLucia) {
           scaleMultiplier = 1.05;
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.52;
-          spriteY = Math.round(height * 0.10);
-          hasCustomY = false;
-        } else if (isLucia) {
-          scaleMultiplier = 0.85;
-          baseMaxHFactor = 0.88;
-          baseMaxWFactor = 0.52;
-          spriteY = Math.round(height * 0.10);
-          hasCustomY = false;
+          spriteY = Math.round(height * -0.30);
+          hasCustomY = true;
         } else if (isEdmond || isAdiosa) {
           scaleMultiplier = 1.25;
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.55;
-          spriteY = Math.round(height * 0.10);
-          hasCustomY = false;
+          spriteY = Math.round(height * 0.12);
+          hasCustomY = true;
         } else if (isMerged) {
           scaleMultiplier = 1.15;
           baseMaxHFactor = 0.88;
