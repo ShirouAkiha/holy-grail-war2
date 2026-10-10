@@ -7510,6 +7510,11 @@ export async function renderVisualNovelCard(
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.50;
           spriteY = Math.round(height * -0.55);
+        } else if (isLucia) {
+          scaleMultiplier = 1.0;
+          baseMaxHFactor = 0.88;
+          baseMaxWFactor = 0.52;
+          spriteY = Math.round(height * 0.12);
         } else {
           // Standard Custom OC / Non-merged portrait: full scale
           scaleMultiplier = 1.0;

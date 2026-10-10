@@ -5419,7 +5419,7 @@ async function startInteractiveDuel(
         });
       }
       const candidate = turnOrder[currentTurnIndex];
-      if (candidate.currentHp > 0 && !candidate.isFled) {
+      if (candidate && candidate.currentHp > 0 && !candidate.isFled) {
         activeCombatant = candidate;
         activeUserId = activeCombatant.userId;
 

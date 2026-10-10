@@ -319,39 +319,51 @@ export function feedCraftEssences(
     // If it's a valid original array index, consume that exact index
     if (!isNaN(asNum) && Number.isInteger(asNum) && asNum >= 0 && asNum < originalList.length && !consumedIndices.has(asNum)) {
       const candidate = originalList[asNum];
-      const isEmber = Boolean(
-        candidate.isEmber || candidate.isExpCard || candidate.isExp ||
-        (candidate.id && String(candidate.id).toLowerCase().includes('ember')) ||
-        (candidate.name && (candidate.name.includes('Wisdom') || candidate.name.includes('Blaze') || candidate.name.includes('Spark') || candidate.name.includes('Ember') || candidate.name.includes('Hellfire')))
-      );
-      if (candidate.locked && !isEmber) {
-        throw new Error(`Cannot synthesize locked Craft Essence: "${candidate.name}". Please unlock it first in Inventory or Workshop.`);
+      if (candidate) {
+        const isEmber = Boolean(
+          candidate.isEmber || candidate.isExpCard || candidate.isExp ||
+          (candidate.id && String(candidate.id).toLowerCase().includes('ember')) ||
+          (candidate.name && String(candidate.name).includes('Wisdom')) ||
+          (candidate.name && String(candidate.name).includes('Blaze')) ||
+          (candidate.name && String(candidate.name).includes('Spark')) ||
+          (candidate.name && String(candidate.name).includes('Ember')) ||
+          (candidate.name && String(candidate.name).includes('Hellfire'))
+        );
+        if (candidate.locked && !isEmber) {
+          throw new Error(`Cannot synthesize locked Craft Essence: "${candidate.name || 'Craft Essence'}". Please unlock it first in Inventory or Workshop.`);
+        }
+        consumedIndices.add(asNum);
+        fedEssences.push(candidate);
+        totalExpGained += getCeExpValue(candidate);
+        continue;
       }
-      consumedIndices.add(asNum);
-      fedEssences.push(candidate);
-      totalExpGained += getCeExpValue(candidate);
-      continue;
     }
 
     // Otherwise match by instanceId, exact ID, or name, among unconsumed items
     const matchIdx = originalList.findIndex((c: any, i: number) => {
       if (consumedIndices.has(i) || !c) return false;
-      return c.instanceId === targetStr || c.id === targetStr || c.name?.toLowerCase() === targetStr.toLowerCase();
+      return c.instanceId === targetStr || c.id === targetStr || (c.name && String(c.name).toLowerCase() === targetStr.toLowerCase());
     });
 
     if (matchIdx !== -1) {
       const candidate = originalList[matchIdx];
-      const isEmber = Boolean(
-        candidate.isEmber || candidate.isExpCard || candidate.isExp ||
-        (candidate.id && String(candidate.id).toLowerCase().includes('ember')) ||
-        (candidate.name && (candidate.name.includes('Wisdom') || candidate.name.includes('Blaze') || candidate.name.includes('Spark') || candidate.name.includes('Ember') || candidate.name.includes('Hellfire')))
-      );
-      if (candidate.locked && !isEmber) {
-        throw new Error(`Cannot synthesize locked Craft Essence: "${candidate.name}". Please unlock it first in Inventory or Workshop.`);
+      if (candidate) {
+        const isEmber = Boolean(
+          candidate.isEmber || candidate.isExpCard || candidate.isExp ||
+          (candidate.id && String(candidate.id).toLowerCase().includes('ember')) ||
+          (candidate.name && String(candidate.name).includes('Wisdom')) ||
+          (candidate.name && String(candidate.name).includes('Blaze')) ||
+          (candidate.name && String(candidate.name).includes('Spark')) ||
+          (candidate.name && String(candidate.name).includes('Ember')) ||
+          (candidate.name && String(candidate.name).includes('Hellfire'))
+        );
+        if (candidate.locked && !isEmber) {
+          throw new Error(`Cannot synthesize locked Craft Essence: "${candidate.name || 'Craft Essence'}". Please unlock it first in Inventory or Workshop.`);
+        }
+        consumedIndices.add(matchIdx);
+        fedEssences.push(candidate);
+        totalExpGained += getCeExpValue(candidate);
       }
-      consumedIndices.add(matchIdx);
-      fedEssences.push(candidate);
-      totalExpGained += getCeExpValue(candidate);
     }
   }
 
