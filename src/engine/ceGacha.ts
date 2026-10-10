@@ -129,6 +129,7 @@ export function executeUnifiedGachaRoll({
       const existing = newServantsList.find(s => (s.templateId || s.id) === randomTemplate.id);
       if (existing) {
         existing.availableStatPoints = (existing.availableStatPoints || 0) + 5;
+        existing.bondLevel = Math.min(10, (existing.bondLevel || 1) + 1);
         existing.npLevel = Math.min(5, (existing.npLevel || 1) + 1);
       }
       return {

@@ -117,6 +117,7 @@ export function executeGachaRoll({ banner, count, master }: RollGachaOptions): G
         const existing = updatedMaster.servants.find(s => s.templateId === chosenServant.id);
         if (existing) {
           existing.availableStatPoints += 5;
+          existing.bondLevel = Math.min(10, existing.bondLevel + 1);
           existing.npLevel = Math.min(5, (existing.npLevel || 1) + 1);
         }
       }
