@@ -266,20 +266,20 @@ export async function registerSlashCommands() {
     const names = Array.from(commands.keys()).map(n => `/${n}`).join(', ');
     console.log(`🔄 Registering ${commandData.length} Slash Commands with Discord [${names}]...`);
     
-    // 1. If DISCORD_GUILD_ID is provided, clear out guild-specific commands so Discord DOES NOT duplicate them with global commands
+    // 1. If DISCORD_GUILD_ID is provided, register directly to the guild for INSTANT 0-second deployment!
     if (guildId) {
       try {
-        console.log(`🧹 Cleaning up guild-scoped commands in [${guildId}] to eliminate duplicates...`);
-        await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] });
-        console.log(`✅ Successfully purged duplicate guild-scoped commands in [${guildId}].`);
+        console.log(`⚡ Deploying instant guild-scoped commands to [${guildId}] (Instant live update)...`);
+        await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commandData });
+        console.log(`✅ Successfully deployed instant guild-scoped commands to [${guildId}].`);
       } catch (gErr) {
-        console.warn(`⚠️ Guild cleanup notice:`, gErr);
+        console.warn(`⚠️ Guild deploy notice:`, gErr);
       }
     }
 
-    // 2. Register global application commands (Single, unified copy across all Discord servers)
+    // 2. Register global application commands (Propagates globally to all servers)
     await rest.put(Routes.applicationCommands(clientId), { body: commandData });
-    console.log(`✅ Successfully registered ${commandData.length} global application commands (Single unified list).`);
+    console.log(`✅ Successfully registered ${commandData.length} global application commands.`);
   } catch (error) {
     console.error('❌ Failed to register slash commands:', error);
   }
@@ -292,18 +292,16 @@ export async function registerSlashCommands() {
 client.once(Events.ClientReady, async c => {
   console.log(`🔥 Holy Grail War Discord Bot online as ${c.user.tag}!`);
 
-  // Automatically remove duplicate guild-scoped slash commands so only 1 copy shows in Discord
+  // Sync fresh slash commands directly to all connected guilds for ZERO-SECOND instant live update!
   try {
+    const commandData = Array.from(commands.values()).map(cmd => cmd.data.toJSON());
     for (const [gId, guild] of c.guilds.cache) {
-      const gCmds = await guild.commands.fetch().catch(() => null);
-      if (gCmds && gCmds.size > 0) {
-        console.log(`🧹 Purging ${gCmds.size} duplicate guild-scoped commands in ${guild.name} (${gId})...`);
-        await guild.commands.set([]);
-        console.log(`✅ Guild ${guild.name} deduplicated successfully!`);
-      }
+      console.log(`⚡ Syncing ${commandData.length} instant slash commands to ${guild.name} (${gId})...`);
+      await guild.commands.set(commandData).catch(e => console.warn(`Guild command sync warning for ${guild.name}:`, e?.message));
+      console.log(`✅ Guild ${guild.name} updated instantly (0s propagation delay)!`);
     }
   } catch (err) {
-    console.warn("⚠️ Guild cleanup notice:", err);
+    console.warn("⚠️ Guild command sync notice:", err);
   }
   // Set Discord presence/status message
   c.user.setActivity('Fuyuki Holy Grail War | /summon', { type: 0 });

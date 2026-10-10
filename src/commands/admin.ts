@@ -282,7 +282,6 @@ export const data = new SlashCommandBuilder()
             { name: '🔥 EXP Embers (★3 R Spark of Wisdom)', value: 'embers_r' },
             { name: '⚡ Stat Points (for active Servant)', value: 'stat_points' },
             { name: '🧬 Homunculus Helpers', value: 'homunculi' },
-            { name: '⚡ Action Points (AP)', value: 'ap' },
             { name: '🃏 Craft Essence (Relic)', value: 'ce' },
             { name: '⚔️ Heroic Spirit (Servant Contract)', value: 'servant' }
           )
@@ -325,7 +324,6 @@ export const data = new SlashCommandBuilder()
             { name: '🔥 Wipe ALL EXP Embers', value: 'all_embers' },
             { name: '⚡ Stat Points', value: 'stat_points' },
             { name: '🧬 Homunculus Helpers', value: 'homunculi' },
-            { name: '⚡ Action Points (AP)', value: 'ap' },
             { name: '🃏 Craft Essence (Relic)', value: 'ce' },
             { name: '⚔️ Heroic Spirit (Sever Contract)', value: 'servant' },
             { name: '🎒 Wipe ALL Craft Essences', value: 'all_ces' }
@@ -366,7 +364,6 @@ export const data = new SlashCommandBuilder()
             { name: '🎫 Summon Tickets', value: 'tickets' },
             { name: '🔱 Command Seals (0-3)', value: 'seals' },
             { name: '🧬 Homunculi', value: 'homunculi' },
-            { name: '⚡ Action Points', value: 'ap' },
             { name: '⚔️ Servant Level (1-100)', value: 'servant_level' },
             { name: '💖 Servant Bond Level (0-10)', value: 'servant_bond' },
             { name: '⚡ Available Stat Points', value: 'stat_points' },
