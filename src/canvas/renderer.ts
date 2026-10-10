@@ -7496,36 +7496,37 @@ export async function renderVisualNovelCard(
         const isLuvria = nameLower.includes('luvria');
 
         // Target Scale & Position per servant requirements:
-        // - Edmond & Adiosa: 1.5x scale, positioned lower so bottom extends behind text box (no floating)
-        // - Lucia: same size, lowered a bit
-        // - Luvria: same size, positioned higher so face is well above text box
         let scaleMultiplier = 1.0;
-        let baseMaxHFactor = 0.82;
-        let baseMaxWFactor = 0.48;
+        let baseMaxHFactor = 0.88;
+        let baseMaxWFactor = 0.52;
         let spriteY = Math.round(height * 0.12);
+        let hasCustomY = false;
 
-        if (isMerged) {
-          scaleMultiplier = 1.15;
+        if (isLuvria) {
+          scaleMultiplier = 1.05;
           baseMaxHFactor = 0.88;
-          baseMaxWFactor = 0.54;
-          spriteY = height - (height * baseMaxHFactor * scaleMultiplier);
+          baseMaxWFactor = 0.52;
+          spriteY = Math.round(height * 0.10);
+          hasCustomY = false;
+        } else if (isLucia) {
+          scaleMultiplier = 0.85;
+          baseMaxHFactor = 0.88;
+          baseMaxWFactor = 0.52;
+          spriteY = Math.round(height * 0.10);
+          hasCustomY = false;
         } else if (isEdmond || isAdiosa) {
           scaleMultiplier = 1.25;
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.55;
-          spriteY = Math.round(height * 0.12);
-        } else if (isLuvria) {
-          scaleMultiplier = 1.1;
+          spriteY = Math.round(height * 0.10);
+          hasCustomY = false;
+        } else if (isMerged) {
+          scaleMultiplier = 1.15;
           baseMaxHFactor = 0.88;
-          baseMaxWFactor = 0.50;
-          spriteY = Math.round(height * -0.55);
-        } else if (isLucia) {
-          scaleMultiplier = 1.0;
-          baseMaxHFactor = 0.88;
-          baseMaxWFactor = 0.52;
-          spriteY = Math.round(height * 0.12);
+          baseMaxWFactor = 0.54;
+          spriteY = Math.round(height * 0.10);
         } else {
-          // Standard Custom OC / Non-merged portrait: full scale
+          // Standard Custom OC / Non-merged portrait
           scaleMultiplier = 1.0;
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.52;
@@ -7547,7 +7548,7 @@ export async function renderVisualNovelCard(
         const baseXFactor = (isEdmond || isAdiosa) ? 0.44 : 0.48;
         const spriteX = width * baseXFactor + (maxSpriteW - spriteW) / 2;
 
-        if (isMerged) {
+        if (isMerged && !hasCustomY) {
           spriteY = height - spriteH;
         }
 
