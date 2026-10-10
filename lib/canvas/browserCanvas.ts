@@ -5491,7 +5491,7 @@ export async function renderBattleTurnSummary(
 
     // 3 Active Skill Badges
     const p1Skills = activeP1.skills || [];
-    const p1Bond = activeP1.servant?.bondLevel ?? activeP1.bondLevel ?? 1;
+    const p1Bond = (activeP1 as any).servant?.bondLevel ?? (activeP1 as any).bondLevel ?? 1;
     [0, 1, 2].forEach((sIdx) => {
       const sBoxX = 432 + sIdx * 64;
       const sBoxY = 16;
@@ -5673,7 +5673,7 @@ export async function renderBattleTurnSummary(
 
     // Skills (y: 604)
     const p2Skills = activeP2.skills || [];
-    const p2Bond = activeP2.servant?.bondLevel ?? activeP2.bondLevel ?? 1;
+    const p2Bond = (activeP2 as any).servant?.bondLevel ?? (activeP2 as any).bondLevel ?? 1;
     [0, 1, 2].forEach((sIdx) => {
       const sBoxX = 16 + sIdx * 64;
       const sBoxY = 604;

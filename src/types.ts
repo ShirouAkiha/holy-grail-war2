@@ -104,6 +104,7 @@ export interface NoblePhantasm {
 export interface CraftEssence {
   id: string;
   name: string;
+  title?: string;
   rarity: Rarity;
   description: string;
   atkBonus: number;
@@ -112,8 +113,8 @@ export interface CraftEssence {
   bonusDef?: number;
   bonusHp?: number;
   effectText: string;
-  passiveType: 'starting_np' | 'buster_up' | 'arts_up' | 'quick_up' | 'crit_dmg' | 'hp_regen' | string;
-  passiveValue: number;
+  passiveType?: 'starting_np' | 'buster_up' | 'arts_up' | 'quick_up' | 'crit_dmg' | 'hp_regen' | string;
+  passiveValue?: number;
   artworkUrl?: string;
   imageUrl?: string;
   cardArtUrl?: string;
@@ -125,6 +126,7 @@ export interface CraftEssence {
   isEmber?: boolean;
   isExpCard?: boolean;
   isExp?: boolean;
+  expValue?: number;
 }
 
 export interface MatchupQuoteEntry {
@@ -386,6 +388,15 @@ export interface MasterProfile {
   lastTeaTimestamp?: number;
   customApiConfig?: UserCustomApiConfig;
   environmentMode?: 'safe' | 'war';
+  darkSakuraAffinity?: {
+    kills: number;
+    spares: number;
+    mercyStreak: number;
+    slayerStreak: number;
+    betrayalCount: number;
+    lastOutcome?: 'killed' | 'spared_mercy' | 'spared_betrayed' | 'peaceful';
+    lastEncounterTime?: number;
+  };
   servants: MasterServantInstance[];
   craftEssences: CraftEssence[];
 }

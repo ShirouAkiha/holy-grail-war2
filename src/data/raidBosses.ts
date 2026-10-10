@@ -248,5 +248,107 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
       servantExp: 60_000,
       emberCount: 5
     }
+  },
+  dark_sakura: {
+    id: 'dark_sakura',
+    name: 'Dark Sakura',
+    title: 'Vessel of the Corrupted Grail • Shadow of Angra Mainyu',
+    servantClass: 'Avenger',
+    level: 92,
+    baseHp: 1_800_000,
+    maxCharge: 4,
+    totalPhases: 2,
+    traits: ['threat_to_humanity', 'female', 'humanoid', 'shadow', 'demonic', 'heaven_or_earth'],
+    avatarUrl: 'https://ella.janitorai.com/media-approved/mOhtzJN0kQulMvmZWa0l2.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/1_g6bqriIhxa4tLhBalDY.webp',
+    bgUrl: 'https://ella.janitorai.com/media-approved/P7i39PiVJeiUHbbq3dSn1.webp',
+    spriteConfig: {
+      offsetX: 0,
+      offsetY: 0,
+      scale: 1.0,
+      cropRightRatio: 0
+    },
+    phases: [
+      {
+        phaseNumber: 1,
+        name: 'Dark Sakura',
+        title: 'Shadow Maiden • Maiden of the Fuyuki Abyssal Cavity',
+        baseHp: 1_800_000,
+        maxCharge: 4,
+        spriteUrl: 'https://ella.janitorai.com/media-approved/1_g6bqriIhxa4tLhBalDY.webp',
+        drawBox: {
+          destX: 90,
+          destY: 80,
+          destW: 380,
+          destH: 540
+        },
+        passives: [
+          'Black Mud Aura: Siphons 5% NP gauge from all active Servants at end of round',
+          'Corrupted Ribbons: Normal attacks pierce Evade'
+        ],
+        breakQuote: 'The ribbons unwind... The black sun of the corrupted Grail rises!',
+        breakAnnouncement: 'The shadow shell ruptures! Dark Sakura embraces the infinite malice of Angra Mainyu!'
+      },
+      {
+        phaseNumber: 2,
+        name: 'Dark Sakura (Black Grail)',
+        title: 'All The World’s Evil • Living Vessel of Angra Mainyu',
+        baseHp: 2_700_000,
+        maxCharge: 3,
+        spriteUrl: 'https://ella.janitorai.com/media-approved/1_g6bqriIhxa4tLhBalDY.webp',
+        drawBox: {
+          destX: 90,
+          destY: 80,
+          destW: 380,
+          destH: 540
+        },
+        passives: [
+          'All The World’s Evil: +20% ATK buff & immune to Skill Seal',
+          'Abyssal Maw: Siphons 15% NP gauge on Charge Attack'
+        ]
+      }
+    ],
+    skills: [
+      {
+        name: 'Corrupted Ribbon Snare',
+        description: 'Binds the vanguard in dark silk; lowers party DEF by 15% (3T) and seals enemy skills for 1 turn.',
+        effect: 'skill_seal',
+        value: 1,
+        cooldown: 3
+      },
+      {
+        name: 'Black Mud Siphon',
+        description: 'Siphons 15% NP gauge from two active Servants and charges Dark Sakura’s NP gauge.',
+        effect: 'np_drain',
+        value: 15,
+        cooldown: 3
+      },
+      {
+        name: 'Shadow Surge',
+        description: 'Unleashes cursed mud, dealing 1,500 Curse DoT (3T) to all enemies.',
+        effect: 'aoe_curse',
+        value: 15,
+        cooldown: 3
+      },
+      {
+        name: 'Angra Mainyu’s Malice',
+        description: 'Raises own ATK by 25% (2T) and erects a 60,000 HP shadow barrier.',
+        effect: 'barrier',
+        value: 60000,
+        cooldown: 4
+      }
+    ],
+    chargeAttack: {
+      name: 'The Shadow: All the World’s Evil',
+      description: 'The endless shadows of the Fuyuki Holy Grail erupt as giant abyssal jaws, devouring the battlefield in cursed mud!',
+      gifUrl: 'https://ella.janitorai.com/media-approved/HPy75Hh7LlWM61QmUUPgf.webp',
+      damageMultiplier: 2.7
+    },
+    drops: {
+      minSq: 16,
+      maxSq: 28,
+      servantExp: 45_000,
+      emberCount: 4
+    }
   }
 };

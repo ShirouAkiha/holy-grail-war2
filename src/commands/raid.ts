@@ -19,6 +19,14 @@ import { addServantBattleExp, createExpEmberCraftEssence } from '../engine/custo
 import { calculateServantMaxHp } from '../engine/statSystem';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
+import {
+  DARK_SAKURA_ASSETS,
+  checkPacifistMilestone,
+  generateDarkSakuraIntroDialogue,
+  handleDarkSakuraClimax,
+  getDarkSakuraRecord,
+  getDarkSakuraHpReactiveQuote
+} from '../engine/darkSakuraEngine';
 
 export const data = new SlashCommandBuilder()
   .setName('raid')
@@ -30,6 +38,10 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(sub =>
     sub.setName('barbatos')
       .setDescription('Challenge Demon God Pillar Barbatos in the Solomon Temple of Time (Solo or 4P Co-op)')
+  )
+  .addSubcommand(sub =>
+    sub.setName('sakura')
+      .setDescription('Challenge Dark Sakura in the Fuyuki Abyssal Cavity (2-Phase Break Gauge & Climax Choice)')
   )
   .addSubcommand(sub =>
     sub.setName('tiamat')
@@ -44,6 +56,7 @@ export const data = new SlashCommandBuilder()
           .setRequired(false)
           .addChoices(
             { name: 'Demon God Pillar Barbatos (Temple of Time)', value: 'barbatos' },
+            { name: 'Dark Sakura (Fuyuki Abyssal Cavity)', value: 'dark_sakura' },
             { name: 'Beast II / Primordial Mother Tiamat (Chaos Sea)', value: 'tiamat' }
           )
       )
@@ -118,7 +131,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `• **Class:** \`Caster\` • **Level:** \`90\` • **HP:** \`1,200,000\` (Single Phase)\n` +
         `• **Threat:** Observation Pillar • Lowers party DEF & drains critical stars\n` +
         `• **Victory Drops:** 💎 \`10–20 SQ\` • ⚔️ \`+25,000 EXP\` • 💖 \`+2,000 Bond\` • ✨ \`3x Embers\`\n\n` +
-        `🌊 **2. BEAST II / PRIMORDIAL MOTHER TIAMAT** — *Chaos Sea of Genesis*\n` +
+        `🌸 **2. DARK SAKURA** — *Fuyuki Abyssal Cavity*\n` +
+        `• **Class:** \`Avenger\` • **Level:** \`92\` • **HP:** \`4,500,000\` (**2 Break Gauges**)\n` +
+        `• **Interactive:** Reactive Self-Aware Dialogue • **[Spare] vs [Execute]** Climax Choice!\n` +
+        `• **Karma Memory:** Tracks kills vs spares over time • Unlocks double rewards & Pacifist Headpat!\n` +
+        `• **Victory Drops:** 💎 \`16–28 SQ (Doubled on Sparing!)\` • ⚔️ \`+45,000 EXP\` • ✨ \`4x Embers\` • ★5 Ribbon CE\n\n` +
+        `🌊 **3. BEAST II / PRIMORDIAL MOTHER TIAMAT** — *Chaos Sea of Genesis*\n` +
         `• **Class:** \`Beast\` • **Level:** \`95\` • **HP:** \`17,000,000\` (**3 Break Gauges**)\n` +
         `• **Phases:** Limiter (3.5M HP) ➔ Titan (5.5M HP) ➔ Primeval Dragon (8M HP)\n` +
         `• **Mechanics:** Sea of Life (-2,000 HP/T), Self-Limitation, Nega-Genesis (-50% card DMG, NP True DMG)\n` +
@@ -134,6 +152,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setLabel('Fight Barbatos (Lv.90)')
         .setStyle(ButtonStyle.Primary)
         .setEmoji('👁️'),
+      new ButtonBuilder()
+        .setCustomId('raid_menu_sakura')
+        .setLabel('Fight Dark Sakura (2-Phase)')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('🌸'),
       new ButtonBuilder()
         .setCustomId('raid_menu_tiamat')
         .setLabel('Fight Tiamat (3-Phase)')
@@ -175,12 +198,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             `**1. Demon God Pillar Barbatos (Temple of Time)**\n` +
             `• Class: \`Caster\` • HP: \`1,200,000\` • Charge: 5\n` +
             `• Traits: Demonic, Giant, Super Large, Demon God Pillar\n` +
-            `• Skills: DEF Shred 20%, Curse (1,200 DMG/T), 25% ATK buff\n` +
             `• Drops: 10–20 SQ, 25k EXP, 2,000 Bond, 3x Embers\n\n` +
-            `**2. Beast II / Tiamat (Chaos Sea)**\n` +
+            `**2. Dark Sakura (Fuyuki Abyssal Cavity)**\n` +
+            `• Class: \`Avenger\` • Total HP: \`4,500,000\` (2 Break Gauges)\n` +
+            `• Traits: Threat to Humanity, Humanoid, Demonic, Shadow, Female\n` +
+            `• Special: Dynamic Encounter Dialogue, Sparing/Execution Climax Dilemma\n` +
+            `• Drops: 16–28 SQ (Doubled on Sparing!), 45k EXP, 4x Embers, ★5 Ribbon of the Hollow Night CE\n\n` +
+            `**3. Beast II / Tiamat (Chaos Sea)**\n` +
             `• Class: \`Beast\` • Total HP: \`17,000,000\` (3 Break Gauges)\n` +
             `• Traits: Beast, Divine, Dragon, Super Large, Female\n` +
-            `• Skills: Sea of Life (corrosive mud), Mud Surge, Chaos Deluge\n` +
             `• Drops: 20–35 SQ, 60k EXP, 5,000 Bond, 5x Embers`
           )
           .setColor(0x38bdf8);
@@ -190,6 +216,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           components: [
             new ActionRowBuilder<ButtonBuilder>().addComponents(
               new ButtonBuilder().setCustomId('raid_menu_barbatos').setLabel('Fight Barbatos').setStyle(ButtonStyle.Primary).setEmoji('👁️'),
+              new ButtonBuilder().setCustomId('raid_menu_sakura').setLabel('Fight Dark Sakura').setStyle(ButtonStyle.Success).setEmoji('🌸'),
               new ButtonBuilder().setCustomId('raid_menu_tiamat').setLabel('Fight Tiamat').setStyle(ButtonStyle.Danger).setEmoji('🌊')
             )
           ]
@@ -204,20 +231,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           if (subBtn.user.id !== interaction.user.id) return;
           subCollector.stop();
           await subBtn.deferUpdate();
-          const chosenKey = subBtn.customId === 'raid_menu_tiamat' ? 'tiamat' : 'barbatos';
+          const chosenKey = subBtn.customId === 'raid_menu_sakura' ? 'dark_sakura' : subBtn.customId === 'raid_menu_tiamat' ? 'tiamat' : 'barbatos';
           await launchRaidLobby(interaction, menuMsg, chosenKey, hostMaster, hostServant);
         });
         return;
       }
 
-      const chosenKey = btn.customId === 'raid_menu_tiamat' ? 'tiamat' : 'barbatos';
+      const chosenKey = btn.customId === 'raid_menu_sakura' ? 'dark_sakura' : btn.customId === 'raid_menu_tiamat' ? 'tiamat' : 'barbatos';
       await launchRaidLobby(interaction, menuMsg, chosenKey, hostMaster, hostServant);
     });
 
     return;
   }
 
-  const directBossKey = subcommand === 'tiamat' ? 'tiamat' : 'barbatos';
+  const directBossKey = subcommand === 'tiamat' ? 'tiamat' : subcommand === 'sakura' || subcommand === 'darksakura' ? 'dark_sakura' : 'barbatos';
   await launchRaidLobby(interaction, null, directBossKey, hostMaster, hostServant);
 }
 
@@ -253,11 +280,16 @@ async function launchRaidLobby(
       return `**${idx + 1}.** <@${p.userId}> — **${sName}** (\`${sClass}\` Lv.${sLvl})`;
     }).join('\n');
 
-    const locationText = isTiamat
+    const isDarkSakura = boss.id === 'dark_sakura';
+    const locationText = isDarkSakura
+      ? 'Fuyuki Abyssal Cavity • Corrupted Grail Core'
+      : isTiamat
       ? 'Underworld Abyss • Chaos Sea of Genesis'
       : 'Grand Temple of Time • Throne of Solomon';
 
-    const bossSubtitle = isTiamat
+    const bossSubtitle = isDarkSakura
+      ? `**Boss:** **${boss.name}** (\`${boss.servantClass}\` • Lv.${boss.level} • 2-Phase Break Gauge Boss)\n**Phase 1 HP:** **${boss.baseHp.toLocaleString()} HP** (2 Phases • Climax Choice)\n\n`
+      : isTiamat
       ? `**Boss:** **${boss.name}** (\`${boss.servantClass}\` • Lv.${boss.level} • 3-Phase Break Gauge Boss)\n**Phase 1 HP:** **${boss.baseHp.toLocaleString()} HP** (3 Break Gauges Total)\n\n`
       : `**Boss:** **${boss.name}** (\`${boss.servantClass}\` • Lv.${boss.level})\n**Total Boss HP:** **${boss.baseHp.toLocaleString()} HP**\n\n`;
 
@@ -271,7 +303,7 @@ async function launchRaidLobby(
         `*Click **Join Raid** to bring your active Servant into the fight, or the host can launch immediately!*`
       )
       .setThumbnail(boss.avatarUrl)
-      .setColor(isTiamat ? 0xd946ef : 0x9333ea)
+      .setColor(isDarkSakura ? 0x9d174d : isTiamat ? 0xd946ef : 0x9333ea)
       .setFooter({ text: 'PvE Raid Engine • Up to 4 Masters can join' });
   };
 
@@ -380,6 +412,59 @@ async function launchRaidLobby(
       }
       lobbyCollector.stop('commenced');
       await btn.deferUpdate().catch(() => {});
+
+      // Dark Sakura Tier 4 Pacifist Devotion check
+      if (boss.id === 'dark_sakura') {
+        const pacifistCheck = checkPacifistMilestone(lobbyParticipants);
+        if (pacifistCheck.isEligible) {
+          const sqBonus = Math.floor(boss.drops.minSq + Math.random() * (boss.drops.maxSq - boss.drops.minSq + 1)) * 2;
+          const expBonus = (boss.drops.servantExp || 45_000) * 2;
+
+          for (const p of lobbyParticipants) {
+            const master = await getOrCreateMaster(p.userId, p.username);
+            const record = getDarkSakuraRecord(master);
+            record.spares += 1;
+            record.mercyStreak += 1;
+            record.lastOutcome = 'peaceful';
+            record.lastEncounterTime = Date.now();
+            master.saintQuartz = (master.saintQuartz || 0) + sqBonus;
+            const s = master.servants?.find((sv: any) => sv.id === p.servant.id);
+            if (s) {
+              addServantBattleExp(s, expBonus);
+            }
+            master.craftEssences = master.craftEssences || [];
+            master.craftEssences.push(
+              createExpEmberCraftEssence(5, 2),
+              createExpEmberCraftEssence(4, 4),
+              createExpEmberCraftEssence(4, 5)
+            );
+            await saveMaster(master);
+          }
+
+          const pacifistEmbed = new EmbedBuilder()
+            .setTitle('🌸 PACIFIST MILESTONE: THE MAIDEN’S SANCTUARY')
+            .setDescription(
+              `${pacifistCheck.sceneText}\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `💎 **Peaceful Blessing Bestowed:**\n` +
+              `• **+${sqBonus} Saint Quartz** (Guaranteed Double Drop) 💎\n` +
+              `• **+${expBonus.toLocaleString()} Servant Battle EXP** ⚔️\n` +
+              `• **+8 Universal EXP Embers** ✨\n` +
+              `• **A gentle, warm pat on the head.** 🌸`
+            )
+            .setImage(DARK_SAKURA_ASSETS.vnDialogueSprite)
+            .setColor(0xf472b6)
+            .setFooter({ text: 'Holy Grail War PvE • Pure Pacifist Resolution' });
+
+          await lobbyMsg.edit({
+            content: '🌸 **An unexpected serenity falls across the cavern...**',
+            embeds: [pacifistEmbed],
+            components: []
+          }).catch(() => {});
+          return;
+        }
+      }
+
       await lobbyMsg.edit({
         content: `⚔️ **Commencing Raid Battle against ${boss.name}!**\n> ⏳ *Preparing the Grand Battlefield and summoning Servants...*`,
         components: []
@@ -546,7 +631,10 @@ async function runRaidBattle(
 
   const hpMultiplier = participants.length === 1 ? 1.0 : participants.length === 2 ? 1.25 : participants.length === 3 ? 1.5 : 1.75;
   const isTiamat = boss.id === 'tiamat';
-  const initialBaseHp = isTiamat && boss.phases ? boss.phases[0].baseHp : boss.baseHp;
+  const isDarkSakura = boss.id === 'dark_sakura';
+  const hasPhases = Boolean((boss.phases && boss.phases.length > 1) || (boss.totalPhases && boss.totalPhases > 1));
+  const totalPhases = boss.totalPhases || (boss.phases ? boss.phases.length : 1);
+  const initialBaseHp = hasPhases && boss.phases?.[0] ? boss.phases[0].baseHp : boss.baseHp;
   const scaledBossHp = Math.round(initialBaseHp * hpMultiplier);
 
   const battleState: RaidBattleState = {
@@ -560,15 +648,33 @@ async function runRaidBattle(
     recentLogs: [`⚡ **BATTLE COMMENCED!** ${boss.name} awakens!`],
     bossBuffs: [],
     fullCombatLog: [`⚡ **[Round 1]** Raid battle commenced against **${boss.name}**!`],
-    currentPhase: isTiamat ? 1 : undefined,
-    totalPhases: isTiamat ? (boss.totalPhases || 3) : undefined,
-    breakGaugesRemaining: isTiamat ? ((boss.totalPhases || 3) - 1) : undefined,
+    currentPhase: hasPhases ? 1 : undefined,
+    totalPhases: hasPhases ? totalPhases : undefined,
+    breakGaugesRemaining: hasPhases ? (totalPhases - 1) : undefined,
     phaseTurn: 1,
     phaseUltsUsed: 0,
     turnDamageTaken: 0,
     chaosSporesActive: false,
     bossShield: 0
   };
+
+  const triggeredPlayerLowHp = new Set<string>();
+
+  // Dark Sakura Opening Interlude Dialogue
+  if (isDarkSakura) {
+    const intro = generateDarkSakuraIntroDialogue(partyUsers);
+    const introEmbed = new EmbedBuilder()
+      .setTitle(intro.title)
+      .setDescription(`${intro.dialogue}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n> 👁️ *“${intro.bannerQuote}”*`)
+      .setThumbnail(DARK_SAKURA_ASSETS.vnDialogueSprite)
+      .setImage(DARK_SAKURA_ASSETS.caveBackground)
+      .setColor(0x831843)
+      .setFooter({ text: 'Fate/stay night Heaven’s Feel • Abyssal Encounter' });
+    const targetChannel = interaction.channel || battleMsg?.channel;
+    if (targetChannel && typeof targetChannel.send === 'function') {
+      targetChannel.send({ embeds: [introEmbed] }).catch(() => {});
+    }
+  }
 
   let pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
   let pendingIndices: number[] = [];
@@ -640,20 +746,31 @@ async function runRaidBattle(
   const dispatchBossNpGif = async () => {
     await cleanupNpGif();
     const isTiamat = boss.id === 'tiamat';
+    const isDarkSakura = boss.id === 'dark_sakura';
     const isPhase3 = battleState.currentPhase === 3;
-    const npName = isTiamat ? (isPhase3 ? 'PRIMORDIAL ROAR' : 'PRIMORDIAL MURMUR') : boss.chargeAttack.name.toUpperCase();
-    const chant = isTiamat
+    let npName = isTiamat
+      ? (isPhase3 ? 'PRIMORDIAL ROAR' : 'PRIMORDIAL MURMUR')
+      : isDarkSakura
+      ? 'THE SHADOW: ALL THE WORLD’S EVIL'
+      : boss.chargeAttack.name.toUpperCase();
+    let chant = isTiamat
       ? (isPhase3
         ? '“...AAAAAA—! (The primordial cry of genesis that birthed and swallowed the gods!)”'
         : '“...Aaaaa... (The sorrowful murmur of the abandoned mother echoes through the dark sea...)”')
+      : isDarkSakura
+      ? '“The darkness runs deep... Let the black mud drink everything you hold dear!”'
       : '“O Solomon, look upon our despair! From the cradle of incinerated time, we offer your demise!”';
-    const desc = isTiamat
+    let desc = isTiamat
       ? (isPhase3
         ? 'Beast II spreads her titanic draconic wings, releasing a deafening roar of absolute annihilation that ignores all evasion and invulnerability!'
         : 'Tiamat weeps as waves of primordial black mud crash over the entire party!')
+      : isDarkSakura
+      ? 'Dark Sakura summons the boundless corrupting mud of Angra Mainyu, drowning the cavern in an apocalyptic vortex of shadow jaws!'
       : 'Barbatos opens all 72 crimson eyes of the Solomon Spire, unleashing an apocalyptic wave of cursed demon god mana across the entire battlefield!';
 
-    const bossImage = boss.phases && battleState.currentPhase
+    const bossImage = isDarkSakura
+      ? DARK_SAKURA_ASSETS.ultimateGif
+      : boss.phases && battleState.currentPhase
       ? boss.phases[battleState.currentPhase - 1]?.spriteUrl || boss.avatarUrl
       : boss.avatarUrl;
 
@@ -664,7 +781,7 @@ async function runRaidBattle(
         `> *${chant}*\n\n` +
         `${desc}`
       )
-      .setColor(isTiamat ? 0xd946ef : 0x7c3aed)
+      .setColor(isDarkSakura ? 0x9d174d : isTiamat ? 0xd946ef : 0x7c3aed)
       .setImage(bossImage)
       .setFooter({ text: `${boss.name} Raid • Cataclysmic Charge Attack` });
 
@@ -870,7 +987,12 @@ async function runRaidBattle(
       cardChainStr = ` • 🎴 **Selected:** ${chain}`;
     }
 
-    return `⚔️ **<@${active.userId}>'s Turn!** (**${activeServName}**) • ⏳ **Turn Timer: 2 Min** *(Auto-play on timeout)*${cardChainStr}`;
+    let dialoguePrefix = '';
+    if (battleState.bossDialogueNotice) {
+      dialoguePrefix = `> ${battleState.bossDialogueNotice}\n\n`;
+    }
+
+    return `${dialoguePrefix}⚔️ **<@${active.userId}>'s Turn!** (**${activeServName}**) • ⏳ **Turn Timer: 2 Min** *(Auto-play on timeout)*${cardChainStr}`;
   };
 
   const renderAndPostTurn = async () => {
@@ -1556,6 +1678,21 @@ async function runRaidBattle(
         `⚔️ **[Round ${battleState.round}]** **${servName}** (<@${active.userId}>) ${fullNpDetail} dealing **${totalTurnDmg.toLocaleString()} DMG**! *(${boss.name} HP: ${battleState.bossCurrentHp.toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()})*${npEffectsStr}${traitLog}`
       );
 
+      // Dark Sakura Mid-Battle HP Trigger (Boss Low HP <= 30%)
+      if (boss.id === 'dark_sakura' && !battleState.triggeredBossLowHp && battleState.bossCurrentHp > 0) {
+        if ((battleState.bossCurrentHp / battleState.bossMaxHp) <= 0.30) {
+          battleState.triggeredBossLowHp = true;
+          const host = battleState.participants[0];
+          const hostRecord = getDarkSakuraRecord(host.master);
+          const quoteRes = getDarkSakuraHpReactiveQuote('boss_low_hp', hostRecord);
+          if (quoteRes.quote) {
+            battleState.bossDialogueNotice = `🌸 **Dark Sakura:** ${quoteRes.quote}`;
+            battleState.recentLogs.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
+            battleState.fullCombatLog?.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
+          }
+        }
+      }
+
       if (battleState.bossCurrentHp <= 0) {
         if (battleState.breakGaugesRemaining && battleState.breakGaugesRemaining > 0) {
           // Break gauge transition!
@@ -1575,6 +1712,15 @@ async function runRaidBattle(
           battleState.turnDamageTaken = 0;
           battleState.bossShield = 0;
 
+          if (boss.id === 'dark_sakura') {
+            const host = battleState.participants[0];
+            const hostRecord = getDarkSakuraRecord(host.master);
+            const quoteRes = getDarkSakuraHpReactiveQuote('break_gauge', hostRecord);
+            if (quoteRes.quote) {
+              battleState.bossDialogueNotice = `🌸 **Dark Sakura:** ${quoteRes.quote}`;
+            }
+          }
+
           const breakMsg = `💥 **[BREAK GAUGE SHATTERED!]** ${nextPhase?.breakAnnouncement || 'The boss changes form and unleashes new power!'}`;
           battleState.recentLogs.push(breakMsg);
           battleState.fullCombatLog.push(breakMsg);
@@ -1586,7 +1732,7 @@ async function runRaidBattle(
             headline: boss.name,
             bigStat: 'GAUGE SHATTERED!',
             bigStatColor: '#f43f5e',
-            subDetail: `Phase ${battleState.currentPhase}/3 Engaged • Boss Transformed`,
+            subDetail: `Phase ${battleState.currentPhase}/${boss.totalPhases || 2} Engaged • Boss Transformed`,
             subDetailColor: '#fbcfe8'
           };
         } else {
@@ -3080,7 +3226,24 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   const totalBossAtkMult = Math.max(0.2, (1 + (bossAtkBuffs - bossAtkDebuffs) / 100) * enrageMult);
 
   const isTiamat = state.boss.id === 'tiamat';
+  const isDarkSakura = state.boss.id === 'dark_sakura';
   state.phaseTurn = (state.phaseTurn || 1) + 1;
+
+  // Dark Sakura Phase 1 Passive: Black Mud Aura (-5% NP to all Servants)
+  if (isDarkSakura && (state.currentPhase === 1)) {
+    state.participants.forEach(p => {
+      if (!p.isDead) {
+        p.npGauge = Math.max(0, (p.npGauge || 0) - 5);
+      }
+    });
+    state.recentLogs.push('🌑 **[Black Mud Aura]** Corrupted shadow leylines siphon 5% NP gauge from all Servants!');
+    enemyPhase.specialEvents.push('🌑 **[Black Mud Aura]** Siphoned 5% NP from all Servants!');
+  }
+
+  // Dark Sakura Phase 2 Passive: All The World’s Evil (Immunity to Skill Seal)
+  if (isDarkSakura && (state.currentPhase || 1) >= 2) {
+    state.bossBuffs = state.bossBuffs.filter(b => b.type !== 'skill_seal');
+  }
 
   // Tiamat Phase 1 Passive: Sea of Life / Chaos Tide
   if (isTiamat && (state.currentPhase === 1)) {
@@ -3195,6 +3358,77 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       enemyPhase.skillDesc = 'Siphoned 15% NP from all Servants and formed a 50,000 HP barrier';
       enemyPhase.bossBuffsGained.push('+50,000 HP Chaos Barrier');
       state.recentLogs.push(`🌊 **Tiamat invoked [Chaos Deluge]!** Siphoned NP from all Servants and created a **50,000 HP Barrier**!`);
+    }
+  } else if (isDarkSakura) {
+    const sakuraRoll = Math.random();
+    if (sakuraRoll < 0.25) {
+      // Skill 1: Corrupted Ribbon Snare (Lowers party DEF by 15% (3T) and 1T skill seal on 1 Servant)
+      const target = livingParticipants[Math.floor(Math.random() * livingParticipants.length)];
+      if (target) {
+        target.activeBuffs = target.activeBuffs || [];
+        target.activeBuffs.push({
+          name: 'Ribbon Skill Seal',
+          type: 'skill_seal',
+          value: 1,
+          remainingTurns: 1
+        });
+        livingParticipants.forEach(p => {
+          p.activeBuffs = p.activeBuffs || [];
+          p.activeBuffs.push({
+            name: 'Ribbon DEF Down',
+            type: 'def_down',
+            value: 15,
+            remainingTurns: 3
+          });
+        });
+        const tName = target.servant.nickname || target.servant.template?.name || 'Servant';
+        enemyPhase.skillName = 'Corrupted Ribbon Snare';
+        enemyPhase.skillDesc = `Inflicted Skill Seal (1T) on ${tName} & -15% DEF on party (3T)`;
+        enemyPhase.debuffsInflicted.push(`Skill Seal (1T) on ${tName}`, '-15% DEF (3T) on party');
+        state.recentLogs.push(`🎀 **Dark Sakura cast [Corrupted Ribbon Snare]!** Sealed skills on **${tName}** & eroded party DEF!`);
+      }
+    } else if (sakuraRoll < 0.50) {
+      // Skill 2: Black Mud Siphon (Siphons 15% NP from 2 Servants and heals Dark Sakura for 40,000 HP)
+      const shuffled = [...livingParticipants].sort(() => 0.5 - Math.random());
+      const siphonedNames: string[] = [];
+      shuffled.slice(0, 2).forEach(p => {
+        p.npGauge = Math.max(0, (p.npGauge || 0) - 15);
+        siphonedNames.push(p.servant.nickname || p.servant.template?.name || 'Servant');
+      });
+      state.bossCurrentHp = Math.min(state.bossMaxHp, state.bossCurrentHp + 40_000);
+      enemyPhase.skillName = 'Black Mud Siphon';
+      enemyPhase.skillDesc = `Drained 15% NP from ${siphonedNames.join(', ')} and restored 40,000 HP`;
+      if (siphonedNames.length > 0) enemyPhase.debuffsInflicted.push(`-15% NP on ${siphonedNames.join(', ')}`);
+      enemyPhase.bossBuffsGained.push('+40,000 HP Restored');
+      state.recentLogs.push(`🌑 **Dark Sakura unleashed [Black Mud Siphon]!** Drained 15% NP from **${siphonedNames.join(', ')}** & restored 40,000 HP!`);
+    } else if (sakuraRoll < 0.75) {
+      // Skill 3: Shadow Surge (1,500 Curse DoT (3T) to all enemies)
+      livingParticipants.forEach(p => {
+        p.activeBuffs = p.activeBuffs || [];
+        p.activeBuffs.push({
+          name: 'Shadow Curse',
+          type: 'curse',
+          value: 1500,
+          remainingTurns: 3
+        });
+      });
+      enemyPhase.skillName = 'Shadow Surge';
+      enemyPhase.skillDesc = 'Inflicted 1,500 Curse DoT (3T) on all Servants';
+      enemyPhase.debuffsInflicted.push('Curse (1,500 DMG/T, 3T) on all Servants');
+      state.recentLogs.push(`🖤 **Dark Sakura cast [Shadow Surge]!** Black mud erupts, inflicting **Curse (1,500 DMG/Turn, 3T)** on all Servants!`);
+    } else {
+      // Skill 4: Angra Mainyu’s Malice (Raises own ATK by 25% (2T) and erects a 60,000 HP shadow barrier)
+      state.bossBuffs.push({
+        name: "Angra Mainyu's ATK Up",
+        type: 'atk_up',
+        value: 25,
+        remainingTurns: 2
+      });
+      state.bossShield = (state.bossShield || 0) + 60_000;
+      enemyPhase.skillName = "Angra Mainyu's Malice";
+      enemyPhase.skillDesc = 'Erected 60,000 HP Shadow Barrier & gained +25% ATK Up (2T)';
+      enemyPhase.bossBuffsGained.push('+25% ATK Up (2T)', '60,000 HP Shadow Barrier');
+      state.recentLogs.push(`🔥 **Dark Sakura cast [Angra Mainyu's Malice]!** Gained **+25% ATK** & erected a **60,000 HP Shadow Barrier**!`);
     }
   } else {
     const skillRoll = Math.random();
@@ -3370,6 +3604,57 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
           `💥 **NOBLE PHANTASM: PRIMORDIAL MURMUR!** Tiamat weeps as cursed black waves deal **${baseAoeDamage.toLocaleString()} AoE DMG** & Curse!${evadeNotice}`
         );
       }
+    } else if (isDarkSakura) {
+      // Dark Sakura NP: The Shadow — All the World's Evil
+      const baseAoeDamage = Math.round((13000 + Math.random() * 3000) * totalBossAtkMult);
+      let evadesCount = 0;
+      enemyPhase.actionName = 'NOBLE PHANTASM: The Shadow — All the World’s Evil';
+      enemyPhase.actionTarget = 'ALL Servants';
+
+      state.participants.forEach(p => {
+        if (!p.isDead) {
+          const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge' || b.type === 'evade' || b.type === 'invincible') : -1;
+          if (evIdx >= 0 && p.activeBuffs) {
+            const bType = p.activeBuffs[evIdx].type;
+            p.activeBuffs.splice(evIdx, 1);
+            evadesCount++;
+            const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+            if (bType === 'anti_purge_defense' || bType === 'anti_purge') {
+              enemyPhase.specialEvents.push(`👑 **${pName}** completely BLOCKED The Shadow with Anti-Purge Defense!`);
+            } else {
+              enemyPhase.specialEvents.push(`🛡️ **${pName}** completely EVADED The Shadow!`);
+            }
+            return;
+          }
+
+          const dmgCut = p.activeBuffs?.filter(b => b.type === 'damage_cut').reduce((acc, b) => acc + b.value, 0) || 0;
+          const defDown = p.activeBuffs?.filter(b => b.type === 'def_down').reduce((acc, b) => acc + b.value, 0) || 0;
+          const defUp = p.activeBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0;
+          const defFactor = Math.max(0.4, 1 + (defDown - defUp) / 100);
+
+          const finalAoe = Math.max(1500, Math.round((baseAoeDamage * defFactor) - dmgCut));
+          enemyPhase.strikeDamage += finalAoe;
+
+          const res = applyDamageToRaidParticipant(p, finalAoe, state);
+          if (res.gutsLog) {
+            enemyPhase.specialEvents.push(res.gutsLog);
+          }
+
+          p.npGauge = Math.max(0, (p.npGauge || 0) - 20);
+          p.activeBuffs = p.activeBuffs || [];
+          p.activeBuffs.push({
+            name: 'Corrupted Grail Curse',
+            type: 'curse',
+            value: 2000,
+            remainingTurns: 3
+          });
+        }
+      });
+
+      const evadeNotice = evadesCount > 0 ? ` 🛡️ (${evadesCount} Servant(s) EVADED!)` : '';
+      state.recentLogs.push(
+        `💥 **NOBLE PHANTASM: THE SHADOW — ALL THE WORLD'S EVIL!** Dark Sakura unleashes abyssal jaws for **${baseAoeDamage.toLocaleString()} AoE DMG**, draining 20% NP & inflicting Corrupted Grail Curse!${evadeNotice}`
+      );
     } else {
       // Barbatos NP: Incineration Ritual — Barbatos Calamity
       const baseAoeDamage = Math.round((14500 + Math.random() * 3000) * totalBossAtkMult);
@@ -3428,7 +3713,12 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
     const shuffled = [...livingParticipants].sort(() => 0.5 - Math.random());
     const hitTargetNames: string[] = [];
 
-    enemyPhase.actionName = isPhase3Beast ? 'Authority of the Beast (Double Cleave)' : `${state.boss.name} Strike`;
+    const isDarkSakura = state.boss.id === 'dark_sakura';
+    enemyPhase.actionName = isDarkSakura
+      ? 'Corrupted Ribbon Flurry'
+      : isPhase3Beast
+      ? 'Authority of the Beast (Double Cleave)'
+      : `${state.boss.name} Strike`;
 
     for (let i = 0; i < Math.min(targetsToHit, shuffled.length); i++) {
       const target = shuffled[i];
@@ -3465,7 +3755,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       const finalDmg = Math.max(800, Math.round((baseSingle * defFactor) - dmgCut));
       enemyPhase.strikeDamage += finalDmg;
 
-      const attackLabel = isPhase3Beast ? 'swept' : 'struck';
+      const attackLabel = isDarkSakura ? 'pierced' : isPhase3Beast ? 'swept' : 'struck';
       state.recentLogs.push(
         `👁️ ${state.boss.name} ${attackLabel} **${tName}** for **${finalDmg.toLocaleString()} DMG**!${isPhase3Beast ? ' ⚡ **[CRITICAL CLEAVE]**' : ''}`
       );
@@ -3475,6 +3765,23 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       }
     }
     enemyPhase.actionTarget = hitTargetNames.join(', ');
+
+    // Dark Sakura Mid-Battle HP Reactive Dialogue (Player Servant Low HP <= 25%)
+    if (isDarkSakura) {
+      const host = state.participants[0];
+      const hostRecord = getDarkSakuraRecord(host.master);
+      livingParticipants.forEach(p => {
+        if (!p.isDead && (p.currentHp / p.maxHp) <= 0.25) {
+          const servName = p.servant.nickname || p.servant.template?.name || 'Servant';
+          const quoteRes = getDarkSakuraHpReactiveQuote('player_low_hp', hostRecord, servName);
+          if (quoteRes.quote) {
+            state.bossDialogueNotice = `🌸 **Dark Sakura:** ${quoteRes.quote}`;
+            state.recentLogs.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
+            state.fullCombatLog?.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
+          }
+        }
+      });
+    }
   }
 
   // 4. End-of-round Curse ticks on living participants
@@ -3586,6 +3893,19 @@ function applyDamageToRaidParticipant(
       p.isDead = false;
       p.gutsTriggeredThisTurn = true;
 
+      // Dark Sakura Mid-Battle Guts reactive dialogue
+      if (state.boss.id === 'dark_sakura' && !state.triggeredGutsDialogue) {
+        state.triggeredGutsDialogue = true;
+        const host = state.participants[0];
+        const hostRecord = getDarkSakuraRecord(host.master);
+        const quoteRes = getDarkSakuraHpReactiveQuote('guts_survived', hostRecord, pName);
+        if (quoteRes.quote) {
+          state.bossDialogueNotice = `🌸 **Dark Sakura:** ${quoteRes.quote}`;
+          state.recentLogs.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
+          state.fullCombatLog?.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
+        }
+      }
+
       // Check for On-Guts Buster buff (Indomitable A)
       const onGutsIdx = p.activeBuffs.findIndex(b => b.type === 'on_guts_buster');
       if (onGutsIdx !== -1) {
@@ -3601,6 +3921,21 @@ function applyDamageToRaidParticipant(
 
       return { wasFatal: false, gutsTriggered: true, gutsLog: gutsMsg };
     } else {
+      // Dark Sakura Shadow Hesitation (Pity Mechanism for Tier 3+ Masters)
+      if (state.boss.id === 'dark_sakura') {
+        const host = state.participants[0];
+        const hostRecord = getDarkSakuraRecord(host.master);
+        const tier = getDarkSakuraTier(hostRecord);
+        if (tier >= 3 && !(p as any).darkSakuraMercyUsed) {
+          (p as any).darkSakuraMercyUsed = true;
+          p.currentHp = 1;
+          p.isDead = false;
+          const pityMsg = `🌸 **[SHADOW HESITATION]** Dark Sakura stayed her hand at the last moment! *“...Tch. Don't look at me with those dying eyes. Get back up!”*`;
+          state.recentLogs.push(pityMsg);
+          state.bossDialogueNotice = `🌸 **Dark Sakura:** *“...Tch. Don’t look at me with those dying eyes, ${pName}. Get back on your feet and finish your turn...!”*`;
+          return { wasFatal: false, gutsTriggered: true, gutsLog: pityMsg };
+        }
+      }
       p.currentHp = 0;
       p.isDead = true;
       return { wasFatal: true, gutsTriggered: false };
@@ -3614,6 +3949,11 @@ async function concludeRaidVictory(
   boss: RaidBossConfig,
   battleState: RaidBattleState
 ) {
+  if (boss.id === 'dark_sakura') {
+    await handleDarkSakuraClimax(battleMsg, boss, battleState);
+    return;
+  }
+
   const participants = battleState.participants;
   const sqReward = Math.floor(boss.drops.minSq + Math.random() * (boss.drops.maxSq - boss.drops.minSq + 1));
   const servantExpReward = boss.drops.servantExp || 25_000;

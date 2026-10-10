@@ -507,6 +507,7 @@ export interface RaidParticipantState {
   totalDamageDealt?: number;
   totalDamageTaken?: number;
   gutsTriggeredThisTurn?: boolean;
+  bondLevel?: number;
 }
 
 export interface RaidBattleState {
@@ -599,6 +600,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   if (bossSpriteImg) {
     ctx.save();
     const isTiamat = state.boss.id === 'tiamat' || state.boss.name.toLowerCase().includes('tiamat');
+    const isDarkSakura = state.boss.id === 'dark_sakura' || state.boss.name.toLowerCase().includes('dark sakura');
     const phase = state.currentPhase || 1;
 
     if (isTiamat) {
@@ -639,6 +641,31 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
         ctx.drawImage(bossSpriteImg, destX, destY, destW, destH);
       }
+    } else if (isDarkSakura) {
+      // Dark Sakura Sprite Rendering
+      const naturalW = bossSpriteImg.naturalWidth || bossSpriteImg.width || 400;
+      const naturalH = bossSpriteImg.naturalHeight || bossSpriteImg.height || 500;
+      const intrinsicAspect = naturalW / naturalH;
+
+      const destH = 540;
+      const destW = Math.round(destH * intrinsicAspect);
+      const destX = 80;
+      const destY = 85;
+
+      // Deep corrupted shadow pool beneath her feet
+      ctx.beginPath();
+      ctx.ellipse(destX + destW * 0.5, destY + destH - 14, destW * 0.45, 20, 0, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(15, 0, 25, 0.85)';
+      ctx.fill();
+
+      // Soft crimson shadow rim
+      ctx.beginPath();
+      ctx.ellipse(destX + destW * 0.5, destY + destH - 14, destW * 0.48, 22, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(225, 29, 72, 0.35)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.drawImage(bossSpriteImg, destX, destY, destW, destH);
     } else {
       // Default Barbatos Sprite
       const sx = 10;
@@ -672,11 +699,13 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   // ==========================================
 
   const isTiamat = state.boss.id === 'tiamat' || state.boss.name.toLowerCase().includes('tiamat');
+  const isDarkSakura = state.boss.id === 'dark_sakura' || state.boss.name.toLowerCase().includes('dark sakura');
+  const hasPhases = isTiamat || isDarkSakura || Boolean(state.boss.phases && state.boss.phases.length > 1);
   const phase = state.currentPhase || 1;
 
-  // 1. Top-Left Boss Status HUD (Anchor X: 30, Y: 30 for Tiamat / Y: 24 default)
+  // 1. Top-Left Boss Status HUD (Anchor X: 30, Y: 30 for multi-phase / Y: 24 default)
   const bossHudX = 30;
-  const bossHudY = isTiamat ? 30 : 24;
+  const bossHudY = hasPhases ? 30 : 24;
   const avatarSize = 68;
 
   ctx.save();
@@ -685,8 +714,8 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.drawImage(bossClassIconImg, bossHudX, bossHudY, avatarSize, avatarSize);
   } else {
     // Fallback Diamond Box
-    const bgFill = state.boss.servantClass === 'Beast' ? '#4a044e' : '#1e1b4b';
-    const borderCol = state.boss.servantClass === 'Beast' ? '#f59e0b' : '#d4af37';
+    const bgFill = state.boss.servantClass === 'Beast' ? '#4a044e' : isDarkSakura ? '#3b0764' : '#1e1b4b';
+    const borderCol = state.boss.servantClass === 'Beast' ? '#f59e0b' : isDarkSakura ? '#e11d48' : '#d4af37';
     drawDiamond(ctx, bossHudX + avatarSize / 2, bossHudY + avatarSize / 2 + 2, avatarSize + 4, bgFill, borderCol, 2);
     if (bossAvatarImg) {
       ctx.save();
@@ -699,8 +728,8 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   }
 
   // Boss Class Tag below Diamond
-  const bossClassStr = String(state.boss?.servantClass || (state.boss as any)?.class || 'Beast');
-  ctx.fillStyle = bossClassStr === 'Beast' ? '#f43f5e' : '#fbbf24';
+  const bossClassStr = String(state.boss?.servantClass || (state.boss as any)?.class || 'Avenger');
+  ctx.fillStyle = bossClassStr === 'Beast' ? '#f43f5e' : isDarkSakura ? '#fb7185' : '#fbbf24';
   ctx.font = 'bold 14px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(bossClassStr.toUpperCase(), bossHudX + avatarSize / 2, bossHudY + avatarSize + 18);
@@ -710,15 +739,17 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.textAlign = 'left';
   ctx.fillStyle = '#fbbf24';
   ctx.font = 'bold 15px sans-serif';
-  const bossTitle = (isTiamat && state.boss.phases && state.boss.phases[phase - 1]?.title)
+  const bossTitle = (state.boss.phases && state.boss.phases[phase - 1]?.title)
     ? state.boss.phases[phase - 1].title
     : state.boss.title;
   ctx.fillText(`Lv.${state.boss.level} ${bossTitle}`, textStartX, bossHudY + 14);
 
-  // Dynamic Boss Name: "Tiamat" -> "Tiamat (Titan)" -> "Beast II / Tiamat"
+  // Dynamic Boss Name
   let dynamicBossName = state.boss.name;
   if (isTiamat) {
     dynamicBossName = phase === 1 ? 'Tiamat' : phase === 2 ? 'Tiamat (Titan)' : 'Beast II / Tiamat';
+  } else if (isDarkSakura) {
+    dynamicBossName = phase === 1 ? 'Dark Sakura' : 'Dark Sakura (Black Grail)';
   }
 
   ctx.fillStyle = '#ffffff';
@@ -728,16 +759,22 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.fillText(dynamicBossName, textStartX, bossHudY + 44);
   ctx.shadowBlur = 0;
 
-  // Boss HP Bar: Width: 380px, Height: 18px for Tiamat (460x26 for Barbatos)
-  const bossHpW = isTiamat ? 380 : 460;
-  const bossHpH = isTiamat ? 18 : 26;
+  // Boss HP Bar: Width: 380px, Height: 18px for multi-phase (460x26 for Barbatos)
+  const bossHpW = hasPhases ? 380 : 460;
+  const bossHpH = hasPhases ? 18 : 26;
   const bossHpX = textStartX;
-  const bossHpY = isTiamat ? bossHudY + 54 : bossHudY + 52;
+  const bossHpY = hasPhases ? bossHudY + 54 : bossHudY + 52;
 
   const bossHpGrad = ctx.createLinearGradient(bossHpX, 0, bossHpX + bossHpW, 0);
-  bossHpGrad.addColorStop(0, '#9333ea');
-  bossHpGrad.addColorStop(0.5, '#db2777');
-  bossHpGrad.addColorStop(1, '#ef4444');
+  if (isDarkSakura) {
+    bossHpGrad.addColorStop(0, '#831843');
+    bossHpGrad.addColorStop(0.5, '#e11d48');
+    bossHpGrad.addColorStop(1, '#fda4af');
+  } else {
+    bossHpGrad.addColorStop(0, '#9333ea');
+    bossHpGrad.addColorStop(0.5, '#db2777');
+    bossHpGrad.addColorStop(1, '#ef4444');
+  }
 
   const curHp = state.bossCurrentHp !== undefined ? state.bossCurrentHp : ((state.boss as any)?.currentHp || 0);
   const maxHp = state.bossMaxHp !== undefined ? state.bossMaxHp : ((state.boss as any)?.maxHp || (state.boss as any)?.baseHp || 1);
@@ -746,7 +783,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
   // HP Numbers on Boss HP Bar
   ctx.fillStyle = '#ffffff';
-  ctx.font = isTiamat ? 'bold 13px sans-serif' : 'bold 15px sans-serif';
+  ctx.font = hasPhases ? 'bold 13px sans-serif' : 'bold 15px sans-serif';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   ctx.fillText(
@@ -755,17 +792,19 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     bossHpY + bossHpH / 2 + 1
   );
 
-  // Break Gauge: 2 purple diamond markers beside the HP bar indicating remaining phases
-  if (isTiamat || (state.totalPhases && state.totalPhases > 1)) {
-    const breakRemaining = state.breakGaugesRemaining !== undefined ? state.breakGaugesRemaining : (3 - phase);
+  // Break Gauge: Diamond markers beside the HP bar indicating remaining phases
+  if (hasPhases) {
+    const totalBossPhases = state.totalPhases || state.boss.totalPhases || (state.boss.phases ? state.boss.phases.length : 1);
+    const totalBreakGauges = Math.max(1, totalBossPhases - 1);
+    const breakRemaining = state.breakGaugesRemaining !== undefined ? state.breakGaugesRemaining : (totalBossPhases - phase);
     const breakStartX = bossHpX + bossHpW + 16;
     const breakCy = bossHpY + bossHpH / 2;
 
-    for (let bg = 0; bg < 2; bg++) {
+    for (let bg = 0; bg < totalBreakGauges; bg++) {
       const bgCx = breakStartX + bg * 22;
       const isPhaseIntact = bg < breakRemaining;
 
-      const fill = isPhaseIntact ? '#c084fc' : 'rgba(59, 7, 100, 0.4)';
+      const fill = isPhaseIntact ? (isDarkSakura ? '#f43f5e' : '#c084fc') : 'rgba(59, 7, 100, 0.4)';
       const stroke = isPhaseIntact ? '#ffffff' : '#475569';
       drawDiamond(ctx, bgCx, breakCy, 16, fill, stroke, 1.5);
 
@@ -780,12 +819,12 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   }
 
   // Boss NP / Charge Gauge (diamonds directly below HP bar)
-  const maxChargePips = (isTiamat && state.boss.phases && state.boss.phases[phase - 1])
+  const maxChargePips = (state.boss.phases && state.boss.phases[phase - 1])
     ? state.boss.phases[phase - 1].maxCharge
     : state.boss.maxCharge;
 
   const chargeStartX = bossHpX;
-  const chargeStartY = isTiamat ? bossHpY + 26 : bossHpY + 34;
+  const chargeStartY = hasPhases ? bossHpY + 26 : bossHpY + 34;
   ctx.fillStyle = '#cbd5e1';
   ctx.font = 'bold 14px sans-serif';
   ctx.textAlign = 'left';

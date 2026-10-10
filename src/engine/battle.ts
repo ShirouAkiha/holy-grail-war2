@@ -136,7 +136,7 @@ export function createCombatantFromMasterServant(
   // Starting NP bonus from Craft Essence (e.g. Starting NP +50% / +80%)
   let initialNp = 0;
   if (ce && ce.passiveType === 'starting_np') {
-    initialNp = ce.passiveValue;
+    initialNp = ce.passiveValue || 0;
   }
 
   const startingHp = overrideCurrentHp !== undefined && overrideCurrentHp > 0
