@@ -17,14 +17,14 @@ export const DEFAULT_SERVANT_SPRITE_CONFIGS: Record<string, ServantSpriteConfig>
   lucia_lyozes: {
     servantId: 'lucia_lyozes',
     servantName: 'Lucernalia Lyozes',
-    vnScale: 0.84,
-    vnOffsetY: 30,
+    vnScale: 0.65,
+    vnOffsetY: 40,
     vnOffsetX: 0,
-    combatScale: 0.86,
-    combatOffsetY: 10,
+    combatScale: 0.68,
+    combatOffsetY: 35,
     combatOffsetX: 0,
-    raidScale: 0.88,
-    raidOffsetY: 10,
+    raidScale: 0.70,
+    raidOffsetY: 50,
     raidOffsetX: 0
   },
   luvria_greenharte: {

@@ -289,7 +289,7 @@ function DiscordVNCard({
           <div
             className="absolute right-6 sm:right-12 bottom-0 h-[85%] max-w-[45%] z-10 flex items-end"
             style={{
-              transform: `scale(${vnScale}) translate(${vnOffsetX}px, ${vnOffsetY}px)`,
+              transform: `translate(${vnOffsetX}px, ${vnOffsetY}px) scale(${vnScale})`,
               transformOrigin: 'bottom center'
             }}
           >

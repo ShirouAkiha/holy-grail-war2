@@ -250,7 +250,7 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
               <div
                 className="absolute bottom-[100px] sm:bottom-[120px] right-[4%] sm:right-[8%] md:right-[12%] h-[65%] sm:h-[75%] md:h-[82%] max-h-[720px] z-10 pointer-events-none flex items-end justify-center"
                 style={{
-                  transform: `scale(${vnScale}) translate(${vnOffsetX}px, ${vnOffsetY}px)`,
+                  transform: `translate(${vnOffsetX}px, ${vnOffsetY}px) scale(${vnScale})`,
                   transformOrigin: 'bottom center'
                 }}
               >
