@@ -15,7 +15,6 @@ import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
 import { getStatusIconUrl, STATUS_ICON_URLS } from '../data/statusIcons';
 import { getClassIconUrl, CLASS_ICON_URLS } from '../data/classIcons';
-import { getServantSpriteConfig } from '../utils/spriteConfig';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -3347,13 +3346,13 @@ function drawHoveringAttacker(
   ctx.clip();
 
   if (portraitImg) {
-    const cfg = getServantSpriteConfig(servantName);
-    const scale = cfg.combatScale || 1.0;
-    const offY = cfg.combatOffsetY || 0;
-    const offX = cfg.combatOffsetX || 0;
+    const isLucia = servantName.toLowerCase().includes('lucia') || servantName.toLowerCase().includes('lucernalia');
+    const scale = isLucia ? 0.68 : 0.94;
+    const offY = isLucia ? 35 : 0;
+    const offX = 0;
 
-    const cW = Math.round(spriteW * 0.94 * scale);
-    const cH = Math.round(spriteH * 0.94 * scale);
+    const cW = Math.round(spriteW * scale);
+    const cH = Math.round(spriteH * scale);
     const cX = spriteX + Math.round((spriteW - cW) / 2) + offX;
     const cY = spriteY + (spriteH - cH) + offY;
     drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
@@ -3445,13 +3444,13 @@ function drawHoveringDefender(
   ctx.clip();
 
   if (defenderImg) {
-    const cfg = getServantSpriteConfig(defenderName);
-    const scale = cfg.combatScale || 1.0;
-    const offY = cfg.combatOffsetY || 0;
-    const offX = cfg.combatOffsetX || 0;
+    const isLuciaDef = defenderName.toLowerCase().includes('lucia') || defenderName.toLowerCase().includes('lucernalia');
+    const scale = isLuciaDef ? 0.68 : 0.94;
+    const offY = isLuciaDef ? 35 : 0;
+    const offX = 0;
 
-    const cW = Math.round(spriteW * 0.94 * scale);
-    const cH = Math.round(spriteH * 0.94 * scale);
+    const cW = Math.round(spriteW * scale);
+    const cH = Math.round(spriteH * scale);
     const cX = spriteX + Math.round((spriteW - cW) / 2) + offX;
     const cY = spriteY + (spriteH - cH) + offY;
     drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
