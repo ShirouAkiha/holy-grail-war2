@@ -1000,6 +1000,56 @@ export function checkAndGrantBond10Ce(
 // Append all Bond CEs into the global database so they are recognized across the app
 CRAFT_ESSENCE_DATABASE.push(...Object.values(BOND_CRAFT_ESSENCES));
 
+export const EXP_EMBER_TEMPLATES: CraftEssence[] = [
+  {
+    id: 'ce_ember_ssr',
+    name: 'Blaze of Wisdom (★5 SSR)',
+    rarity: 5,
+    description: 'A crystallized pinnacle of heroic experience. Bestows +10,000 EXP when synthesized.',
+    bonusAtk: 500,
+    bonusDef: 0,
+    bonusHp: 500,
+    atkBonus: 500,
+    hpBonus: 500,
+    effectText: 'Universal EXP Relic: +10,000 Synthesis EXP',
+    expValue: 10000,
+    isEmber: true,
+    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'ce_ember_sr',
+    name: 'Blaze of Wisdom (★4 SR)',
+    rarity: 4,
+    description: 'A concentrated crystal of saint graph energy. Bestows +3,000 EXP when synthesized.',
+    bonusAtk: 300,
+    bonusDef: 0,
+    bonusHp: 300,
+    atkBonus: 300,
+    hpBonus: 300,
+    effectText: 'Universal EXP Relic: +3,000 Synthesis EXP',
+    expValue: 3000,
+    isEmber: true,
+    artworkUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'ce_ember_r',
+    name: 'Spark of Wisdom (★3 R)',
+    rarity: 3,
+    description: 'A luminous fragment of mana. Bestows +1,000 EXP when synthesized.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'Universal EXP Relic: +1,000 Synthesis EXP',
+    expValue: 1000,
+    isEmber: true,
+    artworkUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80'
+  }
+];
+
+CRAFT_ESSENCE_DATABASE.push(...EXP_EMBER_TEMPLATES);
+
 export const CE_GACHA_BANNERS: GachaBanner[] = [
   {
     id: 'ce_banner_fuyuki_relics',

@@ -3,14 +3,13 @@ const path = require('path');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const MASTERS_FILE = path.join(DATA_DIR, 'masters.json');
-const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 
 console.log('=====================================================');
-console.log('[Emergency Restore] Restoring Padoru River Team Roster');
+console.log('[Recovery Engine] Restoring Master Profile 780278575860678676');
 console.log('=====================================================');
 
 if (!fs.existsSync(MASTERS_FILE)) {
-  console.error('masters.json not found in data directory.');
+  console.error('❌ masters.json not found in data directory.');
   process.exit(1);
 }
 
@@ -18,26 +17,25 @@ let masters = [];
 try {
   masters = JSON.parse(fs.readFileSync(MASTERS_FILE, 'utf-8'));
 } catch (err) {
-  console.error('Failed to parse masters.json:', err);
+  console.error('❌ Failed to parse masters.json:', err);
   process.exit(1);
 }
 
-// Find existing Padoru profile or the first non-bot profile, or create one
-let padoru = masters.find(m => 
-  (m.username && m.username.toLowerCase().includes('padoru')) ||
-  (m.discordId && m.discordId.toLowerCase().includes('padoru'))
+// Find user 780278575860678676 or Padoru River or first non-bot profile
+let target = masters.find(m => 
+  String(m.discordId) === '780278575860678676' ||
+  (m.username && m.username.toLowerCase().includes('padoru'))
 );
 
-if (!padoru) {
-  // Check if there is any real discord user (id doesn't start with master_)
-  padoru = masters.find(m => !String(m.discordId).startsWith('master_'));
+if (!target) {
+  target = masters.find(m => !String(m.discordId).startsWith('master_'));
 }
 
-if (!padoru) {
-  console.log('No user profile found yet. Creating Padoru River master profile...');
-  padoru = {
-    id: `master_padoru_river`,
-    discordId: `padoru_river`,
+if (!target) {
+  console.log('Creating profile for Discord ID 780278575860678676...');
+  target = {
+    id: 'master_780278575860678676',
+    discordId: '780278575860678676',
     username: 'Padoru River',
     saintQuartz: 300,
     summonTickets: 10,
@@ -53,12 +51,11 @@ if (!padoru) {
     servants: [],
     craftEssences: []
   };
-  masters.push(padoru);
+  masters.push(target);
 }
 
-console.log(`Found Master Profile: "${padoru.username}" (ID: ${padoru.discordId})`);
+console.log(`Found target Master profile: "${target.username}" (ID: ${target.discordId})`);
 
-// 1. Ensure Bond CE for Lucia is present and equipped
 const doorCe = {
   id: 'ce_bond_lucia_lyozes',
   name: 'The Closed Door Insignia',
@@ -73,14 +70,13 @@ const doorCe = {
   effectText: 'When equipped to Lucernalia Lyozes: Increases Critical Damage by 30% and Critical Star Gather Rate by 30% for all allies.'
 };
 
-if (!padoru.craftEssences) padoru.craftEssences = [];
-let existingCe = padoru.craftEssences.find(c => c.id === doorCe.id);
+if (!target.craftEssences) target.craftEssences = [];
+let existingCe = target.craftEssences.find((c) => c.id === doorCe.id);
 if (!existingCe) {
-  padoru.craftEssences.push(doorCe);
+  target.craftEssences.push(doorCe);
   existingCe = doorCe;
 }
 
-// 2. Define the exact 6 servants
 const roster = [
   {
     id: 'lucia_lyozes',
@@ -140,16 +136,16 @@ const roster = [
   }
 ];
 
-if (!padoru.servants) padoru.servants = [];
+if (!target.servants) target.servants = [];
 
 roster.forEach(item => {
-  const existingIdx = padoru.servants.findIndex(s => 
+  const existingIdx = target.servants.findIndex(s => 
     s.templateId === item.id || s.id === item.id || s.template?.id === item.id
   );
 
   const servantInst = {
-    id: `contract_${item.id}_${padoru.discordId}`,
-    masterId: padoru.id,
+    id: `contract_${item.id}_${target.discordId}`,
+    masterId: target.id,
     templateId: item.id,
     level: 90,
     experience: 50000,
@@ -173,30 +169,24 @@ roster.forEach(item => {
   };
 
   if (existingIdx !== -1) {
-    padoru.servants[existingIdx] = servantInst;
+    target.servants[existingIdx] = servantInst;
   } else {
-    padoru.servants.push(servantInst);
+    target.servants.push(servantInst);
   }
 
   if (item.active) {
-    padoru.activeServantId = servantInst.id;
+    target.activeServantId = servantInst.id;
   }
 });
 
-padoru.saintQuartz = Math.max(padoru.saintQuartz || 0, 300);
-padoru.commandSeals = 3;
+target.saintQuartz = Math.max(target.saintQuartz || 0, 300);
+target.commandSeals = 3;
 
 fs.writeFileSync(MASTERS_FILE, JSON.stringify(masters, null, 2), 'utf-8');
-const backupPath = path.join(BACKUPS_DIR, 'masters.latest.json');
-try {
-  fs.writeFileSync(backupPath, JSON.stringify(masters, null, 2), 'utf-8');
-} catch {}
 
 console.log(`\n=====================================================`);
-console.log(`SUCCESS! Restored ${padoru.servants.length} Servants for ${padoru.username}:`);
-padoru.servants.forEach(s => {
+console.log(`SUCCESS! Restored ${target.servants.length} Servants for ${target.username} (ID: ${target.discordId}):`);
+target.servants.forEach(s => {
   console.log(` - ${s.template?.name || s.name} [Bond Lv. ${s.bondLevel}/10] ${s.equippedCe ? `(Equipped CE: ${s.equippedCe.name})` : ''}`);
 });
-console.log(`Active Servant: Lucernalia Lyozes`);
-console.log(`Saint Quartz: ${padoru.saintQuartz} SQ | Command Seals: 3`);
 console.log(`=====================================================\n`);

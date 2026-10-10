@@ -34,6 +34,7 @@ import {
   removeCurrencyFromMaster,
   setMasterStat,
   giveCraftEssenceToMaster,
+  giveExpEmbersToMaster,
   removeCraftEssenceFromMaster,
   giveServantToMaster,
   removeServantFromMaster,
@@ -276,6 +277,9 @@ export const data = new SlashCommandBuilder()
             { name: '💎 Saint Quartz (SQ)', value: 'sq' },
             { name: '🎫 Summon Tickets', value: 'tickets' },
             { name: '🔱 Command Seals', value: 'seals' },
+            { name: '🔥 EXP Embers (★5 SSR Blaze of Wisdom)', value: 'embers' },
+            { name: '🔥 EXP Embers (★4 SR Blaze of Wisdom)', value: 'embers_sr' },
+            { name: '🔥 EXP Embers (★3 R Spark of Wisdom)', value: 'embers_r' },
             { name: '⚡ Stat Points (for active Servant)', value: 'stat_points' },
             { name: '🧬 Homunculus Helpers', value: 'homunculi' },
             { name: '⚡ Action Points (AP)', value: 'ap' },
@@ -317,6 +321,8 @@ export const data = new SlashCommandBuilder()
             { name: '💎 Saint Quartz (SQ)', value: 'sq' },
             { name: '🎫 Summon Tickets', value: 'tickets' },
             { name: '🔱 Command Seals', value: 'seals' },
+            { name: '🔥 EXP Embers', value: 'embers' },
+            { name: '🔥 Wipe ALL EXP Embers', value: 'all_embers' },
             { name: '⚡ Stat Points', value: 'stat_points' },
             { name: '🧬 Homunculus Helpers', value: 'homunculi' },
             { name: '⚡ Action Points (AP)', value: 'ap' },
@@ -612,6 +618,17 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
     if (focusedOption.name === 'name') {
       const itemType = interaction.options.getString('item') || interaction.options.getString('action');
 
+      if (itemType === 'embers' || itemType === 'exp_embers' || itemType === 'embers_sr' || itemType === 'embers_r') {
+        const emberOptions = [
+          { name: '🔥 [★5 SSR] Blaze of Wisdom (+10,000 EXP)', value: 'Blaze of Wisdom (★5 SSR)' },
+          { name: '🔥 [★4 SR] Blaze of Wisdom (+3,000 EXP)', value: 'Blaze of Wisdom (★4 SR)' },
+          { name: '🔥 [★3 R] Spark of Wisdom (+1,000 EXP)', value: 'Spark of Wisdom (★3 R)' }
+        ];
+        const filtered = emberOptions.filter(o => o.name.toLowerCase().includes(query) || o.value.toLowerCase().includes(query));
+        await interaction.respond(filtered.slice(0, 25));
+        return;
+      }
+
       if (itemType === 'ce' || itemType === 'give_ce' || itemType === 'remove_ce') {
         const ceMatches = allCes
           .filter(c => c.name.toLowerCase().includes(query) || c.id.toLowerCase().includes(query))
@@ -716,6 +733,28 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     await getOrCreateMaster(targetUser.id, targetUser.username);
 
+    if (itemType === 'embers' || itemType === 'exp_embers' || itemType === 'embers_sr' || itemType === 'embers_r') {
+      let rarity: 5 | 4 | 3 = 5;
+      if (itemType === 'embers_sr' || itemName?.includes('4') || itemName?.toLowerCase().includes('sr')) {
+        rarity = 4;
+      } else if (itemType === 'embers_r' || itemName?.includes('3') || itemName?.toLowerCase().includes('r')) {
+        rarity = 3;
+      }
+      const emberAmount = rawAmount !== null ? rawAmount : 10;
+      const res = await giveExpEmbersToMaster(targetUser.id, emberAmount, rarity);
+      const embed = new EmbedBuilder()
+        .setTitle('🔥 EXP EMBER BESTOWAL')
+        .setDescription(res.message)
+        .addFields(
+          { name: '✨ Enhancement Tip', value: 'The recipient can feed these Embers to their Servant using `/feed` to gain levels and +10 Stat Points per level!' }
+        )
+        .setColor(res.success ? 0xff6b00 : 0xef4444)
+        .setFooter({ text: `Authorized by Overseer ${interaction.user.username}` });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
     if (itemType === 'ce') {
       if (!itemName) {
         await interaction.reply({
@@ -777,6 +816,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const itemName = interaction.options.getString('name')?.trim();
 
     await getOrCreateMaster(targetUser.id, targetUser.username);
+
+    if (itemType === 'all_embers' || itemType === 'embers') {
+      const res = await removeCraftEssenceFromMaster(targetUser.id, itemType, rawAmount || 1);
+      const embed = new EmbedBuilder()
+        .setTitle('🔥 EXP EMBER REMOVAL')
+        .setDescription(res.message)
+        .setColor(res.success ? 0xf59e0b : 0xef4444)
+        .setFooter({ text: `Authorized by Overseer ${interaction.user.username}` });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
 
     if (itemType === 'all_ces') {
       const res = await removeCraftEssenceFromMaster(targetUser.id, 'all', 1, true);

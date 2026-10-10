@@ -793,6 +793,23 @@ function saveMastersToDisk() {
       };
     });
     writeJsonAtomic(MASTERS_FILE, mastersList, 'masters');
+
+    // Maintain a rolling history in data/backups/history/ (up to 10 latest snapshots)
+    try {
+      const historyDir = path.join(BACKUPS_DIR, 'history');
+      if (!fs.existsSync(historyDir)) fs.mkdirSync(historyDir, { recursive: true });
+      const nowStr = new Date().toISOString().replace(/[:.]/g, '-');
+      const histFile = path.join(historyDir, `masters_${nowStr}.json`);
+      fs.writeFileSync(histFile, JSON.stringify(mastersList, null, 2), 'utf-8');
+
+      const allHist = fs.readdirSync(historyDir)
+        .filter(f => f.startsWith('masters_') && f.endsWith('.json'))
+        .sort();
+      while (allHist.length > 10) {
+        const oldest = allHist.shift();
+        if (oldest) fs.unlinkSync(path.join(historyDir, oldest));
+      }
+    } catch {}
   } catch (err) {
     console.error('[Database] Failed to write masters.json to disk:', err);
   }
@@ -2133,8 +2150,16 @@ export async function giveCurrencyToMaster(
     master.actionPoints = Math.min(master.maxActionPoints || 100, (master.actionPoints || 0) + safeAmount);
     newAmount = master.actionPoints;
     label = `${safeAmount} Action Points (⚡ Total: ${newAmount}/${master.maxActionPoints || 100})`;
+  } else if (t === 'embers' || t === 'exp_embers' || t === 'ember' || t === 'exp') {
+    const res = await giveExpEmbersToMaster(discordId, safeAmount, 5);
+    return {
+      success: res.success,
+      message: res.message,
+      master: res.master,
+      newAmount: res.countAdded
+    };
   } else {
-    return { success: false, message: `Unknown currency/item type: \`${type}\`. Supported: \`sq\`, \`qp\`, \`tickets\`, \`seals\`, \`mana_prisms\`, \`grail_shards\`, \`stat_points\`, \`homunculi\`, \`ap\`.`, master, newAmount: 0 };
+    return { success: false, message: `Unknown currency/item type: \`${type}\`. Supported: \`sq\`, \`qp\`, \`tickets\`, \`seals\`, \`mana_prisms\`, \`grail_shards\`, \`stat_points\`, \`homunculi\`, \`ap\`, \`embers\`.`, master, newAmount: 0 };
   }
 
   await saveMaster(master);
@@ -2350,8 +2375,23 @@ export async function giveCraftEssenceToMaster(
     return { success: false, message: `Master with Discord ID \`${discordId}\` not found.`, countAdded: 0, master: null };
   }
 
-  const allCes = getAllCraftEssences();
   const q = ceQuery.toLowerCase().trim();
+
+  // If query specifies EXP Embers, delegate to giveExpEmbersToMaster
+  if (q.includes('ember') || q.includes('blaze of wisdom') || q.includes('spark of wisdom')) {
+    let rarity: 5 | 4 | 3 = 5;
+    if (q.includes('4') || q.includes('sr')) rarity = 4;
+    else if (q.includes('3') || q.includes('r')) rarity = 3;
+    const res = await giveExpEmbersToMaster(discordId, count, rarity);
+    return {
+      success: res.success,
+      message: res.message,
+      countAdded: res.countAdded,
+      master: res.master
+    };
+  }
+
+  const allCes = getAllCraftEssences();
   const foundCe = allCes.find(c => c.id.toLowerCase() === q || c.name.toLowerCase() === q || c.name.toLowerCase().includes(q));
 
   if (!foundCe) {
@@ -2367,7 +2407,8 @@ export async function giveCraftEssenceToMaster(
     // Generate unique instance ID for each granted CE
     master.craftEssences.push({
       ...foundCe,
-      id: foundCe.id
+      id: foundCe.id,
+      instanceId: `ce_inst_${foundCe.id}_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 6)}`
     });
   }
 
@@ -2379,6 +2420,70 @@ export async function giveCraftEssenceToMaster(
     ce: foundCe,
     countAdded: safeCount,
     master
+  };
+}
+
+/**
+ * Grants EXP Embers (Blaze of Wisdom / Spark of Wisdom) directly to any Master's inventory.
+ */
+export async function giveExpEmbersToMaster(
+  discordId: string,
+  count: number = 10,
+  rarity: 5 | 4 | 3 = 5
+): Promise<{ success: boolean; message: string; master: MasterProfile | null; countAdded: number; totalExp: number }> {
+  const master = masterStore.get(discordId);
+  if (!master) {
+    return { success: false, message: `Master with Discord ID \`${discordId}\` not found.`, countAdded: 0, totalExp: 0, master: null };
+  }
+
+  const safeCount = Math.max(1, Math.min(500, Math.floor(count || 10)));
+  const safeRarity: 5 | 4 | 3 = (rarity === 3 || rarity === 4 || rarity === 5) ? rarity : 5;
+
+  if (!master.craftEssences) {
+    master.craftEssences = [];
+  }
+
+  let expPerEmber = 10000;
+  let emberName = 'Blaze of Wisdom (★5 SSR)';
+  if (safeRarity === 4) {
+    expPerEmber = 3000;
+    emberName = 'Blaze of Wisdom (★4 SR)';
+  } else if (safeRarity === 3) {
+    expPerEmber = 1000;
+    emberName = 'Spark of Wisdom (★3 R)';
+  }
+
+  const timestamp = Date.now();
+  for (let i = 0; i < safeCount; i++) {
+    master.craftEssences.push({
+      id: `ce_ember_${safeRarity === 5 ? 'ssr' : safeRarity === 4 ? 'sr' : 'r'}_${timestamp}_${i}_${Math.random().toString(36).substring(2, 6)}`,
+      name: emberName,
+      rarity: safeRarity,
+      atkBonus: safeRarity === 5 ? 500 : safeRarity === 4 ? 300 : 100,
+      hpBonus: safeRarity === 5 ? 500 : safeRarity === 4 ? 300 : 100,
+      expValue: expPerEmber,
+      description: `A crystallized pinnacle of heroic experience. Bestows +${expPerEmber.toLocaleString()} EXP when synthesized.`,
+      effectText: `Universal EXP Relic: +${expPerEmber.toLocaleString()} Synthesis EXP`,
+      cardArtUrl: safeRarity === 5
+        ? 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+        : safeRarity === 4
+        ? 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80'
+        : 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80',
+      isEmber: true,
+      locked: false,
+      instanceId: `ce_inst_ember_${safeRarity}_${timestamp}_${i}_${Math.random().toString(36).substring(2, 6)}`
+    });
+  }
+
+  await saveMaster(master);
+  const totalExp = safeCount * expPerEmber;
+
+  return {
+    success: true,
+    message: `Granted **${safeCount}x ${emberName}** (+${totalExp.toLocaleString()} Synthesis EXP total) to **${master.username}**'s inventory! (Total items owned: ${master.craftEssences.length})`,
+    master,
+    countAdded: safeCount,
+    totalExp
   };
 }
 
@@ -2419,6 +2524,34 @@ export async function removeCraftEssenceFromMaster(
   }
 
   const q = ceQuery.toLowerCase().trim();
+
+  // Special handler for removing EXP Embers
+  if (q === 'all_embers' || q === 'embers' || q === 'exp_embers') {
+    const prevCount = master.craftEssences.length;
+    let removed = 0;
+    if (q === 'all_embers') {
+      master.craftEssences = master.craftEssences.filter(c => !(c.isEmber || c.id?.includes('ember') || c.name?.includes('Wisdom')));
+      removed = prevCount - master.craftEssences.length;
+    } else {
+      const emberIndices: number[] = [];
+      master.craftEssences.forEach((c, idx) => {
+        if (c.isEmber || c.id?.includes('ember') || c.name?.includes('Wisdom')) {
+          emberIndices.push(idx);
+        }
+      });
+      const safeCount = Math.max(1, Math.floor(count || 1));
+      const toRemove = new Set(emberIndices.slice(0, safeCount));
+      master.craftEssences = master.craftEssences.filter((_, idx) => !toRemove.has(idx));
+      removed = toRemove.size;
+    }
+    await saveMaster(master);
+    return {
+      success: true,
+      message: `Removed **${removed}** EXP Embers from **${master.username}**'s inventory. (Remaining CEs/Embers: ${master.craftEssences.length})`,
+      countRemoved: removed,
+      master
+    };
+  }
   const matchingIndices: number[] = [];
 
   master.craftEssences.forEach((c, idx) => {
