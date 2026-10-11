@@ -389,14 +389,6 @@ export function generateDarkSakuraIntroDialogue(
         `"A fresh face in the dark... Fufu. Don't look at me with those pitying eyes, ${host.username}. I was insane from the very start."`
       ]);
       bannerQuote = 'Welcome to the bottom of the world... Don\'t drown in my shadows.';
-    } else if (isQuickRematch) {
-      dialogue = pickRandom([
-        `"Back so soon? You barely cleaned the mud off your boots. Are you that eager to see me again, ${host.username}?"`,
-        `"Returned already, ${host.username}? Did the shadow's chill linger on your skin, or could you not resist the smell of corrupted mana?"`,
-        `"You barely caught your breath before running right back into my cavern... Is this courage, ${host.username}, or an obsession with your own doom?"`,
-        `"Still lingering around my shadow, ${host.username}? Fufu... The mud hasn't even dried from our last encounter."`
-      ]);
-      bannerQuote = 'Back so soon? You barely cleaned the mud off your boots.';
     } else if (hostRecord.lastOutcome === 'spared_betrayed') {
       dialogue = pickRandom([
         `"In our last bout... the shadows swallowed you before you could pull away. Yet you step right back into my cavern without flinching. Are you courageous, or just an idiot, ${host.username}?"`,
@@ -410,7 +402,7 @@ export function generateDarkSakuraIntroDialogue(
         `"That's ${hostRecord.mercyStreak} consecutive bouts where you stayed your blade at the very end... When will you learn that monsters don't deserve fairy tales, ${host.username}?"`,
         `"${hostRecord.mercyStreak} times you offered mercy to a creature made of black mud... Are you trying to prove something to yourself, ${host.username}, or mock my despair?"`,
         `"You refuse to cut me down, even after ${hostRecord.mercyStreak} encounters... My shadows grow restless around you, ${host.username}, but why doesn't your hand tremble?"`,
-        `"Fufu... ${hostRecord.mercyStreak} times you held back your final blow. If my Senpai saw you now, would he call you kind, or foolish, ${host.username}?"`
+        `"Fufu... ${hostRecord.mercyStreak} times you held back your final blow. If Shirou saw you now, would he call you kind, or foolish, ${host.username}?"`
       ]);
       bannerQuote = `When will you learn that monsters don't deserve fairy tales?`;
     } else if (hostRecord.slayerStreak >= 3) {
@@ -421,14 +413,6 @@ export function generateDarkSakuraIntroDialogue(
         `"A blood-soaked streak of ${hostRecord.slayerStreak} executions... You don't see a girl here at all, do you, ${host.username}? Just a boss to harvest."`
       ]);
       bannerQuote = 'You treat carving me apart like routine paperwork, don\'t you?';
-    } else if (hostTier === 1) {
-      dialogue = pickRandom([
-        `"Ah, the butcher returns. Eager to see if my core shatters faster this time, ${host.username}? Let me show you what it feels like to rot in the mud."`,
-        `"The merciless magus steps back into my cavern... Every time you open your mouth, ${host.username}, I remember why I stopped expecting salvation."`,
-        `"Cold, efficient, and relentless... You remind me of the crest worms, ${host.username}. Come, let's see whose malice cuts deeper."`,
-        `"You carved away every piece of mercy in your heart, didn't you, ${host.username}? Fufu... Good. Monsters are much easier to devour when they don't pretend to care."`
-      ]);
-      bannerQuote = 'Ah, the butcher returns. Eager to carve me open again?';
     } else if (hostTier === 3) {
       dialogue = pickRandom([
         `"You're back... Even in this pitch-black cavern, your presence feels warm. My shadows hesitate around you, ${host.username}."`,
@@ -437,6 +421,22 @@ export function generateDarkSakuraIntroDialogue(
         `"You stayed your hand so many times... Is it really possible that someone looks at this shadow and doesn't see a monster, ${host.username}?"`
       ]);
       bannerQuote = 'My shadows hesitate around you...';
+    } else if (hostTier === 1) {
+      dialogue = pickRandom([
+        `"Ah, the butcher returns. Eager to see if my core shatters faster this time, ${host.username}? Let me show you what it feels like to rot in the mud."`,
+        `"The merciless magus steps back into my cavern... Every time you open your mouth, ${host.username}, I remember why I stopped expecting salvation."`,
+        `"Cold, efficient, and relentless... You remind me of the crest worms, ${host.username}. Come, let's see whose malice cuts deeper."`,
+        `"You carved away every piece of mercy in your heart, didn't you, ${host.username}? Fufu... Good. Monsters are much easier to devour when they don't pretend to care."`
+      ]);
+      bannerQuote = 'Ah, the butcher returns. Eager to carve me open again?';
+    } else if (isQuickRematch) {
+      dialogue = pickRandom([
+        `"Back so soon? You barely cleaned the mud off your boots. Are you that eager to see me again, ${host.username}?"`,
+        `"Returned already, ${host.username}? Did the shadow's chill linger on your skin, or could you not resist the smell of corrupted mana?"`,
+        `"You barely caught your breath before running right back into my cavern... Is this courage, ${host.username}, or an obsession with your own doom?"`,
+        `"Still lingering around my shadow, ${host.username}? Fufu... The mud hasn't even dried from our last encounter."`
+      ]);
+      bannerQuote = 'Back so soon? You barely cleaned the mud off your boots.';
     } else {
       dialogue = pickRandom([
         `"Another bout. Are you going to cut me down like a true magus, or pretend to be my savior today, ${host.username}? You Masters are all the same."`,
@@ -534,7 +534,7 @@ export function checkPacifistMilestone(
       bannerQuote: 'Nee-san had the sun... and I was left alone in the dark.',
       vnDialogue:
         `"Don't bother drawing your sword. It's pointless anyway.\n\n` +
-        `Nee-san had the spotlight, Senpai had his gentle ideals, and I was left to drown in this darkness. I relish tearing through flesh and taking every drop of mana.\n\n` +
+        `Nee-san had the spotlight, Shirou had his gentle ideals, and I was left to drown in this darkness. I relish tearing through flesh and taking every drop of mana.\n\n` +
         `Yet when you look at me, you show no fear. Take your spoils and go, ${host.username}. Monsters don't get fairy tales, but I won't spill your blood today."`
     },
     {

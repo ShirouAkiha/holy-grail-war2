@@ -31,14 +31,7 @@
     "tailwind-merge": "^3.3.1",
     "upng-js": "^2.1.0"
   },
-  "optionalDependencies": {
-    "@napi-rs/canvas-win32-x64-msvc": "^0.1.66",
-    "@napi-rs/canvas-win32-ia32-msvc": "^0.1.66",
-    "@napi-rs/canvas-win32-arm64-msvc": "^0.1.66",
-    "@napi-rs/canvas-linux-x64-gnu": "^0.1.66",
-    "@napi-rs/canvas-darwin-x64": "^0.1.66",
-    "@napi-rs/canvas-darwin-arm64": "^0.1.66"
-  },
+
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.11",
     "@tailwindcss/typography": "^0.5.19",
