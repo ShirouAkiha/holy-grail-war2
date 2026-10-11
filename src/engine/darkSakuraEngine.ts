@@ -3,9 +3,9 @@ import {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
-  AttachmentBuilder,
   ComponentType,
-  MessageFlags
+  MessageFlags,
+  AttachmentBuilder
 } from 'discord.js';
 import { MasterProfile, CraftEssence } from '../types';
 import { RaidBossConfig } from '../data/raidBosses';
@@ -73,6 +73,69 @@ export function getDarkSakuraTier(record: DarkSakuraKarmaRecord): 1 | 2 | 3 | 4 
 }
 
 /**
+ * Generates HP-reactive dialogue quotes for Dark Sakura during combat:
+ * - 'boss_low_hp': Boss drops to <= 30% HP
+ * - 'break_gauge': Break gauge shattered
+ * - 'player_low_hp': A player Servant drops to <= 25% HP
+ * - 'guts_survived': A player Servant survives a fatal hit with Guts
+ */
+export function getDarkSakuraHpReactiveQuote(
+  trigger: 'boss_low_hp' | 'break_gauge' | 'player_low_hp' | 'guts_survived',
+  record: DarkSakuraKarmaRecord,
+  servantName?: string
+): { quote: string } {
+  const tier = getDarkSakuraTier(record);
+
+  switch (trigger) {
+    case 'boss_low_hp':
+      if (tier === 4) {
+        return { quote: "Even when I'm breaking apart... you still look at me with those warm eyes. Why won't you just let me rest?" };
+      }
+      if (tier === 3) {
+        return { quote: "My core is crumbling... but your hand didn't tremble when you stayed your blade before. Is this really the end?" };
+      }
+      if (tier === 1) {
+        return { quote: "Fufu... You carve into my body so mercilessly! Go on then, executioner, finish your job!" };
+      }
+      return { quote: "The black mud spills from my wounds... Can you hear the shadows screaming beneath the surface?" };
+
+    case 'break_gauge':
+      if (tier === 4) {
+        return { quote: "The seal shattered... The abyssal core is exposed. Please... don't let the shadow consume us both!" };
+      }
+      if (tier === 1) {
+        return { quote: "You shattered my vessel! Fufu... Ahaha! Is that all you've got? The abyss only gets deeper from here!" };
+      }
+      return { quote: "Agh...! The Grail's corruption overflows! The true shadow awakens now!" };
+
+    case 'player_low_hp': {
+      const sName = servantName || 'your Servant';
+      if (tier === 4) {
+        return { quote: `Stop! ${sName} is at their limit... Don't force them to suffer for my sake!` };
+      }
+      if (tier === 1) {
+        return { quote: `Look at ${sName} stumbling in the mud... Just like all the rest, you'll watch them rot.` };
+      }
+      return { quote: `${sName} is drowning in my shadow mud... How much longer can they stand?` };
+    }
+
+    case 'guts_survived': {
+      const targetName = servantName || 'Your Servant';
+      if (tier === 4) {
+        return { quote: `They stood back up... ${targetName}'s soul refuses to break in this dark cavern.` };
+      }
+      if (tier === 1) {
+        return { quote: `Persistent bug! ${targetName} clings to life... How pathetic!` };
+      }
+      return { quote: `Refusing to fall? ${targetName}'s conviction is stubborn...` };
+    }
+
+    default:
+      return { quote: '' };
+  }
+}
+
+/**
  * Calculates the trust probability (0.0 to 1.0) when a Master chooses to SPARE her.
  */
 export function calculateSpareTrustChance(record: DarkSakuraKarmaRecord): number {
@@ -88,54 +151,6 @@ export function calculateSpareTrustChance(record: DarkSakuraKarmaRecord): number
   }
   // Tier 2: 50% coin flip
   return 0.50;
-}
-
-/**
- * Generates reactive dialogue quotes for Dark Sakura mid-battle state changes.
- */
-export function getDarkSakuraHpReactiveQuote(
-  trigger: 'boss_low_hp' | 'break_gauge' | 'player_low_hp' | 'guts_survived',
-  record: DarkSakuraKarmaRecord,
-  servantName?: string
-): { quote: string } {
-  const tier = getDarkSakuraTier(record);
-  let quote = '';
-
-  if (trigger === 'boss_low_hp') {
-    if (tier === 1) {
-      quote = "Is that all your bloodlust can manage? Even as my core fractures, the mud will drown you whole!";
-    } else if (tier === 3 || tier === 4) {
-      quote = "Ah... it hurts. But if this pain means keeping you here in the dark just a little longer... I'll endure it.";
-    } else {
-      quote = "My body is tearing apart at the seams... but the Grail won't let me stop now!";
-    }
-  } else if (trigger === 'break_gauge') {
-    if (tier === 1) {
-      quote = "You really think shattering one layer of my shadow will save you? Taste the full weight of Angra Mainyu!";
-    } else if (tier === 3 || tier === 4) {
-      quote = "Why... why do you keep fighting so hard? Must we really destroy each other at the bottom of this cavern?";
-    } else {
-      quote = "The shadow barrier shatters... yet the dark mud only flows thicker! Beware the black tide!";
-    }
-  } else if (trigger === 'player_low_hp') {
-    if (tier === 1) {
-      quote = `Look at you, trembling on your knees, ${servantName || 'Servant'}. One more stroke and you'll be dissolved in my mud!`;
-    } else if (tier === 3 || tier === 4) {
-      quote = `Please... don't push yourself any further, ${servantName || 'Servant'}! I don't want to hurt you anymore...`;
-    } else {
-      quote = `Your spirit is breaking under the weight of the corrupted Grail. Will you yield or fall?`;
-    }
-  } else if (trigger === 'guts_survived') {
-    if (tier === 1) {
-      quote = "Refusing to die? Hahaha! Crawl back out of the mud then—let's see how many times your guts can save you!";
-    } else if (tier === 3 || tier === 4) {
-      quote = "You stood back up... That stubborn light in your eyes... it's just like Senpai's...";
-    } else {
-      quote = "Miraculous endurance! But the dark tide never stops rising...";
-    }
-  }
-
-  return { quote };
 }
 
 /**
@@ -343,17 +358,6 @@ export async function handleDarkSakuraClimax(
   // Track each participant's choice: 'spare' | 'execute'
   const userChoices = new Map<string, 'spare' | 'execute'>();
 
-  let climaxVnFile: any = null;
-  try {
-    const vnRes = await renderDarkSakuraVNDialogueImage({
-      title: '🌸 CLIMAX: THE FATE OF THE CORRUPTED VESSEL',
-      speakerName: 'Dark Sakura',
-      speakerTag: 'Fuyuki Cavity • Final Choice',
-      dialogue: 'Is it over...? Are you going to sever my core cleanly, or... will you reach out your hand into this pitch-black mud once again?'
-    });
-    climaxVnFile = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_climax.png' });
-  } catch {}
-
   const buildClimaxEmbed = () => {
     const statusLines = participants.map((p: any) => {
       const choice = userChoices.get(p.userId);
@@ -361,7 +365,7 @@ export async function handleDarkSakuraClimax(
       return `• <@${p.userId}> (${p.username}): ${icon}`;
     }).join('\n');
 
-    const embed = new EmbedBuilder()
+    return new EmbedBuilder()
       .setTitle('🌸 CLIMAX: THE FATE OF THE CORRUPTED VESSEL')
       .setDescription(
         `*Dark Sakura falls to her knees at the center of the cavern. The black mud around her writhes, yet her breathing is shallow and trembling.*\n\n` +
@@ -376,15 +380,9 @@ export async function handleDarkSakuraClimax(
         `• **Failure:** The mud panics and devours you! Retreat with 0 SQ!\n\n` +
         `**Decisions of the Vanguard:**\n${statusLines}`
       )
+      .setThumbnail(DARK_SAKURA_ASSETS.vnDialogueSprite)
       .setColor(0x831843)
       .setFooter({ text: 'Holy Grail War PvE • Consequential Raid Engine' });
-
-    if (climaxVnFile) {
-      embed.setImage('attachment://dark_sakura_climax.png');
-    } else {
-      embed.setThumbnail(DARK_SAKURA_ASSETS.vnDialogueSprite);
-    }
-    return embed;
   };
 
   const climaxButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -402,7 +400,7 @@ export async function handleDarkSakuraClimax(
     content: '🚨 **THE FINAL DECISION OF THE HOLY GRAIL WAR**',
     embeds: [buildClimaxEmbed()],
     components: [climaxButtons],
-    files: climaxVnFile ? [climaxVnFile] : []
+    files: []
   }).catch(() => null);
 
   if (!promptMsg) return;
@@ -445,6 +443,7 @@ export async function handleDarkSakuraClimax(
 
   // Resolve results for all participants
   const resultReports: string[] = [];
+  const participantOutcomes: ('killed' | 'spared_mercy' | 'spared_betrayed')[] = [];
   const baseSq = Math.floor(boss.drops.minSq + Math.random() * (boss.drops.maxSq - boss.drops.minSq + 1));
   const baseExp = boss.drops.servantExp || 45_000;
 
@@ -457,6 +456,7 @@ export async function handleDarkSakuraClimax(
     const choice = userChoices.get(p.userId) || 'execute';
 
     if (choice === 'execute') {
+      participantOutcomes.push('killed');
       // Guaranteed safe rewards
       master.saintQuartz = (master.saintQuartz || 0) + baseSq;
       const s = master.servants?.find((sv: any) => sv.id === p.servant.id);
@@ -485,6 +485,7 @@ export async function handleDarkSakuraClimax(
       const isTrusted = Math.random() < trustChance;
 
       if (isTrusted) {
+        participantOutcomes.push('spared_mercy');
         // Double rewards!
         const doubleSq = baseSq * 2;
         const doubleExp = baseExp * 2;
@@ -518,6 +519,7 @@ export async function handleDarkSakuraClimax(
           `  └─ *The shadows receded with a trembling smile.* Received **DOUBLED REWARDS: +${doubleSq} SQ** 💎, **+${doubleExp.toLocaleString()} EXP** ⚔️, 8x Embers${ceDropNotice}`
         );
       } else {
+        participantOutcomes.push('spared_betrayed');
         // Betrayal / mud devour!
         record.betrayalCount += 1;
         record.mercyStreak = 0;
@@ -539,23 +541,92 @@ export async function handleDarkSakuraClimax(
     await saveMaster(master);
   }
 
+  // Determine decisive ending reaction dialogue
+  const hasKilled = participantOutcomes.includes('killed');
+  const hasMercy = participantOutcomes.includes('spared_mercy');
+  const hasBetrayed = participantOutcomes.includes('spared_betrayed');
+
+  let reactionTitle = 'THE SHADOW’S PARTING';
+  let reactionDialogue = '';
+  let reactionBanner = '';
+  let embedColor = 0xbe185d;
+
+  if (hasMercy && !hasKilled && !hasBetrayed) {
+    reactionTitle = '🌸 THE SHADOW REDEEMED: A TREMBLING SMILE';
+    reactionDialogue = "You really... stayed? Even when the black mud tried to pull you under? ...I'm so glad I waited for you in this dark cavern, Senpai. Take this... my heart is finally at peace.";
+    reactionBanner = 'The abyssal miasma purifies into warm, radiant cherry blossom petals.';
+    embedColor = 0xdb2777;
+  } else if (hasKilled && !hasMercy && !hasBetrayed) {
+    reactionTitle = '🩸 THE SEVERED SHADOW: COLD RELEASE';
+    reactionDialogue = "...Ah. So in the end... you couldn't forgive me either, Senpai. It's so cold... but at least the black mud won't hurt anyone anymore. Thank you... for waking me from this nightmare.";
+    reactionBanner = 'The corrupted shadow core shatters cleanly into silent crystal dust.';
+    embedColor = 0x9f1239;
+  } else if (hasBetrayed && !hasMercy && !hasKilled) {
+    reactionTitle = '🌑 THE ABYSS CONSUMED: UNBRIDLED CORRUPTION';
+    reactionDialogue = "Ah... ahh!! I'm sorry, I'm so sorry!! The mud... it's burning... I can't hold it back!! RUN AWAY BEFORE I DEVOUR YOU TOO...!!";
+    reactionBanner = 'The black mud flares wildly as the shadow vessel loses control.';
+    embedColor = 0x4c0519;
+  } else if (hasMercy && hasKilled) {
+    reactionTitle = '⚖️ CONFLICTING BONDS: BITTERSWEET PASSING';
+    reactionDialogue = "Some of you showed me kindness... while others saw the monster I had become. Both of you were right. Thank you... for giving me one last glimpse of light.";
+    reactionBanner = 'The cavern echoes with the fading whispers of the corrupted Grail vessel.';
+    embedColor = 0xbe185d;
+  } else if (hasBetrayed) {
+    reactionTitle = '🌑 CHAOS IN THE CAVERN: TRAGIC COLLAPSE';
+    reactionDialogue = "I wanted to believe you... I really did! But the darkness inside me was too heavy... forgive me, Senpai...!";
+    reactionBanner = 'The cavern rumbles as remnants of the shadow retreat into the leylines.';
+    embedColor = 0x831843;
+  } else {
+    reactionTitle = '🌸 THE SHADOW’S REST';
+    reactionDialogue = "...Thank you for seeing this through to the end, Senpai. Until we meet under the cherry blossoms again.";
+    reactionBanner = 'The holy grail resonance subsides quietly.';
+    embedColor = 0xbe185d;
+  }
+
+  // Render Visual Novel Reaction Image Canvas (1280x720 with her sprite)
+  let reactionAttachment: AttachmentBuilder | null = null;
+  try {
+    const vnRes = await renderDarkSakuraVNDialogueImage({
+      title: reactionTitle,
+      speakerName: 'Dark Sakura',
+      dialogue: reactionDialogue,
+      easterEggBanner: reactionBanner
+    });
+    reactionAttachment = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_reaction_vn.png' });
+  } catch (err) {
+    console.error('Failed to generate Dark Sakura reaction VN image:', err);
+  }
+
   // Final Embed
   const finalEmbed = new EmbedBuilder()
-    .setTitle('🏆 RAID CONCLUDED: THE SHADOW’S PARTING')
+    .setTitle(`🏆 RAID CONCLUDED: ${reactionTitle}`)
     .setDescription(
-      `*The ritual in the Fuyuki Abyssal Cavity dissolves back into the leylines...*\n\n` +
+      `### 🌸 Dark Sakura's Parting Words\n` +
+      `> *“${reactionDialogue}”*\n\n` +
+      `✨ *${reactionBanner}*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `**Resolution & Spoils of War:**\n` +
       resultReports.join('\n\n') + `\n\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `*Her memory of your choices has been etched into the Grail.*`
     )
-    .setImage(DARK_SAKURA_ASSETS.caveBackground)
-    .setColor(0xbe185d)
+    .setColor(embedColor)
     .setFooter({ text: 'Holy Grail War PvE • Consequential Raid Engine' });
 
-  await promptMsg.edit({
+  if (reactionAttachment) {
+    finalEmbed.setImage('attachment://dark_sakura_reaction_vn.png');
+  } else {
+    finalEmbed.setImage(DARK_SAKURA_ASSETS.caveBackground);
+  }
+
+  const editPayload: any = {
     content: '✨ **The Raid Encounter Has Concluded.**',
     embeds: [finalEmbed],
     components: []
-  }).catch(() => {});
+  };
+  if (reactionAttachment) {
+    editPayload.files = [reactionAttachment];
+  }
+
+  await promptMsg.edit(editPayload).catch(() => {});
 }

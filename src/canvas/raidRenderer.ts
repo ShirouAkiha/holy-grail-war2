@@ -1643,8 +1643,11 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
 export interface VNDialogueOptions {
   title?: string;
   speakerName?: string;
+  speakerTag?: string;
   dialogue: string;
   easterEggBanner?: string;
+  bannerQuote?: string;
+  easterEggServant?: { name: string; quote?: string };
 }
 
 export async function renderDarkSakuraVNDialogueImage(
@@ -1743,7 +1746,7 @@ export async function renderDarkSakuraVNDialogueImage(
   drawRoundRect(ctx, boxX + 4, boxY + 4, boxW - 8, boxH - 8, 12, false, true);
 
   // 5. Speaker Nameplate Badge (Top-left floating on frame)
-  const speakerName = options.speakerName || 'Dark Sakura';
+  const speakerName = options.speakerName || options.speakerTag || 'Dark Sakura';
   ctx.font = 'bold 24px sans-serif';
   const nameW = Math.max(220, ctx.measureText(`🌸  ${speakerName.toUpperCase()}`).width + 40);
   const nameH = 44;
@@ -1787,8 +1790,9 @@ export async function renderDarkSakuraVNDialogueImage(
   ctx.shadowBlur = 0;
 
   // 7. Easter Egg Banner / Subtext at bottom of box if provided
-  if (options.easterEggBanner) {
-    const subText = options.easterEggBanner.replace(/\*/g, '').trim();
+  const subBanner = options.easterEggBanner || options.bannerQuote;
+  if (subBanner) {
+    const subText = subBanner.replace(/\*/g, '').trim();
     ctx.font = 'italic bold 18px sans-serif';
     ctx.fillStyle = '#f472b6'; // Pink
     ctx.textAlign = 'left';

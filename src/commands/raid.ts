@@ -442,17 +442,6 @@ async function launchRaidLobby(
             await saveMaster(master);
           }
 
-          let pacifistVnFile: any = null;
-          try {
-            const vnRes = await renderDarkSakuraVNDialogueImage({
-              title: '🌸 PACIFIST MILESTONE: THE MAIDEN’S SANCTUARY',
-              speakerName: 'Dark Sakura',
-              speakerTag: 'Sanctuary • Unbroken Trust',
-              dialogue: 'Wait... put your weapons away. You\'ve walked into this cavern so many times without raising a blade... You don\'t need to fight me today.'
-            });
-            pacifistVnFile = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_pacifist.png' });
-          } catch {}
-
           const pacifistEmbed = new EmbedBuilder()
             .setTitle('🌸 PACIFIST MILESTONE: THE MAIDEN’S SANCTUARY')
             .setDescription(
@@ -464,20 +453,14 @@ async function launchRaidLobby(
               `• **+8 Universal EXP Embers** ✨\n` +
               `• **A gentle, warm pat on the head.** 🌸`
             )
+            .setImage(DARK_SAKURA_ASSETS.vnDialogueSprite)
             .setColor(0xf472b6)
             .setFooter({ text: 'Holy Grail War PvE • Pure Pacifist Resolution' });
-
-          if (pacifistVnFile) {
-            pacifistEmbed.setImage('attachment://dark_sakura_pacifist.png');
-          } else {
-            pacifistEmbed.setImage(DARK_SAKURA_ASSETS.vnDialogueSprite);
-          }
 
           await lobbyMsg.edit({
             content: '🌸 **An unexpected serenity falls across the cavern...**',
             embeds: [pacifistEmbed],
-            components: [],
-            files: pacifistVnFile ? [pacifistVnFile] : []
+            components: []
           }).catch(() => {});
           return;
         }
@@ -681,27 +664,32 @@ async function runRaidBattle(
   // Dark Sakura Opening Interlude Dialogue
   if (isDarkSakura) {
     const intro = generateDarkSakuraIntroDialogue(partyUsers);
-    let introVnFile: any = null;
+    let introAttachment: AttachmentBuilder | null = null;
     try {
       const vnRes = await renderDarkSakuraVNDialogueImage({
         title: intro.title,
         speakerName: 'Dark Sakura',
-        speakerTag: 'Fuyuki Cavity • Abyssal Encounter',
         dialogue: intro.dialogue,
-        bannerQuote: intro.bannerQuote,
-        easterEggServant: intro.easterEggServant ? { name: intro.easterEggServant, quote: '' } : undefined
+        easterEggBanner: intro.bannerQuote
       });
-      introVnFile = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_intro.png' });
-    } catch {}
+      introAttachment = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_intro_vn.png' });
+    } catch (e) {
+      console.error('Failed to render Dark Sakura VN intro image:', e);
+    }
 
     const introEmbed = new EmbedBuilder()
-      .setTitle(intro.title)
-      .setDescription(`${intro.dialogue}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n> 👁️ *“${intro.bannerQuote}”*`)
+      .setTitle(`🌸 ${intro.title}`)
+      .setDescription(
+        `### 🌸 Dark Sakura\n` +
+        `> *“${intro.dialogue}”*\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `👁️ *“${intro.bannerQuote}”*`
+      )
       .setColor(0x831843)
-      .setFooter({ text: 'Fate/stay night Heaven’s Feel • Abyssal Interlude' });
+      .setFooter({ text: 'Fate/stay night Heaven’s Feel • Abyssal Encounter' });
 
-    if (introVnFile) {
-      introEmbed.setImage('attachment://dark_sakura_intro.png');
+    if (introAttachment) {
+      introEmbed.setImage('attachment://dark_sakura_intro_vn.png');
     } else {
       introEmbed.setThumbnail(DARK_SAKURA_ASSETS.vnDialogueSprite);
       introEmbed.setImage(DARK_SAKURA_ASSETS.caveBackground);
@@ -709,10 +697,9 @@ async function runRaidBattle(
 
     const targetChannel = interaction.channel || battleMsg?.channel;
     if (targetChannel && typeof targetChannel.send === 'function') {
-      targetChannel.send({
-        embeds: [introEmbed],
-        files: introVnFile ? [introVnFile] : []
-      }).catch(() => {});
+      const sendPayload: any = { embeds: [introEmbed] };
+      if (introAttachment) sendPayload.files = [introAttachment];
+      targetChannel.send(sendPayload).catch(() => {});
     }
   }
 
@@ -1758,6 +1745,27 @@ async function runRaidBattle(
             const quoteRes = getDarkSakuraHpReactiveQuote('break_gauge', hostRecord);
             if (quoteRes.quote) {
               battleState.bossDialogueNotice = `🌸 **Dark Sakura:** ${quoteRes.quote}`;
+              try {
+                const vnRes = await renderDarkSakuraVNDialogueImage({
+                  title: '💥 BREAK GAUGE SHATTERED: SHADOW UNLEASHED',
+                  speakerName: 'Dark Sakura',
+                  dialogue: quoteRes.quote,
+                  easterEggBanner: 'The black mud surges violently as her magical limiter crumbles!'
+                });
+                const vnAttach = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_break_vn.png' });
+                const breakEmbed = new EmbedBuilder()
+                  .setTitle('💥 [BREAK GAUGE SHATTERED] • The Shadow Vessel Awakens')
+                  .setDescription(`### 🌸 Dark Sakura\n> *“${quoteRes.quote}”*`)
+                  .setImage('attachment://dark_sakura_break_vn.png')
+                  .setColor(0xe11d48)
+                  .setFooter({ text: 'Fate/stay night Heaven’s Feel • Phase Shift' });
+                const targetChan = interaction.channel || battleMsg?.channel;
+                if (targetChan && typeof targetChan.send === 'function') {
+                  targetChan.send({ embeds: [breakEmbed], files: [vnAttach] }).catch(() => {});
+                }
+              } catch (e) {
+                console.error('Failed to send break gauge VN embed:', e);
+              }
             }
           }
 
