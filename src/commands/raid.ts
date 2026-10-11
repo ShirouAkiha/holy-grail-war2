@@ -480,7 +480,7 @@ async function launchRaidLobby(
           const pacifistEmbed = new EmbedBuilder()
             .setTitle(`🌸 PACIFIST MILESTONE: ${pacifistCheck.title}`)
             .setDescription(
-              `${pacifistCheck.sceneText}\n\n` +
+              `💬 **Dark Sakura:**\n${pacifistCheck.vnDialogue}\n\n` +
               `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
               `💎 **Peaceful Blessing Bestowed:**\n` +
               `• **+${sqBonus} Saint Quartz** (Guaranteed Double Drop) 💎\n` +
@@ -491,7 +491,7 @@ async function launchRaidLobby(
               progressionReports.join('\n')
             )
             .setColor(0x831843)
-            .setFooter({ text: 'Fate/stay night Heaven’s Feel • Pure Pacifist Resolution' });
+            .setFooter({ text: 'Fate/stay night Heaven’s Feel • Click button below to proceed' });
 
           if (vnAttachment) {
             pacifistEmbed.setImage('attachment://dark_sakura_pacifist_vn.png');
@@ -499,20 +499,58 @@ async function launchRaidLobby(
             pacifistEmbed.setImage(DARK_SAKURA_ASSETS.vnDialogueSprite);
           }
 
+          const continueRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId('raid_pacifist_continue')
+              .setLabel('🌸 Continue')
+              .setStyle(ButtonStyle.Primary)
+          );
+
           const payload: any = {
             content: '🌸 **An unexpected serenity falls across the cavern...**',
             embeds: [pacifistEmbed],
-            components: []
+            components: [continueRow]
           };
           if (vnAttachment) {
             payload.files = [vnAttachment];
           }
 
-          await lobbyMsg.edit(payload).catch(async () => {
+          const pacifistMsg = await lobbyMsg.edit(payload).catch(async () => {
             if (lobbyMsg.channel && typeof lobbyMsg.channel.send === 'function') {
-              await lobbyMsg.channel.send(payload).catch(() => {});
+              return await lobbyMsg.channel.send(payload).catch(() => null);
             }
+            return null;
           });
+
+          if (pacifistMsg && typeof pacifistMsg.createMessageComponentCollector === 'function') {
+            const pCollector = pacifistMsg.createMessageComponentCollector({
+              componentType: ComponentType.Button,
+              time: 300_000
+            });
+
+            pCollector.on('collect', async (btnInteract: any) => {
+              if (btnInteract.customId === 'raid_pacifist_continue') {
+                await btnInteract.deferUpdate().catch(() => {});
+                pCollector.stop('clicked');
+              }
+            });
+
+            pCollector.on('end', async () => {
+              const resolvedEmbed = new EmbedBuilder()
+                .setTitle(`🌸 PACIFIST MILESTONE RESOLVED`)
+                .setDescription(
+                  `✨ **The peaceful resolution is complete.**\n` +
+                  `All rewards (Saint Quartz, Servant EXP, and Universal EXP Embers) have been saved to inventory.`
+                )
+                .setColor(0x831843);
+              await pacifistMsg.edit({
+                content: '🌸 **The encounter has ended in quiet peace.**',
+                embeds: [resolvedEmbed],
+                components: [],
+                files: []
+              }).catch(() => {});
+            });
+          }
           return;
         }
       }
@@ -778,15 +816,71 @@ async function runRaidBattle(
     }
   };
 
-  // Dark Sakura Opening Interlude Dialogue (Appears as initial Visual Novel UI and auto-clears)
+  // Dark Sakura Opening Interlude Dialogue (Requires button click to proceed to battle)
   if (isDarkSakura) {
     const intro = generateDarkSakuraIntroDialogue(partyUsers);
-    await triggerDarkSakuraVnCutIn({
-      title: intro.title,
-      speakerName: 'Dark Sakura',
-      dialogue: intro.dialogue,
-      easterEggBanner: intro.bannerQuote
-    });
+    let vnAttachment: AttachmentBuilder | null = null;
+    try {
+      const vnRes = await renderDarkSakuraVNDialogueImage({
+        title: intro.title,
+        speakerName: 'Dark Sakura',
+        dialogue: intro.dialogue,
+        easterEggBanner: intro.bannerQuote
+      });
+      vnAttachment = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_intro.png' });
+    } catch (err) {
+      console.error('Failed to generate Dark Sakura intro image:', err);
+    }
+
+    const introEmbed = new EmbedBuilder()
+      .setTitle(`🌸 ${intro.title.replace(/\*/g, '')}`)
+      .setDescription(`💬 **Dark Sakura:**\n${intro.dialogue}`)
+      .setColor(0x831843)
+      .setFooter({ text: 'Fate/stay night Heaven’s Feel • Click button below to begin battle' });
+
+    if (vnAttachment) {
+      introEmbed.setImage('attachment://dark_sakura_intro.png');
+    }
+
+    const introRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('raid_intro_begin_battle')
+        .setLabel('⚔️ Begin Battle')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    const introPayload: any = {
+      content: '🌑 **Dark Sakura confronts the vanguard in the subterranean cavern...**',
+      embeds: [introEmbed],
+      components: [introRow]
+    };
+    if (vnAttachment) {
+      introPayload.files = [vnAttachment];
+    }
+
+    if (battleMsg && typeof battleMsg.edit === 'function') {
+      await battleMsg.edit(introPayload).catch(() => {});
+    }
+
+    if (battleMsg && typeof battleMsg.createMessageComponentCollector === 'function') {
+      await new Promise<void>((resolve) => {
+        const introCollector = battleMsg.createMessageComponentCollector({
+          componentType: ComponentType.Button,
+          time: 180_000
+        });
+
+        introCollector.on('collect', async (bInteract: any) => {
+          if (bInteract.customId === 'raid_intro_begin_battle') {
+            await bInteract.deferUpdate().catch(() => {});
+            introCollector.stop('clicked');
+          }
+        });
+
+        introCollector.on('end', () => {
+          resolve();
+        });
+      });
+    }
   }
 
   function ensureActiveParticipantIsAlive(): void {

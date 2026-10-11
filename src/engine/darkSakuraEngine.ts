@@ -55,31 +55,31 @@ export function getDarkSakuraRecord(master: any): DarkSakuraKarmaRecord {
 /**
  * Evaluates Dark Sakura's Temperament Tier for a Master:
  * High-frequency raid progression designed for players doing multiple raids daily:
- * - Tier 4: Pacifist Devotion (Sanctuary / Headpat Easter Egg) - Requires 40+ spares with 0 kills OR 60+ spares with >=95% ratio & 20+ streak
- * - Tier 3: Wavering Maiden (Earned Compassion) - Requires at least 15+ raids, 12+ spares, >=75% spare ratio, and 5+ consecutive mercy streak
- * - Tier 1: The Butcher (Cold-blooded Executioner) - Requires at least 15+ raids, 12+ kills, >=75% kill ratio, and 5+ consecutive slayer streak
- * - Tier 2: Skeptic Magus (Guarded / Neutral) - Default for anyone with < 15 raids or mixed/fluctuating choices
+ * - Tier 4: Pacifist Devotion (Sanctuary / Pacifist Milestone Clear) - Requires 50+ spares with 0 kills OR 75+ spares with >=95% ratio & 25+ streak
+ * - Tier 3: Wavering Maiden (Hard-earned tolerance) - Requires at least 20+ raids, 16+ spares, >=80% spare ratio, and 8+ consecutive mercy streak
+ * - Tier 1: The Butcher (Cold-blooded Executioner) - Requires at least 20+ raids, 16+ kills, >=80% kill ratio, and 8+ consecutive slayer streak
+ * - Tier 2: Skeptic Magus (Guarded / Neutral) - Default for anyone with < 20 raids or mixed/fluctuating choices
  */
 export function getDarkSakuraTier(record: DarkSakuraKarmaRecord): 1 | 2 | 3 | 4 {
   const total = record.spares + record.kills;
 
   // Tier 4: True Pacifist Devotion (Ultra-rare high bar)
-  if (record.spares >= 40 && record.kills === 0) return 4;
-  if (record.spares >= 60 && (record.spares / Math.max(1, total)) >= 0.95 && record.mercyStreak >= 20) return 4;
+  if (record.spares >= 50 && record.kills === 0) return 4;
+  if (record.spares >= 75 && (record.spares / Math.max(1, total)) >= 0.95 && record.mercyStreak >= 25) return 4;
 
-  // Anyone with fewer than 15 total raids remains in Tier 2 (Guarded / Skeptical)
-  // She does not quickly open her heart or brand someone after just a few runs.
-  if (total < 15) return 2;
+  // Anyone with fewer than 20 total raids remains in Tier 2 (Guarded / Skeptical)
+  // She does not open her heart or acknowledge anyone after just a few runs.
+  if (total < 20) return 2;
 
   const spareRatio = record.spares / total;
 
   // Tier 3: Wavering Maiden (Requires sustained mercy over multiple days of raiding)
-  if (record.spares >= 12 && spareRatio >= 0.75 && record.mercyStreak >= 5) {
+  if (record.spares >= 16 && spareRatio >= 0.80 && record.mercyStreak >= 8) {
     return 3;
   }
 
   // Tier 1: The Butcher (Requires persistent execution over multiple days of raiding)
-  if (record.kills >= 12 && ((record.kills / total) >= 0.75) && record.slayerStreak >= 5) {
+  if (record.kills >= 16 && ((record.kills / total) >= 0.80) && record.slayerStreak >= 8) {
     return 1;
   }
 
@@ -152,26 +152,27 @@ export function getDarkSakuraHpReactiveQuote(
 
 /**
  * Calculates the trust probability (0.0 to 1.0) when a Master chooses to SPARE her.
- * Sets a high bar so success feels rewarding, dangerous, and rare.
+ * Sets a very high bar so sparing is a dangerous, nerve-wracking gamble rather than an easy farming mechanism.
  */
 export function calculateSpareTrustChance(record: DarkSakuraKarmaRecord): number {
   const tier = getDarkSakuraTier(record);
   if (tier === 4) {
-    // Pacifist Devotion: 88% - 92% (near-certain, slight shadow tension)
-    return Math.min(0.92, 0.88 + Math.min(record.mercyStreak * 0.002, 0.04));
+    // Pacifist Devotion: 55% - 65% (Even at peak pacifism, Angra Mainyu's corruption and her dark urges make sparing a tense gamble)
+    return Math.min(0.65, 0.55 + Math.min(record.mercyStreak * 0.003, 0.10));
   }
   if (tier === 3) {
-    // Wavering Maiden (Hard-earned trust after 15+ raids & 5+ mercy streak):
-    // Starts at 52%, gradually scales with consecutive mercy up to max 70%
-    return Math.min(0.70, 0.52 + Math.min((record.mercyStreak - 5) * 0.02, 0.18));
+    // Wavering Maiden (Hard-earned trust after 20+ raids & 8+ streak):
+    // 24% base, scales with streak up to max 34% (so 2 out of 3 times, shadows still lash out!)
+    return Math.min(0.34, 0.24 + Math.min((record.mercyStreak - 8) * 0.01, 0.10));
   }
   if (tier === 1) {
-    // The Butcher (Hardened executioner): Mud lashes out violently (6% - 12%)
-    return Math.max(0.06, 0.12 - Math.min((record.slayerStreak - 5) * 0.01, 0.06));
+    // The Butcher (Hardened executioner): Mud lashes out violently (3% - 6%)
+    return Math.max(0.03, 0.06 - Math.min((record.slayerStreak - 8) * 0.005, 0.03));
   }
-  // Tier 2 (Neutral / Under 15 raids or mixed):
-  // Reaching into the corrupt mud is naturally perilous! 25% base + 1% per mercy streak (capped at 35%)
-  return Math.min(0.35, 0.25 + Math.min(record.mercyStreak * 0.01, 0.10));
+  // Tier 2 (Neutral / Under 20 raids or mixed):
+  // Reaching into the corrupt mud of All The World's Evil is deadly!
+  // 10% base + up to 4% for small mercy streaks (max 14% success)
+  return Math.min(0.14, 0.10 + Math.min(record.mercyStreak * 0.005, 0.04));
 }
 
 /**
@@ -249,51 +250,50 @@ export function generateDarkSakuraIntroDialogue(
 
     if (hostTier >= 3 && hasSlayer) {
       const slayerP = participants.find(p => getDarkSakuraTier(getDarkSakuraRecord(p.master)) === 1);
-      dialogue = `*Wait...* Her crimson eyes flicker past you, locking onto **${slayerP?.username || 'your ally'}**.\n\n` +
-        `*"${host.username}, who is this standing behind you? Their hands reek of my dried blood. Did you bring an executioner to finish what your soft heart couldn't in our previous clashes?"*`;
+      dialogue = `"${host.username}, who is this standing behind you? Their hands reek of my dried blood. Did you bring an executioner to finish what your soft heart couldn't in our previous clashes?"`;
       bannerQuote = 'Did you bring a butcher to finish what your soft heart couldn\'t?';
     } else if (allSlayers) {
-      dialogue = `*"A full circle of executioners gathered together... How flattering. You must really want to watch me dissolve under your noble phantasms today. Step into the mud then—let's see who breaks first."*`;
+      dialogue = `"A full circle of executioners gathered together... How flattering. You must really want to watch me dissolve under your noble phantasms today. Step into the mud then—let's see who breaks first."`;
       bannerQuote = 'A full circle of executioners gathered together... How flattering.';
     } else if (allMercy) {
-      dialogue = `*"Not a single killer among all four of you? A circle of saints marching straight into the abyss... Do you really think this mud won't swallow every last one of you if you hesitate?"*`;
+      dialogue = `"Not a single killer among all four of you? A circle of saints marching straight into the abyss... Do you really think this mud won't swallow every last one of you if you hesitate?"`;
       bannerQuote = 'A circle of saints marching straight into the abyss...';
     } else {
-      dialogue = `*"Another vanguard gathered to harvest the corrupted Grail... Some of you have drawn my blood, others held out a hand in past bouts. Let's see which conviction triumphs today."*`;
+      dialogue = `"Another vanguard gathered to harvest the corrupted Grail... Some of you have drawn my blood, others held out a hand in past bouts. Let's see which conviction triumphs today."`;
       bannerQuote = 'Let\'s see which conviction triumphs today.';
     }
   } else {
     // Solo player dynamics
     if (hostRecord.spares === 0 && hostRecord.kills === 0) {
-      dialogue = `*"The leyline whispers of a new challenger... Welcome to the bottom of the world, ${host.username}. Don't drown in my shadows."*`;
+      dialogue = `"The leyline whispers of a new challenger... Welcome to the bottom of the world, ${host.username}. Don't drown in my shadows."`;
       bannerQuote = 'Welcome to the bottom of the world... Don\'t drown in my shadows.';
     } else if (isQuickRematch) {
-      dialogue = `*"Back so soon? You barely cleaned the mud off your boots. Are you that eager to see me again, ${host.username}?"*`;
+      dialogue = `"Back so soon? You barely cleaned the mud off your boots. Are you that eager to see me again, ${host.username}?"`;
       bannerQuote = 'Back so soon? You barely cleaned the mud off your boots.';
     } else if (hostRecord.lastOutcome === 'spared_betrayed') {
-      dialogue = `*"In our last bout... the shadows swallowed you before you could pull away. Yet you step right back into my cavern without flinching. Are you courageous, or just an idiot?"*`;
+      dialogue = `"In our last bout... the shadows swallowed you before you could pull away. Yet you step right back into my cavern without flinching. Are you courageous, or just an idiot?"`;
       bannerQuote = 'Yet you step right back into my cavern without flinching...';
     } else if (hostRecord.mercyStreak >= 3) {
-      dialogue = `*"That's ${hostRecord.mercyStreak} consecutive bouts where you stayed your blade at the very end... When will you learn that monsters don't deserve fairy tales?"*`;
+      dialogue = `"That's ${hostRecord.mercyStreak} consecutive bouts where you stayed your blade at the very end... When will you learn that monsters don't deserve fairy tales?"`;
       bannerQuote = `When will you learn that monsters don't deserve fairy tales?`;
     } else if (hostRecord.slayerStreak >= 3) {
-      dialogue = `*"Another round, another execution. You treat carving me apart like routine paperwork, don't you? Come on then... draw your weapon."*`;
+      dialogue = `"Another round, another execution. You treat carving me apart like routine paperwork, don't you? Come on then... draw your weapon."`;
       bannerQuote = 'You treat carving me apart like routine paperwork, don\'t you?';
     } else if (hostTier === 1) {
-      dialogue = `*"Ah, the butcher returns. Eager to see if my core shatters faster this time? Let me show you what it feels like to rot in the mud."*`;
+      dialogue = `"Ah, the butcher returns. Eager to see if my core shatters faster this time? Let me show you what it feels like to rot in the mud."`;
       bannerQuote = 'Ah, the butcher returns. Eager to carve me open again?';
     } else if (hostTier === 3) {
-      dialogue = `*"You're back... Even in this pitch-black cavern, your presence feels warm. My shadows hesitate around you, ${host.username}."*`;
+      dialogue = `"You're back... Even in this pitch-black cavern, your presence feels warm. My shadows hesitate around you, ${host.username}."`;
       bannerQuote = 'My shadows hesitate around you...';
     } else {
-      dialogue = `*"Another bout. Are you going to cut me down like a true magus, or pretend to be my savior today? You Masters are all the same."*`;
+      dialogue = `"Another bout. Are you going to cut me down like a true magus, or pretend to be my savior today? You Masters are all the same."`;
       bannerQuote = 'Are you going to cut me down, or pretend to be my savior?';
     }
   }
 
-  // Append servant Easter Egg if present
+  // Append servant Easter Egg if present (pure dialogue only)
   if (egg) {
-    dialogue += `\n\n👁️ **[Echoes of the Past]** *(Her gaze falls upon ${egg.name})*\n> *"–${egg.quote}"*`;
+    dialogue += `\n\n"${egg.quote}"`;
   }
 
   return {
@@ -350,49 +350,51 @@ export function checkPacifistMilestone(
   }
 
   // Pool of distinctive, in-character Dark Sakura pacifist milestone dialogues.
-  // Dark Sakura is serious, deeply traumatized, bitter yet dualistic. When confronted by
-  // someone who has repeatedly spared her and held out their hand into the cursed mud,
-  // the shadow tendrils hesitate, parting around the Master.
+  // Dark Sakura is serious, deeply traumatized, bitter, cruel, and dualistic.
+  // She will never turn back to normal and remains evil ("I was insane from the very start").
+  // She does not exhibit random violence, but when confronted by someone who repeatedly
+  // entered her cavern without drawing a weapon, she coldly acknowledges their unnatural
+  // weaponless stubbornness and spares them, strictly pure spoken dialogue.
   const variations = [
     {
-      title: 'THE ABYSSAL SANCTUARY: STAYED BLADES',
-      bannerQuote: 'Why do you keep reaching into this filthy mud...?',
+      title: '🌑 ABYSSAL SANCTUARY: THE INEVITABLE DESPAIR',
+      bannerQuote: 'I was insane from the very start... so why do you refuse to draw your blade?',
       vnDialogue:
         `"Lower your weapons. ...I told you to put them away.\n\n` +
-        `You've stepped into this rotting cavern so many times, ${host.username}... yet not once have you tried to cut me down. Everyone else only sees a monster to be cleansed or a pawn to be slaughtered.\n\n` +
-        `Why do you keep reaching your bare hands into this filthy mud? ...You really are a fool. Turn around and go back. I won't let the shadows swallow you today."`,
-      narrative:
-        `*The cavern rumbles, but instead of dark tendrils tearing across the stone, the writhing shadows hesitate and part. Dark Sakura stands before ${host.username}, blood-red eyes flickering with quiet conflict as the cursed mud recedes around your boots.*`
+        `I was insane from the very start. I tore Shinji apart and drank Servants until the leylines turned black. I will never turn back to normal, and I don't want forgiveness.\n\n` +
+        `...Yet every time you step into this cavern, ${host.username}, you stand empty-handed. Take the Grail's mana and leave. Don't ever mistake this for repentance."`
     },
     {
-      title: 'WHISPERS BENEATH THE SHADOW: UNTAINTED NECTAR',
-      bannerQuote: 'I have been insane from the very start... yet you never fled.',
+      title: '🌑 CAVERN OF THE HOLLOW VESSEL: DRIED BLOOD',
+      bannerQuote: 'For eleven years, every hand that reached for me held a blade or a worm.',
       vnDialogue:
-        `"Don't bother drawing your weapon. It's useless anyway.\n\n` +
-        `Did someone tell you that I could be saved? That this darkness was just a temporary nightmare? Fufu... Don't make me laugh. I was insane from the very start.\n\n` +
-        `...And yet, you stood here, bout after bout, never once attempting to sever my core. Take the Grail's mana and leave before my hunger wakes up. Don't make me regret letting you go."`,
-      narrative:
-        `*The black silk of her shadow dress ceases its violent fluttering. With a slow, deliberate wave of her hand, Dark Sakura suppresses the screeching tendrils, offering uncorrupted Grail essence from the deep leylines before turning her back to the cavern.*`
+        `"Tell your Servants to stand down. Don't waste your energy chanting.\n\n` +
+        `For eleven years, everyone who touched me was carving me open or feeding me to worms. I devoured them all in the black mud.\n\n` +
+        `So why do your hands carry no weapons, ${host.username}? It's repulsive how your warmth confuses the shadow. Take what you came for and leave before my hunger wakes back up."`
     },
     {
-      title: 'ECHOES OF THE CAVERN: THE MAIDEN’S MERCY',
-      bannerQuote: 'Your warmth burns colder than this mud... Master.',
+      title: '🌑 SHADOW OF RESENTMENT: SILENT ACCORD',
+      bannerQuote: 'Nee-san had the sun... and I was left alone in the dark.',
       vnDialogue:
-        `"Stop. Don't summon your Servants to fight me.\n\n` +
-        `Look around you... this entire cavern is drenched in All The World's Evil. Zouken, the Matous, the Holy Grail... they made sure nothing clean remained inside me. I devour everything that gets in my way.\n\n` +
-        `...So why do you look at me like that? Without a trace of hatred? ...It's disgusting how warm your hand felt. Just take what you came for and leave. The shadows won't touch you today."`,
-      narrative:
-        `*A chilling stillness envelops the subterranean chamber. The sharp tendrils made of black shadow retract into her silhouette, leaving only the faint scent of cherry blossoms amidst the dark leylines.*`
+        `"Don't bother drawing your sword. It's pointless anyway.\n\n` +
+        `Nee-san had the spotlight, Senpai had his gentle ideals, and I was left to drown in this darkness. I relish tearing through flesh and taking every drop of mana.\n\n` +
+        `Yet when you look at me, you show no fear. Take your spoils and go, ${host.username}. Monsters don't get fairy tales, but I won't spill your blood today."`
     },
     {
-      title: 'THE SHADOW’S REPOSE: COLD ACCORD',
-      bannerQuote: 'Monsters don\'t get happy endings... but I will spare you.',
+      title: '🌑 VESSEL OF ANGRA MAINYU: UNCHAINED SILENCE',
+      bannerQuote: 'All The World\'s Evil screams inside my veins... yet you walked into the dark without fear.',
       vnDialogue:
-        `"...Stand down.\n\n` +
-        `I know every inch of this cavern, and I know the exact sound of your footsteps, ${host.username}. Over and over, you came down here into the pitch-black abyss without raising a blade.\n\n` +
-        `I cannot return to being normal, and I have no intention of repenting for what I've done. But toward you... the shadow refuses to strike. Take your spoils and go. You don't have to bleed for me today."`,
-      narrative:
-        `*The oppressive miasma suddenly clears. Dark Sakura gazes down with deliberate calm, her low voice trembling slightly before she forces the chaotic mud beneath the cavern floor into complete submission.*`
+        `"Sheathe your weapons immediately. Can't you hear the mud roaring?\n\n` +
+        `All The World's Evil courses through my veins. Anyone else standing here would be shredded into ribbons before their second breath.\n\n` +
+        `Yet you walk directly into my reach without a single drop of malice, ${host.username}. Are you utterly devoid of self-preservation? Take the Grail's dregs and go before I change my mind."`
+    },
+    {
+      title: '🌑 ABYSSAL DECREE: THE STAYED BLADE',
+      bannerQuote: 'I will tear this world apart... but I will not strike you down.',
+      vnDialogue:
+        `"Halt where you stand. There will be no bloodshed between us today.\n\n` +
+        `I am bitter, cruel, and I will drown everything that betrayed me in black mud. Even if the world demands my execution, I will never bow my head.\n\n` +
+        `Yet through every battle, your blade never aimed for my throat. Take the Grail's riches and leave, ${host.username}... you proved your conviction."`
     }
   ];
 
@@ -400,11 +402,9 @@ export function checkPacifistMilestone(
   const selectedIndex = Math.floor(Math.random() * variations.length);
   const chosen = variations[selectedIndex];
 
-  const sceneText = `${chosen.narrative}\n\n${chosen.vnDialogue}`;
-
   return {
     isEligible: true,
-    sceneText,
+    sceneText: chosen.vnDialogue,
     vnDialogue: chosen.vnDialogue,
     bannerQuote: chosen.bannerQuote,
     title: chosen.title,
