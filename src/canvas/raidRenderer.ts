@@ -562,7 +562,7 @@ export interface RaidParticipantState {
   npGauge: number;
   critStars?: number;
   skillCooldowns: number[];
-  activeBuffs?: { name: string; type: string; value: number; remainingTurns: number }[];
+  activeBuffs?: { name: string; type: string; value: number; remainingTurns: number; appliedRound?: number }[];
   isDead?: boolean;
   master?: any;
   currentHand?: ('Buster' | 'Arts' | 'Quick')[];
@@ -584,7 +584,7 @@ export interface RaidBattleState {
   activeMasterIndex: number;
   recentLogs: string[];
   lastPlayerAttackLog?: string;
-  bossBuffs?: { name: string; type: string; value: number; remainingTurns: number }[];
+  bossBuffs?: { name: string; type: string; value: number; remainingTurns: number; appliedRound?: number }[];
   fullCombatLog?: string[];
   // Multi-Phase Break Gauge fields
   currentPhase?: number; // 1, 2, or 3
@@ -1646,13 +1646,20 @@ export async function renderDarkSakuraVNDialogueImage(
   ctx.fillStyle = vigGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Draw Dark Sakura VN Character Sprite (Right Aligned)
-  if (vnSprite) {
+  // 2. Draw Dark Sakura VN Character Sprite (Right Aligned with aspect ratio preserved)
+  if (vnSprite && vnSprite.width && vnSprite.height) {
     ctx.save();
-    const spriteW = 580;
-    const spriteH = 710;
-    const spriteX = 670;
-    const spriteY = 10;
+    const aspect = vnSprite.width / vnSprite.height;
+    const maxSpriteH = 710;
+    let spriteH = maxSpriteH;
+    let spriteW = spriteH * aspect;
+    const maxSpriteW = 600;
+    if (spriteW > maxSpriteW) {
+      spriteW = maxSpriteW;
+      spriteH = spriteW / aspect;
+    }
+    const spriteX = width - spriteW - 30;
+    const spriteY = height - spriteH;
 
     ctx.shadowColor = 'rgba(244, 63, 94, 0.4)';
     ctx.shadowBlur = 25;

@@ -456,6 +456,7 @@ export interface ActiveCombatant {
     type: 'buff_atk' | 'buff_def' | 'crit_rate' | 'evade' | 'invincible' | 'anti_purge_defense' | 'anti_purge_atk' | 'ignore_invincible' | 'sure_hit' | 'stun' | string;
     value: number;
     remainingTurns: number;
+    appliedRound?: number;
     remainingHits?: number;
     isHitCount?: boolean;
     hasDefendedOnce?: boolean;

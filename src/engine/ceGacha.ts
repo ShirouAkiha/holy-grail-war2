@@ -49,7 +49,7 @@ export type RollCeGachaOptions = RollGachaOptions;
  * - Craft Essence 4★ SR pull rate: 19.0% (guaranteed at least one 4★+ CE in 10-pull).
  * - Craft Essence 3★ R pull rate: 80.0%.
  * - Heroic Spirits: Equalized Throne of Heroes roster. New Servants are permanently contracted.
- *   Duplicates award +50 Mana Prisms, +5 stat points, and NP upgrades.
+ *   Duplicates award +50 Mana Prisms and NP upgrades.
  */
 export function executeUnifiedGachaRoll({
   count,
@@ -128,7 +128,6 @@ export function executeUnifiedGachaRoll({
       // Upgrade existing servant
       const existing = newServantsList.find(s => (s.templateId || s.id) === randomTemplate.id);
       if (existing) {
-        existing.availableStatPoints = (existing.availableStatPoints || 0) + 5;
         existing.npLevel = Math.min(5, (existing.npLevel || 1) + 1);
       }
       return {

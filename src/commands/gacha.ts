@@ -91,7 +91,7 @@ export function buildGachaHub(
       `• **★5 SSR Craft Essence:** Strictly **1.0%** pull rate *(Kaleidoscope, The Black Grail, Formal Craft)*\n` +
       `• **★4 SR Craft Essence:** **19.0%** *(Guaranteed at least one 4★+ CE in 10-pull)*\n` +
       `• **★3 R Craft Essence:** **80.0%** *(Dragon's Meridian, Jeweled Sword Zelretch)*\n` +
-      `• **Duplicate Covenant:** Pulling an owned Servant automatically yields **+50 Mana Prisms 🔵**, +5 stat points, and NP upgrade!\n` +
+      `• **Duplicate Covenant:** Pulling an owned Servant automatically yields **+50 Mana Prisms 🔵** and NP upgrade!\n` +
       `• **Prism Exchange:** Spend Mana Prisms in the **🛍️ Da Vinci Workshop** to buy more Summon Tickets!\n\n` +
       `⚡ *Channel your magical energy into the summoning array using the action buttons below!*`;
   } else if (category === 'shop') {
@@ -129,7 +129,7 @@ export function buildGachaHub(
       `• All Servants possess equalized base stat potential for balanced multiplayer combat.\n` +
       `• No star-rarity gaps or predatory stat tiers.\n` +
       `• Tactical victory is determined by **Class Advantage**, **Skill Timing**, **Command Seals**, and **Craft Essence synergies**.\n` +
-      `• Duplicate Heroic Spirits are converted into **+50 Mana Prisms 🔵**, +5 stat points, and NP level upgrade!\n\n` +
+      `• Duplicate Heroic Spirits are converted into **+50 Mana Prisms 🔵** and NP level upgrade!\n\n` +
       `🛡️ **Craft Essences (50% of 10-Pull = Exactly 5 Mystic Codes):**\n` +
       `• ★5 SSR Craft Essence: **1.0%** *(Kaleidoscope, The Black Grail, Formal Craft, Limited/Zero Over)*\n` +
       `• ★4 SR Craft Essence: **19.0%** *(The Imaginary Element, Gamer Fuel, Gandr)*\n` +
@@ -509,7 +509,7 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
             `💥 **NP Affinity:** *${s.noblePhantasm?.cardType || 'Buster'}* (${s.noblePhantasm?.target || 'single'}-target) — ${s.noblePhantasm?.description || ''}\n\n` +
             (pulled.isNew 
               ? `🌟 **[NEW CONTRACT ESTABLISHED!]** Formed a sacred covenant with this Heroic Spirit!` 
-              : `🔄 **[DUPLICATE SPIRIT ORIGIN]** You already hold a contract with this Servant. Awarded **+50 Mana Prisms 🔵**, +5 stat points, and NP upgrade!`) +
+              : `🔄 **[DUPLICATE SPIRIT ORIGIN]** You already hold a contract with this Servant. Awarded **+50 Mana Prisms 🔵** and NP upgrade!`) +
             `\n\n💎 **Remaining Saint Quartz:** \`${master.saintQuartz} SQ\` | 🔵 **Prisms:** \`${master.manaPrisms || 0}\``
           )
           .setColor(pulled.isNew ? 0xeab308 : 0x38bdf8);
@@ -637,7 +637,7 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
             `💥 **NP Affinity:** *${s.noblePhantasm?.cardType || 'Buster'}* (${s.noblePhantasm?.target || 'single'}-target) — ${s.noblePhantasm?.description || ''}\n\n` +
             (pulled.isNew 
               ? `🌟 **[NEW CONTRACT ESTABLISHED!]** Formed a sacred covenant with this Heroic Spirit!` 
-              : `🔄 **[DUPLICATE SPIRIT ORIGIN]** You already hold a contract with this Servant. Awarded **+50 Mana Prisms 🔵**, +5 stat points, and NP upgrade!`) +
+              : `🔄 **[DUPLICATE SPIRIT ORIGIN]** You already hold a contract with this Servant. Awarded **+50 Mana Prisms 🔵** and NP upgrade!`) +
             `\n\n🎫 **Remaining Tickets:** \`${master.summonTickets || 0} Tickets\` | 🔵 **Prisms:** \`${master.manaPrisms || 0}\``
           )
           .setColor(pulled.isNew ? 0xeab308 : 0x38bdf8);
@@ -903,7 +903,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             `💥 **NP Affinity:** *${s.noblePhantasm?.cardType || 'Buster'}* (${s.noblePhantasm?.target || 'single'}-target)\n\n` +
             (pulled.isNew 
               ? `🌟 **[NEW CONTRACT ESTABLISHED!]** Formed a sacred covenant with this Heroic Spirit!` 
-              : `🔄 **[DUPLICATE SPIRIT ORIGIN]** You already hold a contract with this Servant. Awarded **+50 Mana Prisms 🔵**, +5 stat points, and NP upgrade!`) +
+              : `🔄 **[DUPLICATE SPIRIT ORIGIN]** You already hold a contract with this Servant. Awarded **+50 Mana Prisms 🔵** and NP upgrade!`) +
             `\n\n💎 **Remaining Saint Quartz:** \`${master.saintQuartz} SQ\`  •  🔵 **Prisms:** \`${master.manaPrisms || 0}\``
           )
           .setColor(pulled.isNew ? 0xeab308 : 0x38bdf8);

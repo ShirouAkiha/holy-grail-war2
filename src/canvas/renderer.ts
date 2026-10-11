@@ -7494,6 +7494,7 @@ export async function renderVisualNovelCard(
         const isAdiosa = nameLower.includes('adiosa') || nameLower.includes('typhon');
         const isLucia = nameLower.includes('lucia') || nameLower.includes('lucernalia');
         const isLuvria = nameLower.includes('luvria');
+        const isDarkSakura = nameLower.includes('sakura') || nameLower.includes('dark sakura');
 
         // Target Scale & Position per servant requirements:
         let scaleMultiplier = 1.0;
@@ -7502,7 +7503,13 @@ export async function renderVisualNovelCard(
         let spriteY = Math.round(height * 0.12);
         let hasCustomY = false;
 
-        if (isLuvria) {
+        if (isDarkSakura) {
+          scaleMultiplier = 1.05;
+          baseMaxHFactor = 0.90;
+          baseMaxWFactor = 0.52;
+          spriteY = Math.round(height * 0.05);
+          hasCustomY = true;
+        } else if (isLuvria) {
           scaleMultiplier = 1.10;
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.50;
