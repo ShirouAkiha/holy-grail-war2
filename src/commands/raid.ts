@@ -420,6 +420,7 @@ async function launchRaidLobby(
         if (pacifistCheck.isEligible) {
           const sqBonus = Math.floor(boss.drops.minSq + Math.random() * (boss.drops.maxSq - boss.drops.minSq + 1)) * 2;
           const expBonus = (boss.drops.servantExp || 45_000) * 2;
+          const progressionReports: string[] = [];
 
           for (const p of lobbyParticipants) {
             const master = await getOrCreateMaster(p.userId, p.username);
@@ -429,39 +430,89 @@ async function launchRaidLobby(
             record.lastOutcome = 'peaceful';
             record.lastEncounterTime = Date.now();
             master.saintQuartz = (master.saintQuartz || 0) + sqBonus;
-            const s = master.servants?.find((sv: any) => sv.id === p.servant.id);
+
+            const s = master.servants?.find((sv: any) => sv.id === p.servant?.id) ||
+                      master.servants?.find((sv: any) => sv.id === master.activeServantId) ||
+                      master.servants?.[0];
+            let lvlDetail = '';
             if (s) {
-              addServantBattleExp(s, expBonus);
+              const expRes = addServantBattleExp(s, expBonus);
+              s.experience = expRes.updatedServant.experience;
+              s.level = expRes.updatedServant.level;
+              s.availableStatPoints = expRes.updatedServant.availableStatPoints;
+              lvlDetail = `Lv.${expRes.newLevel}`;
+              if (expRes.didLevelUp) {
+                lvlDetail += ` *(+${expRes.levelsGained} Level-Up! +${expRes.statPointsGained} Stat Points)*`;
+              }
             }
+
             master.craftEssences = master.craftEssences || [];
-            master.craftEssences.push(
-              createExpEmberCraftEssence(5, 2),
-              createExpEmberCraftEssence(4, 4),
-              createExpEmberCraftEssence(4, 5)
-            );
+            // Bestow 8x Universal EXP Embers (4x ★5 SSR + 4x ★4 SR)
+            for (let idx = 0; idx < 4; idx++) {
+              master.craftEssences.push(createExpEmberCraftEssence(5, idx + 1));
+            }
+            for (let idx = 0; idx < 4; idx++) {
+              master.craftEssences.push(createExpEmberCraftEssence(4, idx + 5));
+            }
+
             await saveMaster(master);
+
+            const sName = s?.nickname || s?.template?.name || 'Servant';
+            progressionReports.push(
+              `• <@${p.userId}> (**${p.username}**): **+${sqBonus} SQ**, **+${expBonus.toLocaleString()} EXP** on **${sName}**${lvlDetail ? ` (${lvlDetail})` : ''}, and **+8x Universal EXP Embers** ✨`
+            );
+          }
+
+          // Generate VN Dialogue Image Card
+          let vnAttachment: AttachmentBuilder | null = null;
+          try {
+            const vnRes = await renderDarkSakuraVNDialogueImage({
+              title: pacifistCheck.title,
+              speakerName: 'Dark Sakura',
+              dialogue: pacifistCheck.vnDialogue,
+              easterEggBanner: pacifistCheck.bannerQuote
+            });
+            vnAttachment = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_pacifist_vn.png' });
+          } catch (err) {
+            console.error('Failed to generate Dark Sakura pacifist VN dialogue image:', err);
           }
 
           const pacifistEmbed = new EmbedBuilder()
-            .setTitle('🌸 PACIFIST MILESTONE: THE MAIDEN’S SANCTUARY')
+            .setTitle(`🌸 PACIFIST MILESTONE: ${pacifistCheck.title}`)
             .setDescription(
               `${pacifistCheck.sceneText}\n\n` +
               `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
               `💎 **Peaceful Blessing Bestowed:**\n` +
               `• **+${sqBonus} Saint Quartz** (Guaranteed Double Drop) 💎\n` +
               `• **+${expBonus.toLocaleString()} Servant Battle EXP** ⚔️\n` +
-              `• **+8 Universal EXP Embers** ✨\n` +
-              `• **A gentle, warm pat on the head.** 🌸`
+              `• **+8 Universal EXP Embers** ✨ (4x ★5 SSR + 4x ★4 SR)\n` +
+              `• **The cavern falls into complete silence without bloodshed.** 🌸\n\n` +
+              `**Vanguard Spoils & Growth:**\n` +
+              progressionReports.join('\n')
             )
-            .setImage(DARK_SAKURA_ASSETS.vnDialogueSprite)
-            .setColor(0xf472b6)
-            .setFooter({ text: 'Holy Grail War PvE • Pure Pacifist Resolution' });
+            .setColor(0x831843)
+            .setFooter({ text: 'Fate/stay night Heaven’s Feel • Pure Pacifist Resolution' });
 
-          await lobbyMsg.edit({
+          if (vnAttachment) {
+            pacifistEmbed.setImage('attachment://dark_sakura_pacifist_vn.png');
+          } else {
+            pacifistEmbed.setImage(DARK_SAKURA_ASSETS.vnDialogueSprite);
+          }
+
+          const payload: any = {
             content: '🌸 **An unexpected serenity falls across the cavern...**',
             embeds: [pacifistEmbed],
             components: []
-          }).catch(() => {});
+          };
+          if (vnAttachment) {
+            payload.files = [vnAttachment];
+          }
+
+          await lobbyMsg.edit(payload).catch(async () => {
+            if (lobbyMsg.channel && typeof lobbyMsg.channel.send === 'function') {
+              await lobbyMsg.channel.send(payload).catch(() => {});
+            }
+          });
           return;
         }
       }

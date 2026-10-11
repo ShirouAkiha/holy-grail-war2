@@ -54,21 +54,36 @@ export function getDarkSakuraRecord(master: any): DarkSakuraKarmaRecord {
 
 /**
  * Evaluates Dark Sakura's Temperament Tier for a Master:
- * - Tier 4: Pacifist Devotion (Sanctuary / Headpat Easter Egg)
- * - Tier 3: Wavering Maiden (High Spares >= 65%)
- * - Tier 2: Skeptic Magus (Balanced / New)
- * - Tier 1: The Butcher (High Kills >= 65%)
+ * High-frequency raid progression designed for players doing multiple raids daily:
+ * - Tier 4: Pacifist Devotion (Sanctuary / Headpat Easter Egg) - Requires 40+ spares with 0 kills OR 60+ spares with >=95% ratio & 20+ streak
+ * - Tier 3: Wavering Maiden (Earned Compassion) - Requires at least 15+ raids, 12+ spares, >=75% spare ratio, and 5+ consecutive mercy streak
+ * - Tier 1: The Butcher (Cold-blooded Executioner) - Requires at least 15+ raids, 12+ kills, >=75% kill ratio, and 5+ consecutive slayer streak
+ * - Tier 2: Skeptic Magus (Guarded / Neutral) - Default for anyone with < 15 raids or mixed/fluctuating choices
  */
 export function getDarkSakuraTier(record: DarkSakuraKarmaRecord): 1 | 2 | 3 | 4 {
   const total = record.spares + record.kills;
-  if (record.spares >= 30 && record.kills === 0) return 4;
-  if (record.spares >= 50 && record.spares / Math.max(1, total) >= 0.95) return 4;
 
-  if (total < 2) return 2; // Neutral for newcomers
+  // Tier 4: True Pacifist Devotion (Ultra-rare high bar)
+  if (record.spares >= 40 && record.kills === 0) return 4;
+  if (record.spares >= 60 && (record.spares / Math.max(1, total)) >= 0.95 && record.mercyStreak >= 20) return 4;
 
-  const ratio = record.spares / total;
-  if (ratio >= 0.65) return 3;
-  if (ratio <= 0.35) return 1;
+  // Anyone with fewer than 15 total raids remains in Tier 2 (Guarded / Skeptical)
+  // She does not quickly open her heart or brand someone after just a few runs.
+  if (total < 15) return 2;
+
+  const spareRatio = record.spares / total;
+
+  // Tier 3: Wavering Maiden (Requires sustained mercy over multiple days of raiding)
+  if (record.spares >= 12 && spareRatio >= 0.75 && record.mercyStreak >= 5) {
+    return 3;
+  }
+
+  // Tier 1: The Butcher (Requires persistent execution over multiple days of raiding)
+  if (record.kills >= 12 && ((record.kills / total) >= 0.75) && record.slayerStreak >= 5) {
+    return 1;
+  }
+
+  // Everyone else is Tier 2 (Guarded / Testing)
   return 2;
 }
 
@@ -137,20 +152,26 @@ export function getDarkSakuraHpReactiveQuote(
 
 /**
  * Calculates the trust probability (0.0 to 1.0) when a Master chooses to SPARE her.
+ * Sets a high bar so success feels rewarding, dangerous, and rare.
  */
 export function calculateSpareTrustChance(record: DarkSakuraKarmaRecord): number {
   const tier = getDarkSakuraTier(record);
-  if (tier === 4) return 1.0;
+  if (tier === 4) {
+    // Pacifist Devotion: 88% - 92% (near-certain, slight shadow tension)
+    return Math.min(0.92, 0.88 + Math.min(record.mercyStreak * 0.002, 0.04));
+  }
   if (tier === 3) {
-    // 75% to 92% based on mercy streak
-    return Math.min(0.92, 0.75 + Math.min(record.mercyStreak * 0.03, 0.17));
+    // Wavering Maiden (Hard-earned trust after 15+ raids & 5+ mercy streak):
+    // Starts at 52%, gradually scales with consecutive mercy up to max 70%
+    return Math.min(0.70, 0.52 + Math.min((record.mercyStreak - 5) * 0.02, 0.18));
   }
   if (tier === 1) {
-    // 10% to 25% (very high risk of betrayal)
-    return Math.max(0.10, 0.25 - Math.min(record.slayerStreak * 0.03, 0.15));
+    // The Butcher (Hardened executioner): Mud lashes out violently (6% - 12%)
+    return Math.max(0.06, 0.12 - Math.min((record.slayerStreak - 5) * 0.01, 0.06));
   }
-  // Tier 2: 50% coin flip
-  return 0.50;
+  // Tier 2 (Neutral / Under 15 raids or mixed):
+  // Reaching into the corrupt mud is naturally perilous! 25% base + 1% per mercy streak (capped at 35%)
+  return Math.min(0.35, 0.25 + Math.min(record.mercyStreak * 0.01, 0.10));
 }
 
 /**
@@ -285,16 +306,32 @@ export function generateDarkSakuraIntroDialogue(
 
 /**
  * Evaluates whether the raid qualifies for the Tier 4 Pacifist Devotion Instant Clear!
+ * Dark Sakura recognizes a Master who has consistently walked into the dark cavern
+ * without malice, refusing to draw their weapon.
  */
 export function checkPacifistMilestone(
   participants: { master: any; servant: any; username: string; userId: string }[]
-): { isEligible: boolean; sceneText: string; reason: string } {
+): {
+  isEligible: boolean;
+  sceneText: string;
+  vnDialogue: string;
+  bannerQuote: string;
+  title: string;
+  reason: string;
+} {
   const host = participants[0];
   const hostRecord = getDarkSakuraRecord(host.master);
   const hostTier = getDarkSakuraTier(hostRecord);
 
   if (hostTier !== 4) {
-    return { isEligible: false, sceneText: '', reason: 'Host is not Tier 4' };
+    return {
+      isEligible: false,
+      sceneText: '',
+      vnDialogue: '',
+      bannerQuote: '',
+      title: '',
+      reason: 'Host is not Tier 4'
+    };
   }
 
   // If in team, check if anyone has aggressive tier 1 karma
@@ -304,21 +341,73 @@ export function checkPacifistMilestone(
       return {
         isEligible: false,
         sceneText: '',
+        vnDialogue: '',
+        bannerQuote: '',
+        title: '',
         reason: 'Host is peaceful, but an ally is a notorious Slayer.'
       };
     }
   }
 
-  const sceneText =
-    `*The cavern trembles, but instead of dark tendrils lashing out, the crimson markings softly subside into gentle lavender ribbons.*\n\n` +
-    `*"Wait... put your weapons away. You've walked into this cavern ${hostRecord.spares} times, yet not once have you raised a blade with intent to harm me.\n\n` +
-    `How many times have you reached your hand out into this pitch-black mud just to hold mine? ...Silly Master.\n\n` +
-    `You don't need to fight me today."*\n\n` +
-    `*Dark Sakura steps forward, smiling softly as she gently pats ${host.username}'s head. With a flick of her hand, she separates pure, untainted Grail nectar from the shadow abyss and places it into your hands.*`;
+  // Pool of distinctive, in-character Dark Sakura pacifist milestone dialogues.
+  // Dark Sakura is serious, deeply traumatized, bitter yet dualistic. When confronted by
+  // someone who has repeatedly spared her and held out their hand into the cursed mud,
+  // the shadow tendrils hesitate, parting around the Master.
+  const variations = [
+    {
+      title: 'THE ABYSSAL SANCTUARY: STAYED BLADES',
+      bannerQuote: 'Why do you keep reaching into this filthy mud...?',
+      vnDialogue:
+        `"Lower your weapons. ...I told you to put them away.\n\n` +
+        `You've stepped into this rotting cavern so many times, ${host.username}... yet not once have you tried to cut me down. Everyone else only sees a monster to be cleansed or a pawn to be slaughtered.\n\n` +
+        `Why do you keep reaching your bare hands into this filthy mud? ...You really are a fool. Turn around and go back. I won't let the shadows swallow you today."`,
+      narrative:
+        `*The cavern rumbles, but instead of dark tendrils tearing across the stone, the writhing shadows hesitate and part. Dark Sakura stands before ${host.username}, blood-red eyes flickering with quiet conflict as the cursed mud recedes around your boots.*`
+    },
+    {
+      title: 'WHISPERS BENEATH THE SHADOW: UNTAINTED NECTAR',
+      bannerQuote: 'I have been insane from the very start... yet you never fled.',
+      vnDialogue:
+        `"Don't bother drawing your weapon. It's useless anyway.\n\n` +
+        `Did someone tell you that I could be saved? That this darkness was just a temporary nightmare? Fufu... Don't make me laugh. I was insane from the very start.\n\n` +
+        `...And yet, you stood here, bout after bout, never once attempting to sever my core. Take the Grail's mana and leave before my hunger wakes up. Don't make me regret letting you go."`,
+      narrative:
+        `*The black silk of her shadow dress ceases its violent fluttering. With a slow, deliberate wave of her hand, Dark Sakura suppresses the screeching tendrils, offering uncorrupted Grail essence from the deep leylines before turning her back to the cavern.*`
+    },
+    {
+      title: 'ECHOES OF THE CAVERN: THE MAIDEN’S MERCY',
+      bannerQuote: 'Your warmth burns colder than this mud... Master.',
+      vnDialogue:
+        `"Stop. Don't summon your Servants to fight me.\n\n` +
+        `Look around you... this entire cavern is drenched in All The World's Evil. Zouken, the Matous, the Holy Grail... they made sure nothing clean remained inside me. I devour everything that gets in my way.\n\n` +
+        `...So why do you look at me like that? Without a trace of hatred? ...It's disgusting how warm your hand felt. Just take what you came for and leave. The shadows won't touch you today."`,
+      narrative:
+        `*A chilling stillness envelops the subterranean chamber. The sharp tendrils made of black shadow retract into her silhouette, leaving only the faint scent of cherry blossoms amidst the dark leylines.*`
+    },
+    {
+      title: 'THE SHADOW’S REPOSE: COLD ACCORD',
+      bannerQuote: 'Monsters don\'t get happy endings... but I will spare you.',
+      vnDialogue:
+        `"...Stand down.\n\n` +
+        `I know every inch of this cavern, and I know the exact sound of your footsteps, ${host.username}. Over and over, you came down here into the pitch-black abyss without raising a blade.\n\n` +
+        `I cannot return to being normal, and I have no intention of repenting for what I've done. But toward you... the shadow refuses to strike. Take your spoils and go. You don't have to bleed for me today."`,
+      narrative:
+        `*The oppressive miasma suddenly clears. Dark Sakura gazes down with deliberate calm, her low voice trembling slightly before she forces the chaotic mud beneath the cavern floor into complete submission.*`
+    }
+  ];
+
+  // Pick variation deterministically or pseudo-randomly based on host spares and timestamp
+  const selectedIndex = Math.floor(Math.random() * variations.length);
+  const chosen = variations[selectedIndex];
+
+  const sceneText = `${chosen.narrative}\n\n${chosen.vnDialogue}`;
 
   return {
     isEligible: true,
     sceneText,
+    vnDialogue: chosen.vnDialogue,
+    bannerQuote: chosen.bannerQuote,
+    title: chosen.title,
     reason: 'Pure Pacifist Devotion unlocked.'
   };
 }
@@ -455,29 +544,48 @@ export async function handleDarkSakuraClimax(
     // Default to execute if no choice was made in time
     const choice = userChoices.get(p.userId) || 'execute';
 
+    // Locate participant's servant (active servant or matched instance)
+    const s = master.servants?.find((sv: any) => sv.id === p.servant?.id) ||
+              master.servants?.find((sv: any) => sv.id === master.activeServantId) ||
+              master.servants?.[0];
+    const sName = s?.nickname || s?.template?.name || p.servant?.nickname || p.servant?.template?.name || 'Servant';
+
+    master.craftEssences = master.craftEssences || [];
+
     if (choice === 'execute') {
       participantOutcomes.push('killed');
       // Guaranteed safe rewards
       master.saintQuartz = (master.saintQuartz || 0) + baseSq;
-      const s = master.servants?.find((sv: any) => sv.id === p.servant.id);
+
+      let lvlDetail = '';
       if (s) {
-        addServantBattleExp(s, baseExp);
+        const expRes = addServantBattleExp(s, baseExp);
+        s.experience = expRes.updatedServant.experience;
+        s.level = expRes.updatedServant.level;
+        s.availableStatPoints = expRes.updatedServant.availableStatPoints;
+        lvlDetail = `Lv.${expRes.newLevel}`;
+        if (expRes.didLevelUp) {
+          lvlDetail += ` *(+${expRes.levelsGained} Level-Up! +${expRes.statPointsGained} Stat Points)*`;
+        }
       }
-      master.craftEssences = master.craftEssences || [];
-      master.craftEssences.push(
-        createExpEmberCraftEssence(5, 1),
-        createExpEmberCraftEssence(4, 2),
-        createExpEmberCraftEssence(4, 3)
-      );
+
+      // 4x Universal EXP Embers (2x ★5 SSR + 2x ★4 SR)
+      const emberSSR1 = createExpEmberCraftEssence(5, 1);
+      const emberSSR2 = createExpEmberCraftEssence(5, 2);
+      const emberSR1 = createExpEmberCraftEssence(4, 3);
+      const emberSR2 = createExpEmberCraftEssence(4, 4);
+      master.craftEssences.push(emberSSR1, emberSSR2, emberSR1, emberSR2);
 
       record.kills += 1;
       record.slayerStreak += 1;
       record.mercyStreak = 0;
       record.lastOutcome = 'killed';
 
+      const expInfo = lvlDetail ? ` (${lvlDetail})` : '';
       resultReports.push(
         `• <@${p.userId}> (**${p.username}**) chose **⚔️ EXECUTE**:\n` +
-        `  └─ *Severed the shadow core cleanly.* Collected **+${baseSq} SQ** 💎, **+${baseExp.toLocaleString()} EXP** ⚔️, and 4x Embers.`
+        `  └─ *Severed the shadow core cleanly.*\n` +
+        `  └─ 💎 **Spoils:** **+${baseSq} SQ**, **+${baseExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+4x Universal EXP Embers** ✨ (2x ★5 SSR + 2x ★4 SR)`
       );
     } else {
       // Sparing gamble!
@@ -490,23 +598,33 @@ export async function handleDarkSakuraClimax(
         const doubleSq = baseSq * 2;
         const doubleExp = baseExp * 2;
         master.saintQuartz = (master.saintQuartz || 0) + doubleSq;
-        const s = master.servants?.find((sv: any) => sv.id === p.servant.id);
+
+        let lvlDetail = '';
         if (s) {
-          addServantBattleExp(s, doubleExp);
+          const expRes = addServantBattleExp(s, doubleExp);
+          s.experience = expRes.updatedServant.experience;
+          s.level = expRes.updatedServant.level;
+          s.availableStatPoints = expRes.updatedServant.availableStatPoints;
+          lvlDetail = `Lv.${expRes.newLevel}`;
+          if (expRes.didLevelUp) {
+            lvlDetail += ` *(+${expRes.levelsGained} Level-Up! +${expRes.statPointsGained} Stat Points)*`;
+          }
         }
-        master.craftEssences = master.craftEssences || [];
-        master.craftEssences.push(
-          createExpEmberCraftEssence(5, 2),
-          createExpEmberCraftEssence(4, 4),
-          createExpEmberCraftEssence(4, 5)
-        );
+
+        // 8x Universal EXP Embers (4x ★5 SSR + 4x ★4 SR)
+        for (let idx = 0; idx < 4; idx++) {
+          master.craftEssences.push(createExpEmberCraftEssence(5, idx + 1));
+        }
+        for (let idx = 0; idx < 4; idx++) {
+          master.craftEssences.push(createExpEmberCraftEssence(4, idx + 5));
+        }
 
         let ceDropNotice = '';
         // 25% chance of rare CE drop
         if (Math.random() < 0.25 || record.spares >= 20) {
           const ribbonCe = createDarkSakuraRibbonCe();
           master.craftEssences.push(ribbonCe);
-          ceDropNotice = ` + 🌸 **[★5 Ribbon of the Hollow Night CE]**!`;
+          ceDropNotice = `\n  └─ 🌸 **SPECIAL DROP:** Obtained ★5 CE **[Ribbon of the Hollow Night]**!`;
         }
 
         record.spares += 1;
@@ -514,9 +632,11 @@ export async function handleDarkSakuraClimax(
         record.slayerStreak = 0;
         record.lastOutcome = 'spared_mercy';
 
+        const expInfo = lvlDetail ? ` (${lvlDetail})` : '';
         resultReports.push(
           `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[SHADOW PURIFIED]**:\n` +
-          `  └─ *The shadows receded with a trembling smile.* Received **DOUBLED REWARDS: +${doubleSq} SQ** 💎, **+${doubleExp.toLocaleString()} EXP** ⚔️, 8x Embers${ceDropNotice}`
+          `  └─ *The shadows receded with a trembling smile.*\n` +
+          `  └─ 💎 **DOUBLED SPOILS:** **+${doubleSq} SQ**, **+${doubleExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+8x Universal EXP Embers** ✨ (4x ★5 SSR + 4x ★4 SR)${ceDropNotice}`
         );
       } else {
         participantOutcomes.push('spared_betrayed');
@@ -525,15 +645,30 @@ export async function handleDarkSakuraClimax(
         record.mercyStreak = 0;
         record.lastOutcome = 'spared_betrayed';
 
-        // Minor pity EXP, 0 SQ
-        const s = master.servants?.find((sv: any) => sv.id === p.servant.id);
+        // Minor pity EXP (15,000) & 2x SR Embers consolation
+        const pityExp = 15_000;
+        let lvlDetail = '';
         if (s) {
-          addServantBattleExp(s, 5_000);
+          const expRes = addServantBattleExp(s, pityExp);
+          s.experience = expRes.updatedServant.experience;
+          s.level = expRes.updatedServant.level;
+          s.availableStatPoints = expRes.updatedServant.availableStatPoints;
+          lvlDetail = `Lv.${expRes.newLevel}`;
+          if (expRes.didLevelUp) {
+            lvlDetail += ` *(+${expRes.levelsGained} Level-Up! +${expRes.statPointsGained} Stat Points)*`;
+          }
         }
 
+        master.craftEssences.push(
+          createExpEmberCraftEssence(4, 1),
+          createExpEmberCraftEssence(4, 2)
+        );
+
+        const expInfo = lvlDetail ? ` (${lvlDetail})` : '';
         resultReports.push(
           `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[DEVOTION CONSUMED]**:\n` +
-          `  └─ *The black mud flared out of control!* *"I'm sorry... I can't hold it back!!"* Engulfed in shadow! **0 SQ obtained.**`
+          `  └─ *The black mud flared out of control!* *"I'm sorry... I can't hold it back!!"*\n` +
+          `  └─ 📦 **Consolation:** **+${pityExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+2x Universal EXP Embers** ✨ (2x ★4 SR) *(0 SQ gained)*`
         );
       }
     }
