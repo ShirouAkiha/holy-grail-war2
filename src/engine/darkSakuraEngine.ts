@@ -87,6 +87,10 @@ export function getDarkSakuraTier(record: DarkSakuraKarmaRecord): 1 | 2 | 3 | 4 
   return 2;
 }
 
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 /**
  * Generates HP-reactive dialogue quotes for Dark Sakura during combat:
  * - 'boss_low_hp': Boss drops to <= 30% HP
@@ -104,45 +108,123 @@ export function getDarkSakuraHpReactiveQuote(
   switch (trigger) {
     case 'boss_low_hp':
       if (tier === 4) {
-        return { quote: "Even when I'm breaking apart... you still look at me with those warm eyes. Why won't you just let me rest?" };
+        return {
+          quote: pickRandom([
+            "Even when I'm breaking apart... you still look at me with those warm eyes. Why won't you just let me rest?",
+            "My vessel is shattering... but your blade never once sought my throat. Senpai... is this your kindness?",
+            "The shadow is pulling me under... yet you stand there without fear. Please... stay safe."
+          ])
+        };
       }
       if (tier === 3) {
-        return { quote: "My core is crumbling... but your hand didn't tremble when you stayed your blade before. Is this really the end?" };
+        return {
+          quote: pickRandom([
+            "My core is crumbling... but your hand didn't tremble when you stayed your blade before. Is this really the end?",
+            "The black mud is spilling... don't step any closer, or my urges will devour you!",
+            "I'm falling apart... but you still haven't drawn your weapon to finish me. Why?"
+          ])
+        };
       }
       if (tier === 1) {
-        return { quote: "Fufu... You carve into my body so mercilessly! Go on then, executioner, finish your job!" };
+        return {
+          quote: pickRandom([
+            "Fufu... You carve into my body so mercilessly! Go on then, executioner, finish your job!",
+            "Ahaha! More blood for the mud! Cut me open as much as you like, butcher!",
+            "Is that all your blades can do? I've bled for eleven years—this pain is nothing!"
+          ])
+        };
       }
-      return { quote: "The black mud spills from my wounds... Can you hear the shadows screaming beneath the surface?" };
+      return {
+        quote: pickRandom([
+          "The black mud spills from my wounds... Can you hear the shadows screaming beneath the surface?",
+          "My vessel trembles... but All The World's Evil won't stop until every Leyline burns!",
+          "You think wounding this body matters? The shadow only hungers for more mana!"
+        ])
+      };
 
     case 'break_gauge':
       if (tier === 4) {
-        return { quote: "The seal shattered... The abyssal core is exposed. Please... don't let the shadow consume us both!" };
+        return {
+          quote: pickRandom([
+            "The seal shattered... The abyssal core is exposed. Please... don't let the shadow consume us both!",
+            "The corruption is overflowing! Keep your distance... I can't guarantee I won't hurt you!",
+            "My restraints broke...! Hold on... I'm trying to suppress the shadow!"
+          ])
+        };
       }
       if (tier === 1) {
-        return { quote: "You shattered my vessel! Fufu... Ahaha! Is that all you've got? The abyss only gets deeper from here!" };
+        return {
+          quote: pickRandom([
+            "You shattered my vessel! Fufu... Ahaha! Is that all you've got? The abyss only gets deeper from here!",
+            "Shattering my outer core only releases more shadow! Come, executioner, let's drown together!",
+            "Ah... Such violence! You really love tearing me apart, don't you?"
+          ])
+        };
       }
-      return { quote: "Agh...! The Grail's corruption overflows! The true shadow awakens now!" };
+      return {
+        quote: pickRandom([
+          "Agh...! The Grail's corruption overflows! The true shadow awakens now!",
+          "The barrier cracked... The black mud surges forward! Stand back!",
+          "You forced open the abyssal gates... Now taste the full weight of Angra Mainyu!"
+        ])
+      };
 
     case 'player_low_hp': {
       const sName = servantName || 'your Servant';
       if (tier === 4) {
-        return { quote: `Stop! ${sName} is at their limit... Don't force them to suffer for my sake!` };
+        return {
+          quote: pickRandom([
+            `Stop! ${sName} is at their limit... Don't force them to suffer for my sake!`,
+            `${sName} can barely stand... Please, retreat before the shadow devours them completely!`,
+            `Their spirit origin is fading... Don't make them die in this dark cavern for me!`
+          ])
+        };
       }
       if (tier === 1) {
-        return { quote: `Look at ${sName} stumbling in the mud... Just like all the rest, you'll watch them rot.` };
+        return {
+          quote: pickRandom([
+            `Look at ${sName} stumbling in the mud... Just like all the rest, you'll watch them rot.`,
+            `${sName}'s blood tastes so sweet... Will you watch them dissolve, executioner?`,
+            `Fufu... Another servant about to be digested in my shadow. How pathetic.`
+          ])
+        };
       }
-      return { quote: `${sName} is drowning in my shadow mud... How much longer can they stand?` };
+      return {
+        quote: pickRandom([
+          `${sName} is drowning in my shadow mud... How much longer can they stand?`,
+          `The miasma is suffocating ${sName}... Their knees are giving out.`,
+          `${sName}'s mana is being drained away... They won't last another turn.`
+        ])
+      };
     }
 
     case 'guts_survived': {
       const targetName = servantName || 'Your Servant';
       if (tier === 4) {
-        return { quote: `They stood back up... ${targetName}'s soul refuses to break in this dark cavern.` };
+        return {
+          quote: pickRandom([
+            `They stood back up... ${targetName}'s soul refuses to break in this dark cavern.`,
+            `Such stubborn resolve... ${targetName} rises again despite the shadow's weight.`,
+            `${targetName} survived...? Their bond with you must be truly unbreakable.`
+          ])
+        };
       }
       if (tier === 1) {
-        return { quote: `Persistent bug! ${targetName} clings to life... How pathetic!` };
+        return {
+          quote: pickRandom([
+            `Persistent bug! ${targetName} clings to life... How pathetic!`,
+            `Refusing to die? Fufu... That only means I get to tear ${targetName} apart again!`,
+            `Struggling back from death? All you did was buy a few more seconds in the dark!`
+          ])
+        };
       }
-      return { quote: `Refusing to fall? ${targetName}'s conviction is stubborn...` };
+      return {
+        quote: pickRandom([
+          `Refusing to fall? ${targetName}'s conviction is stubborn...`,
+          `${targetName} pulled back from the brink... Impressive, but futile.`,
+          `Still standing after that hit? The shadow will chew through them next time.`
+        ])
+      };
     }
 
     default:
@@ -188,28 +270,44 @@ export function detectServantEasterEgg(participants: { servant: any }[]): { key:
       return {
         key: 'medusa',
         name: 'Medusa',
-        quote: 'Rider...? You came for me? Please... don\'t look at me like that. I didn\'t want to become this monster...'
+        quote: pickRandom([
+          "Rider...? You came for me? Please... don't look at me like that. I didn't want to become this monster...",
+          "Medusa... Even in this corrupt form, your eyes are still so gentle. Stay close to me... don't let Zouken touch us again.",
+          "Rider... My shadow dress is so heavy, but when you stand beside me, the cavern feels a little less cold."
+        ])
       };
     }
     if (tId.includes('gilgamesh') || sName.includes('gilgamesh')) {
       return {
         key: 'gilgamesh',
         name: 'Gilgamesh',
-        quote: 'The King of Heroes... Fufu. I still remember how you tasted when my shadows swallowed you whole. Want another trip into my stomach?'
+        quote: pickRandom([
+          "The King of Heroes... Fufu. I still remember how you tasted when my shadows swallowed you whole. Want another trip into my stomach?",
+          "Gilgamesh... You called me a shallow vessel before, yet your golden armor couldn't save you from being digested in my mud.",
+          "Ah, the arrogant King... Shall I strip away that gilded vanity once more and dissolve your treasury into raw mana?"
+        ])
       };
     }
     if (tId.includes('emiya') || (sName.includes('emiya') && !sName.includes('alter') && !sName.includes('kiritsugu'))) {
       return {
         key: 'emiya',
         name: 'EMIYA',
-        quote: "That red cloak... even in this endless cavern, you arrive with those hollow eyes to clean up the mess, don't you?"
+        quote: pickRandom([
+          "That red cloak... even in this endless cavern, you arrive with those hollow eyes to clean up the mess, don't you?",
+          "EMIYA... You look so tired. Did you come to kill me to save the world, or because you couldn't save me back then?",
+          "That cynical gaze... Fufu. You know better than anyone that once a soul sinks into the shadow, there is no turning back."
+        ])
       };
     }
     if (tId.includes('artoria_pendragon_alter') || sName.includes('saber alter') || (tId.includes('artoria') && sName.includes('alter'))) {
       return {
         key: 'salter',
         name: 'Artoria Alter',
-        quote: 'Saber... You stayed by my side in the deep dark. Let\'s show this vanguard the true weight of the corrupted Grail.'
+        quote: pickRandom([
+          "Saber... You stayed by my side in the deep dark. Let's show this vanguard the true weight of the corrupted Grail.",
+          "Saber Alter... Your black armor matches my shadow dress perfectly. Shall we drown these intruding Masters together?",
+          "My faithful knight of darkness... Let your Excalibur Morgan consume whatever light remains in this cavern."
+        ])
       };
     }
   }
@@ -249,44 +347,103 @@ export function generateDarkSakuraIntroDialogue(
     const allMercy = tiers.every(t => t >= 3);
 
     if (hostTier >= 3 && hasSlayer) {
-      const slayerP = participants.find(p => getDarkSakuraTier(getDarkSakuraRecord(p.master)) === 1);
-      dialogue = `"${host.username}, who is this standing behind you? Their hands reek of my dried blood. Did you bring an executioner to finish what your soft heart couldn't in our previous clashes?"`;
+      dialogue = pickRandom([
+        `"${host.username}, who is this standing behind you? Their hands reek of my dried blood. Did you bring an executioner to finish what your soft heart couldn't?"`,
+        `"${host.username}... you brought someone whose weapon has cut me down repeatedly. Are you hiding behind a killer, or did they force you to bring them here?"`,
+        `"A gentle soul leading a bloodthirsty hound... What a bizarre pairing, ${host.username}. Will your kindness protect them when my shadow lashes out?"`,
+        `"${host.username}... I thought you were different, yet you march alongside an executioner. Did your resolve crumble so easily?"`
+      ]);
       bannerQuote = 'Did you bring a butcher to finish what your soft heart couldn\'t?';
     } else if (allSlayers) {
-      dialogue = `"A full circle of executioners gathered together... How flattering. You must really want to watch me dissolve under your noble phantasms today. Step into the mud then—let's see who breaks first."`;
+      dialogue = pickRandom([
+        `"A full circle of executioners gathered together... How flattering. You must really want to watch me dissolve under your Noble Phantasms today."`,
+        `"Four cold-blooded killers in one cavern... Ahaha! Step into the mud then—let's see who breaks first."`,
+        `"Not a single drop of hesitation among you... Excellent. I won't have to feel guilty when my black tendrils tear you to pieces."`,
+        `"A vanguard of pure butchers... Come then! Let All The World's Evil show you what true slaughter looks like!"`
+      ]);
       bannerQuote = 'A full circle of executioners gathered together... How flattering.';
     } else if (allMercy) {
-      dialogue = `"Not a single killer among all four of you? A circle of saints marching straight into the abyss... Do you really think this mud won't swallow every last one of you if you hesitate?"`;
+      dialogue = pickRandom([
+        `"Not a single killer among all four of you? A circle of saints marching straight into the abyss... Do you really think this mud won't swallow you if you hesitate?"`,
+        `"Four soft-hearted Masters standing shoulder-to-shoulder in my cavern... Are you trying to save a monster, or planning a group execution of your own naivety?"`,
+        `"Fufu... So much gentle resolve in one dark place. It's almost sickening. Let's see if your collective mercy can survive my shadows."`,
+        `"None of you came to draw blood today? How foolishly idealistic... The corrupted Grail doesn't reward pacifists easily."`
+      ]);
       bannerQuote = 'A circle of saints marching straight into the abyss...';
     } else {
-      dialogue = `"Another vanguard gathered to harvest the corrupted Grail... Some of you have drawn my blood, others held out a hand in past bouts. Let's see which conviction triumphs today."`;
+      dialogue = pickRandom([
+        `"Another vanguard gathered to harvest the corrupted Grail... Some of you have drawn my blood, others held out a hand. Let's see which conviction triumphs today."`,
+        `"A divided team enters the cavern... Some come with mercy, others with bare blades. How long before you turn on each other in the dark?"`,
+        `"A mixture of killers and dreamers... How chaotic. My shadow will devour both all the same if you hesitate for even a second."`,
+        `"Conflict inside your own party before the battle even begins... Fufu. Step forward then, let's see whose will dictates the end."`
+      ]);
       bannerQuote = 'Let\'s see which conviction triumphs today.';
     }
   } else {
     // Solo player dynamics
     if (hostRecord.spares === 0 && hostRecord.kills === 0) {
-      dialogue = `"The leyline whispers of a new challenger... Welcome to the bottom of the world, ${host.username}. Don't drown in my shadows."`;
+      dialogue = pickRandom([
+        `"The leyline whispers of a new challenger... Welcome to the bottom of the world, ${host.username}. Don't drown in my shadows."`,
+        `"Another soul wanders into the cavern of shadows... Tell me, ${host.username}, did Zouken send you, or did you come to be devoured by your own foolishness?"`,
+        `"You step into my shadow without fear, ${host.username}... How amusing. Everyone thinks they can stay pure until the black mud fills their lungs."`,
+        `"A fresh face in the dark... Fufu. Don't look at me with those pitying eyes, ${host.username}. I was insane from the very start."`
+      ]);
       bannerQuote = 'Welcome to the bottom of the world... Don\'t drown in my shadows.';
     } else if (isQuickRematch) {
-      dialogue = `"Back so soon? You barely cleaned the mud off your boots. Are you that eager to see me again, ${host.username}?"`;
+      dialogue = pickRandom([
+        `"Back so soon? You barely cleaned the mud off your boots. Are you that eager to see me again, ${host.username}?"`,
+        `"Returned already, ${host.username}? Did the shadow's chill linger on your skin, or could you not resist the smell of corrupted mana?"`,
+        `"You barely caught your breath before running right back into my cavern... Is this courage, ${host.username}, or an obsession with your own doom?"`,
+        `"Still lingering around my shadow, ${host.username}? Fufu... The mud hasn't even dried from our last encounter."`
+      ]);
       bannerQuote = 'Back so soon? You barely cleaned the mud off your boots.';
     } else if (hostRecord.lastOutcome === 'spared_betrayed') {
-      dialogue = `"In our last bout... the shadows swallowed you before you could pull away. Yet you step right back into my cavern without flinching. Are you courageous, or just an idiot?"`;
+      dialogue = pickRandom([
+        `"In our last bout... the shadows swallowed you before you could pull away. Yet you step right back into my cavern without flinching. Are you courageous, or just an idiot, ${host.username}?"`,
+        `"You reached your hand into my black mud and felt it tear at your flesh... so why are you back, ${host.username}? Do you enjoy watching your devotion rot?"`,
+        `"My shadows devoured your hope last time, ${host.username}... and still you return. Did you come to hear me laugh at your broken resolve?"`,
+        `"I warned you that All The World's Evil drags down anyone who touches it. Yet here you stand again, ${host.username}... stubborn to the end."`
+      ]);
       bannerQuote = 'Yet you step right back into my cavern without flinching...';
     } else if (hostRecord.mercyStreak >= 3) {
-      dialogue = `"That's ${hostRecord.mercyStreak} consecutive bouts where you stayed your blade at the very end... When will you learn that monsters don't deserve fairy tales?"`;
+      dialogue = pickRandom([
+        `"That's ${hostRecord.mercyStreak} consecutive bouts where you stayed your blade at the very end... When will you learn that monsters don't deserve fairy tales, ${host.username}?"`,
+        `"${hostRecord.mercyStreak} times you offered mercy to a creature made of black mud... Are you trying to prove something to yourself, ${host.username}, or mock my despair?"`,
+        `"You refuse to cut me down, even after ${hostRecord.mercyStreak} encounters... My shadows grow restless around you, ${host.username}, but why doesn't your hand tremble?"`,
+        `"Fufu... ${hostRecord.mercyStreak} times you held back your final blow. If Senpai saw you now, would he call you kind, or foolish, ${host.username}?"`
+      ]);
       bannerQuote = `When will you learn that monsters don't deserve fairy tales?`;
     } else if (hostRecord.slayerStreak >= 3) {
-      dialogue = `"Another round, another execution. You treat carving me apart like routine paperwork, don't you? Come on then... draw your weapon."`;
+      dialogue = pickRandom([
+        `"Another round, another execution. You treat carving me apart like routine paperwork, don't you, ${host.username}? Come on then... draw your weapon."`,
+        `"${hostRecord.slayerStreak} times you've carved through my flesh without hesitation. Ahaha... You really enjoy the sound of the Grail breaking, don't you, ${host.username}?"`,
+        `"The executioner returns for their ${hostRecord.slayerStreak}th massacre... Your weapon is still dark with my blood, ${host.username}. Let's see if you can shatter my core again."`,
+        `"A blood-soaked streak of ${hostRecord.slayerStreak} executions... You don't see a girl here at all, do you, ${host.username}? Just a boss to harvest."`
+      ]);
       bannerQuote = 'You treat carving me apart like routine paperwork, don\'t you?';
     } else if (hostTier === 1) {
-      dialogue = `"Ah, the butcher returns. Eager to see if my core shatters faster this time? Let me show you what it feels like to rot in the mud."`;
+      dialogue = pickRandom([
+        `"Ah, the butcher returns. Eager to see if my core shatters faster this time, ${host.username}? Let me show you what it feels like to rot in the mud."`,
+        `"The merciless magus steps back into my cavern... Every time you open your mouth, ${host.username}, I remember why I stopped expecting salvation."`,
+        `"Cold, efficient, and relentless... You remind me of the crest worms, ${host.username}. Come, let's see whose malice cuts deeper."`,
+        `"You carved away every piece of mercy in your heart, didn't you, ${host.username}? Fufu... Good. Monsters are much easier to devour when they don't pretend to care."`
+      ]);
       bannerQuote = 'Ah, the butcher returns. Eager to carve me open again?';
     } else if (hostTier === 3) {
-      dialogue = `"You're back... Even in this pitch-black cavern, your presence feels warm. My shadows hesitate around you, ${host.username}."`;
+      dialogue = pickRandom([
+        `"You're back... Even in this pitch-black cavern, your presence feels warm. My shadows hesitate around you, ${host.username}."`,
+        `"Why do you look at me like that, ${host.username}? I told you I'm corrupted to the root... yet your eyes never hold hatred."`,
+        `"Every time you step into this cavern, ${host.username}, the screaming inside my head grows a little quieter... Don't make me rely on you."`,
+        `"You stayed your hand so many times... Is it really possible that someone looks at this shadow and doesn't see a monster, ${host.username}?"`
+      ]);
       bannerQuote = 'My shadows hesitate around you...';
     } else {
-      dialogue = `"Another bout. Are you going to cut me down like a true magus, or pretend to be my savior today? You Masters are all the same."`;
+      dialogue = pickRandom([
+        `"Another bout. Are you going to cut me down like a true magus, or pretend to be my savior today, ${host.username}? You Masters are all the same."`,
+        `"The mud stirs as you draw near, ${host.username}... Will you bring judgment or false hope to the bottom of the cavern today?"`,
+        `"Fufu... Another challenger testing their luck against All The World's Evil. Let's see how long your resolve lasts under the shadow, ${host.username}."`,
+        `"You step closer to the corrupted vessel, ${host.username}. Keep your guard up... the shadows don't care about your intentions."`
+      ]);
       bannerQuote = 'Are you going to cut me down, or pretend to be my savior?';
     }
   }
@@ -688,32 +845,67 @@ export async function handleDarkSakuraClimax(
 
   if (hasMercy && !hasKilled && !hasBetrayed) {
     reactionTitle = '🌸 THE SHADOW REDEEMED: A TREMBLING SMILE';
-    reactionDialogue = "You really... stayed? Even when the black mud tried to pull you under? ...I'm so glad I waited for you in this dark cavern, Senpai. Take this... my heart is finally at peace.";
-    reactionBanner = 'The abyssal miasma purifies into warm, radiant cherry blossom petals.';
+    reactionDialogue = pickRandom([
+      "You really... stayed? Even when the black mud tried to pull you under? ...I'm so glad I waited for you in this dark cavern, Senpai. Take this... my heart is finally at peace.",
+      "Your hand was warm... even as my shadow tried to tear into your skin. I thought no one would ever reach into the dark for me again... Thank you, Senpai.",
+      "The mud is receding... The screaming inside my head stopped. Is this what it feels like to be seen as human again...?"
+    ]);
+    reactionBanner = pickRandom([
+      'The abyssal miasma purifies into warm, radiant cherry blossom petals.',
+      'The black shadow dress dissolves into gentle, crimson light.',
+      'The dark cavern glows softly with purifying holy grail mana.'
+    ]);
     embedColor = 0xdb2777;
   } else if (hasKilled && !hasMercy && !hasBetrayed) {
     reactionTitle = '🩸 THE SEVERED SHADOW: COLD RELEASE';
-    reactionDialogue = "...Ah. So in the end... you couldn't forgive me either, Senpai. It's so cold... but at least the black mud won't hurt anyone anymore. Thank you... for waking me from this nightmare.";
-    reactionBanner = 'The corrupted shadow core shatters cleanly into silent crystal dust.';
+    reactionDialogue = pickRandom([
+      "...Ah. So in the end... you couldn't forgive me either, Senpai. It's so cold... but at least the black mud won't hurt anyone anymore. Thank you... for waking me from this nightmare.",
+      "Severed cleanly... Ahaha. I knew it... in the end, every magus only sees a broken vessel that needs to be destroyed. Goodbye, Senpai...",
+      "The shadow core shatters... It hurts so much, but... at least Zouken's worms can't touch me ever again."
+    ]);
+    reactionBanner = pickRandom([
+      'The corrupted shadow core shatters cleanly into silent crystal dust.',
+      'The abyssal cavern falls quiet as the shadow vessel dissipates into the leylines.',
+      'A cold crimson wind carries away the lingering shadow tendrils.'
+    ]);
     embedColor = 0x9f1239;
   } else if (hasBetrayed && !hasMercy && !hasKilled) {
     reactionTitle = '🌑 THE ABYSS CONSUMED: UNBRIDLED CORRUPTION';
-    reactionDialogue = "Ah... ahh!! I'm sorry, I'm so sorry!! The mud... it's burning... I can't hold it back!! RUN AWAY BEFORE I DEVOUR YOU TOO...!!";
-    reactionBanner = 'The black mud flares wildly as the shadow vessel loses control.';
+    reactionDialogue = pickRandom([
+      "Ah... ahh!! I'm sorry, I'm so sorry!! The mud... it's burning... I can't hold it back!! RUN AWAY BEFORE I DEVOUR YOU TOO...!!",
+      "No! Stop reaching out! The corruption inside me is hungry... it's pulling you down into the bottom of the world with me!!",
+      "I tried to stop it... but All The World's Evil doesn't let anyone go!! I'm sorry... I'm so sorry, Senpai!!"
+    ]);
+    reactionBanner = pickRandom([
+      'The black mud flares wildly as the shadow vessel loses control.',
+      'Corrupted mana erupts from the cavern floor, devouring all light.',
+      'Shadow tendrils lash out recklessly, swallowing the surrounding space.'
+    ]);
     embedColor = 0x4c0519;
   } else if (hasMercy && hasKilled) {
     reactionTitle = '⚖️ CONFLICTING BONDS: BITTERSWEET PASSING';
-    reactionDialogue = "Some of you showed me kindness... while others saw the monster I had become. Both of you were right. Thank you... for giving me one last glimpse of light.";
+    reactionDialogue = pickRandom([
+      "Some of you showed me kindness... while others saw the monster I had become. Both of you were right. Thank you... for giving me one last glimpse of light.",
+      "A hand offered in mercy, and a blade swung in judgment... Fufu. That is the true nature of this war, isn't it?",
+      "One tried to save me, one tried to cut me down... I don't hate either of you. Thank you for ending the nightmare."
+    ]);
     reactionBanner = 'The cavern echoes with the fading whispers of the corrupted Grail vessel.';
     embedColor = 0xbe185d;
   } else if (hasBetrayed) {
     reactionTitle = '🌑 CHAOS IN THE CAVERN: TRAGIC COLLAPSE';
-    reactionDialogue = "I wanted to believe you... I really did! But the darkness inside me was too heavy... forgive me, Senpai...!";
+    reactionDialogue = pickRandom([
+      "I wanted to believe you... I really did! But the darkness inside me was too heavy... forgive me, Senpai...!",
+      "The shadow consumed your devotion... I'm so sorry! I couldn't stop the mud from drowning you!",
+      "It was too late for me from the start... Don't look back as you retreat from the dark!"
+    ]);
     reactionBanner = 'The cavern rumbles as remnants of the shadow retreat into the leylines.';
     embedColor = 0x831843;
   } else {
     reactionTitle = '🌸 THE SHADOW’S REST';
-    reactionDialogue = "...Thank you for seeing this through to the end, Senpai. Until we meet under the cherry blossoms again.";
+    reactionDialogue = pickRandom([
+      "...Thank you for seeing this through to the end, Senpai. Until we meet under the cherry blossoms again.",
+      "The battle is over... The mud has gone quiet. Take your spoils and leave this cavern before the shadows awaken again."
+    ]);
     reactionBanner = 'The holy grail resonance subsides quietly.';
     embedColor = 0xbe185d;
   }
