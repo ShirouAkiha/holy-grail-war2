@@ -111,7 +111,7 @@ export function getDarkSakuraHpReactiveQuote(
         return {
           quote: pickRandom([
             "Even when I'm breaking apart... you still look at me with those warm eyes. Why won't you just let me rest?",
-            "My vessel is shattering... but your blade never once sought my throat. Senpai... is this your kindness?",
+            "My vessel is shattering... but your blade never once sought my throat. Master... is this your kindness?",
             "The shadow is pulling me under... yet you stand there without fear. Please... stay safe."
           ])
         };
@@ -410,7 +410,7 @@ export function generateDarkSakuraIntroDialogue(
         `"That's ${hostRecord.mercyStreak} consecutive bouts where you stayed your blade at the very end... When will you learn that monsters don't deserve fairy tales, ${host.username}?"`,
         `"${hostRecord.mercyStreak} times you offered mercy to a creature made of black mud... Are you trying to prove something to yourself, ${host.username}, or mock my despair?"`,
         `"You refuse to cut me down, even after ${hostRecord.mercyStreak} encounters... My shadows grow restless around you, ${host.username}, but why doesn't your hand tremble?"`,
-        `"Fufu... ${hostRecord.mercyStreak} times you held back your final blow. If Senpai saw you now, would he call you kind, or foolish, ${host.username}?"`
+        `"Fufu... ${hostRecord.mercyStreak} times you held back your final blow. If my Senpai saw you now, would he call you kind, or foolish, ${host.username}?"`
       ]);
       bannerQuote = `When will you learn that monsters don't deserve fairy tales?`;
     } else if (hostRecord.slayerStreak >= 3) {
@@ -618,12 +618,9 @@ export async function handleDarkSakuraClimax(
         `> *"Is it over...? Are you going to sever the core, or... reach out into the mud?"*\n\n` +
         `**Every Master must choose their conviction (30 seconds):**\n\n` +
         `⚔️ **[SEVER THE RIBBON (Execute)]**\n` +
-        `• **Guaranteed Base Rewards** (18–25 SQ, 45,000 EXP, 4x Embers)\n` +
         `• Sever the shadow core cleanly and end the corruption.\n\n` +
         `🌸 **[REACH OUT (Spare)]**\n` +
-        `• **Offer Salvation:** Reach your hand into the abyssal mud to save her.\n` +
-        `• **Success:** **2X DOUBLED DROPS** (36–50 SQ, 90,000 EXP, 8x Embers) + chance for ★5 CE *Ribbon of the Hollow Night*!\n` +
-        `• **Failure:** The mud panics and devours you! Retreat with 0 SQ!\n\n` +
+        `• Reach your hand into the abyssal mud to save her.\n\n` +
         `**Decisions of the Vanguard:**\n${statusLines}`
       )
       .setThumbnail(DARK_SAKURA_ASSETS.vnDialogueSprite)
@@ -846,8 +843,8 @@ export async function handleDarkSakuraClimax(
   if (hasMercy && !hasKilled && !hasBetrayed) {
     reactionTitle = '🌸 THE SHADOW REDEEMED: A TREMBLING SMILE';
     reactionDialogue = pickRandom([
-      "You really... stayed? Even when the black mud tried to pull you under? ...I'm so glad I waited for you in this dark cavern, Senpai. Take this... my heart is finally at peace.",
-      "Your hand was warm... even as my shadow tried to tear into your skin. I thought no one would ever reach into the dark for me again... Thank you, Senpai.",
+      "You really... stayed? Even when the black mud tried to pull you under? ...I'm so glad I waited for you in this dark cavern. Take this... my heart is finally at peace.",
+      "Your hand was warm... even as my shadow tried to tear into your skin. I thought no one would ever reach into the dark for me again... Thank you, Master.",
       "The mud is receding... The screaming inside my head stopped. Is this what it feels like to be seen as human again...?"
     ]);
     reactionBanner = pickRandom([
@@ -859,8 +856,8 @@ export async function handleDarkSakuraClimax(
   } else if (hasKilled && !hasMercy && !hasBetrayed) {
     reactionTitle = '🩸 THE SEVERED SHADOW: COLD RELEASE';
     reactionDialogue = pickRandom([
-      "...Ah. So in the end... you couldn't forgive me either, Senpai. It's so cold... but at least the black mud won't hurt anyone anymore. Thank you... for waking me from this nightmare.",
-      "Severed cleanly... Ahaha. I knew it... in the end, every magus only sees a broken vessel that needs to be destroyed. Goodbye, Senpai...",
+      "...Ah. So in the end... you couldn't forgive me either. It's so cold... but at least the black mud won't hurt anyone anymore. Thank you... for waking me from this nightmare.",
+      "Severed cleanly... Ahaha. I knew it... in the end, every magus only sees a broken vessel that needs to be destroyed. Goodbye...",
       "The shadow core shatters... It hurts so much, but... at least Zouken's worms can't touch me ever again."
     ]);
     reactionBanner = pickRandom([
@@ -874,7 +871,7 @@ export async function handleDarkSakuraClimax(
     reactionDialogue = pickRandom([
       "Ah... ahh!! I'm sorry, I'm so sorry!! The mud... it's burning... I can't hold it back!! RUN AWAY BEFORE I DEVOUR YOU TOO...!!",
       "No! Stop reaching out! The corruption inside me is hungry... it's pulling you down into the bottom of the world with me!!",
-      "I tried to stop it... but All The World's Evil doesn't let anyone go!! I'm sorry... I'm so sorry, Senpai!!"
+      "I tried to stop it... but All The World's Evil doesn't let anyone go!! I'm sorry... I'm so sorry!!"
     ]);
     reactionBanner = pickRandom([
       'The black mud flares wildly as the shadow vessel loses control.',
@@ -894,7 +891,7 @@ export async function handleDarkSakuraClimax(
   } else if (hasBetrayed) {
     reactionTitle = '🌑 CHAOS IN THE CAVERN: TRAGIC COLLAPSE';
     reactionDialogue = pickRandom([
-      "I wanted to believe you... I really did! But the darkness inside me was too heavy... forgive me, Senpai...!",
+      "I wanted to believe you... I really did! But the darkness inside me was too heavy... forgive me...!",
       "The shadow consumed your devotion... I'm so sorry! I couldn't stop the mud from drowning you!",
       "It was too late for me from the start... Don't look back as you retreat from the dark!"
     ]);
@@ -903,7 +900,7 @@ export async function handleDarkSakuraClimax(
   } else {
     reactionTitle = '🌸 THE SHADOW’S REST';
     reactionDialogue = pickRandom([
-      "...Thank you for seeing this through to the end, Senpai. Until we meet under the cherry blossoms again.",
+      "...Thank you for seeing this through to the end, Master. Until we meet under the cherry blossoms again.",
       "The battle is over... The mud has gone quiet. Take your spoils and leave this cavern before the shadows awaken again."
     ]);
     reactionBanner = 'The holy grail resonance subsides quietly.';
