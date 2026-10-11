@@ -208,6 +208,57 @@ function drawDiamond(
   if (typeof ctx.restore === 'function') ctx.restore();
 }
 
+function drawWrappedVNText(
+  ctx: any,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines = 5
+) {
+  if (!text) return;
+  const clean = text
+    .replace(/\*\*/g, '')
+    .replace(/__/g, '')
+    .replace(/^>\s*/gm, '')
+    .trim();
+
+  const paragraphs = clean.split('\n').filter(p => p.trim());
+  const lines: string[] = [];
+
+  for (const para of paragraphs) {
+    const words = para.split(' ');
+    let currentLine = '';
+
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+  }
+
+  let currY = y;
+  for (let i = 0; i < Math.min(lines.length, maxLines); i++) {
+    const line = lines[i];
+    if (line.includes('"') || line.includes('“') || line.includes('”') || line.includes("'")) {
+      ctx.fillStyle = '#fef08a';
+    } else {
+      ctx.fillStyle = '#f1f5f9';
+    }
+    ctx.fillText(line, x, currY);
+    currY += lineHeight;
+  }
+}
+
 function drawProgressBar(
   ctx: any,
   x: number,
@@ -1111,6 +1162,92 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.restore();
 
   // ==========================================
+  // LAYER 3.5: In-Battle Visual Novel Boss Dialogue Overlay Frame
+  // ==========================================
+  if (state.bossDialogueNotice) {
+    ctx.save();
+    const vnX = 30;
+    const vnY = 118;
+    const vnW = 1220;
+    const vnH = 88;
+
+    // Translucent Dark Glass VN Box
+    const vnGrad = ctx.createLinearGradient(vnX, vnY, vnX, vnY + vnH);
+    vnGrad.addColorStop(0, 'rgba(18, 6, 26, 0.95)');
+    vnGrad.addColorStop(1, 'rgba(8, 2, 14, 0.98)');
+    ctx.fillStyle = vnGrad;
+    ctx.strokeStyle = '#e11d48'; // Crimson
+    ctx.lineWidth = 2;
+    drawRoundRect(ctx, vnX, vnY, vnW, vnH, 8, true, true);
+
+    // Inner Gold Stroke
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, vnX + 2, vnY + 2, vnW - 4, vnH - 4, 6, false, true);
+
+    // Boss Circular Portrait Avatar on Left
+    const portraitCx = vnX + 46;
+    const portraitCy = vnY + vnH / 2;
+    const portraitR = 32;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(portraitCx, portraitCy, portraitR, 0, Math.PI * 2);
+    ctx.fillStyle = '#1e1b4b';
+    ctx.fill();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    const pImg = bossAvatarImg || bossSpriteImg;
+    if (pImg) {
+      ctx.beginPath();
+      ctx.arc(portraitCx, portraitCy, portraitR - 2, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(pImg, portraitCx - portraitR, portraitCy - portraitR, portraitR * 2, portraitR * 2);
+    }
+    ctx.restore();
+
+    // Clean Speaker Tag
+    const cleanNotice = state.bossDialogueNotice
+      .replace(/^🌸\s*\*\*Dark Sakura:\*\*\s*/i, '')
+      .replace(/^>\s*/, '')
+      .replace(/\*\*/g, '')
+      .trim();
+
+    const speakerTitle = isDarkSakura ? 'DARK SAKURA' : dynamicBossName.toUpperCase();
+
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 4;
+    ctx.fillText(`🌸 ${speakerTitle}`, vnX + 90, vnY + 12);
+
+    // Quote Text
+    ctx.fillStyle = '#fef08a';
+    ctx.font = 'italic bold 16px sans-serif';
+    const textStartX = vnX + 90;
+    const textStartY = vnY + 34;
+    const textMaxW = vnW - 130;
+
+    drawWrappedVNText(ctx, `"${cleanNotice}"`, textStartX, textStartY, textMaxW, 22, 2);
+
+    // Golden Chevron ▼
+    const chevX = vnX + vnW - 20;
+    const chevY = vnY + vnH - 18;
+    drawDiamond(ctx, chevX, chevY, 12, '#f59e0b', '#fef08a', 1);
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('▼', chevX, chevY + 0.5);
+
+    ctx.restore();
+  }
+
+  // ==========================================
   // LAYER 4: Bottom Player HUD (Anchored Y: 210 to 720)
   // Balanced distribution for 1, 2, 3, or 4 Servants
   // ==========================================
@@ -1458,7 +1595,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
  * Generates a high-definition 1280x720 PNG buffer for the FGO PvE Raid Battlefield
  */
 export async function renderRaidBattlefield(state: RaidBattleState, _animated = false): Promise<{ buffer: Buffer; fileName: string }> {
-  const bossClassIconUrl = getClassIconUrl(state.boss.servantClass);
+  const bossClassIconUrl = getClassIconUrl(state.boss?.servantClass || 'Avenger');
   const participantClassIconUrls = state.participants.map(p =>
     getClassIconUrl(p.servant.template?.servantClass || 'Saber')
   );
@@ -1526,4 +1663,208 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
   // Render pristine 1280x720 PNG frame
   const singleCanvas = await renderSingleFrame(state, loadedImages);
   return { buffer: singleCanvas.toBuffer('image/png'), fileName: 'raid_battlefield.png' };
+}
+
+export interface VNDialogueOptions {
+  title?: string;
+  speakerName?: string;
+  speakerTag?: string;
+  dialogue: string;
+  bannerQuote?: string;
+  bgUrl?: string;
+  spriteUrl?: string;
+  easterEggServant?: { name: string; quote: string };
+}
+
+/**
+ * Renders a full 1280x720 Visual Novel UI Canvas Image with Dark Sakura's sprite,
+ * dark glass dialogue box, speaker badge, quote typography, and next chevron indicator.
+ */
+export async function renderDarkSakuraVNDialogueImage(
+  options: VNDialogueOptions
+): Promise<{ buffer: Buffer; fileName: string }> {
+  const width = 1280;
+  const height = 720;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+
+  const bgUrl = options.bgUrl || 'https://ella.janitorai.com/media-approved/P7i39PiVJeiUHbbq3dSn1.webp';
+  const spriteUrl = options.spriteUrl || 'https://ella.janitorai.com/media-approved/mOhtzJN0kQulMvmZWa0l2.webp';
+
+  const [bgImg, spriteImg] = await Promise.all([
+    loadImageCached(bgUrl),
+    loadImageCached(spriteUrl)
+  ]);
+
+  // 1. Background Layer
+  if (bgImg) {
+    ctx.drawImage(bgImg, 0, 0, width, height);
+  } else {
+    ctx.fillStyle = '#0f0518';
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  // Dark atmospheric radial vignette
+  const vig = ctx.createRadialGradient(width / 2, height / 2, 200, width / 2, height / 2, width * 0.75);
+  vig.addColorStop(0, 'rgba(10, 5, 20, 0.2)');
+  vig.addColorStop(0.7, 'rgba(15, 5, 25, 0.75)');
+  vig.addColorStop(1, 'rgba(5, 0, 10, 0.96)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, width, height);
+
+  // Bottom Shadow Fog
+  const fog = ctx.createLinearGradient(0, height - 320, 0, height);
+  fog.addColorStop(0, 'rgba(131, 24, 67, 0)');
+  fog.addColorStop(0.6, 'rgba(76, 5, 25, 0.5)');
+  fog.addColorStop(1, 'rgba(10, 2, 12, 0.96)');
+  ctx.fillStyle = fog;
+  ctx.fillRect(0, height - 320, width, 320);
+
+  // Top Title Banner
+  if (options.title) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 5, 20, 0.88)';
+    ctx.strokeStyle = '#e11d48';
+    ctx.lineWidth = 1.5;
+    drawRoundRect(ctx, 40, 18, width - 80, 46, 8, true, true);
+
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 4;
+    ctx.fillText(options.title.toUpperCase(), width / 2, 41);
+    ctx.restore();
+  }
+
+  // 2. Character Sprite (Right-Centered Widescreen VN position)
+  if (spriteImg) {
+    ctx.save();
+    const natW = spriteImg.naturalWidth || spriteImg.width || 600;
+    const natH = spriteImg.naturalHeight || spriteImg.height || 800;
+    const aspect = natW / natH;
+
+    const sH = 680;
+    const sW = Math.round(sH * aspect);
+    const sX = width - sW - 20;
+    const sY = height - sH + 10;
+
+    ctx.beginPath();
+    ctx.ellipse(sX + sW * 0.5, sY + sH - 20, sW * 0.45, 25, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(225, 29, 72, 0.35)';
+    ctx.shadowColor = '#e11d48';
+    ctx.shadowBlur = 20;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.drawImage(spriteImg, sX, sY, sW, sH);
+    ctx.restore();
+  }
+
+  // 3. Visual Novel Dialogue Box (Bottom 33% Widescreen Panel)
+  const boxX = 40;
+  const boxY = 435;
+  const boxW = width - 80; // 1200px
+  const boxH = 250;
+
+  ctx.save();
+  const boxGrad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
+  boxGrad.addColorStop(0, 'rgba(20, 10, 30, 0.95)');
+  boxGrad.addColorStop(1, 'rgba(8, 3, 16, 0.98)');
+  ctx.fillStyle = boxGrad;
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2.5;
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 12, true, true);
+
+  // Inner Crimson Frame
+  ctx.strokeStyle = '#e11d48';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, boxX + 4, boxY + 4, boxW - 8, boxH - 8, 10, false, true);
+
+  // Corner Gold Diamonds
+  const cornerSize = 12;
+  drawDiamond(ctx, boxX + 12, boxY + 12, cornerSize, '#f59e0b', '#fef08a', 1);
+  drawDiamond(ctx, boxX + boxW - 12, boxY + 12, cornerSize, '#f59e0b', '#fef08a', 1);
+  drawDiamond(ctx, boxX + 12, boxY + boxH - 12, cornerSize, '#f59e0b', '#fef08a', 1);
+  drawDiamond(ctx, boxX + boxW - 12, boxY + boxH - 12, cornerSize, '#f59e0b', '#fef08a', 1);
+
+  // 4. Speaker Nameplate Banner
+  const speakerName = options.speakerName || 'Dark Sakura';
+  const speakerTag = options.speakerTag || 'Shadow Vessel • Abyssal Maiden';
+
+  ctx.font = 'bold 20px sans-serif';
+  const nameW = Math.max(260, ctx.measureText(speakerName).width + 80);
+  const tagX = boxX + 24;
+  const tagY = boxY - 20;
+  const tagH = 42;
+
+  const tagGrad = ctx.createLinearGradient(tagX, tagY, tagX + nameW, tagY);
+  tagGrad.addColorStop(0, '#831843');
+  tagGrad.addColorStop(1, '#4c0519');
+  ctx.fillStyle = tagGrad;
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, tagX, tagY, nameW, tagH, 8, true, true);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 19px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = '#000000';
+  ctx.shadowBlur = 4;
+  ctx.fillText(`🌸 ${speakerName}`, tagX + 14, tagY + tagH / 2);
+  ctx.shadowBlur = 0;
+
+  if (speakerTag) {
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(speakerTag.toUpperCase(), tagX + nameW - 14, tagY + tagH / 2);
+  }
+
+  // 5. Main Dialogue Text
+  const textX = boxX + 30;
+  const textY = boxY + 40;
+  const maxTextW = boxW - 60;
+
+  ctx.font = 'bold 21px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 5;
+
+  drawWrappedVNText(ctx, options.dialogue, textX, textY, maxTextW, 32, 5);
+
+  // 6. Echoes of the Past Easter Egg Banner (if present)
+  if (options.easterEggServant) {
+    const ee = options.easterEggServant;
+    const eeY = boxY + boxH - 45;
+    ctx.fillStyle = 'rgba(131, 24, 67, 0.6)';
+    ctx.strokeStyle = '#f472b6';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, boxX + 30, eeY, boxW - 100, 32, 6, true, true);
+
+    ctx.fillStyle = '#fef08a';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`👁️ Echoes of the Past (${ee.name}): "${ee.quote}"`, boxX + 42, eeY + 16);
+  }
+
+  // 7. VN Chevron Indicator (Blinking "Click to Advance" ▼ Arrow)
+  const chevX = boxX + boxW - 35;
+  const chevY = boxY + boxH - 30;
+  drawDiamond(ctx, chevX, chevY, 18, '#f59e0b', '#fef08a', 1.5);
+  ctx.fillStyle = '#1e1b4b';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('▼', chevX, chevY + 0.5);
+
+  ctx.restore();
+
+  return {
+    buffer: canvas.toBuffer('image/png'),
+    fileName: 'dark_sakura_vn_dialogue.png'
+  };
 }

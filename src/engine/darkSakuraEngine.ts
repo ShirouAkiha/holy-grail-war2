@@ -3,6 +3,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   EmbedBuilder,
+  AttachmentBuilder,
   ComponentType,
   MessageFlags
 } from 'discord.js';
@@ -10,6 +11,7 @@ import { MasterProfile, CraftEssence } from '../types';
 import { RaidBossConfig } from '../data/raidBosses';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { addServantBattleExp, createExpEmberCraftEssence } from './customization';
+import { renderDarkSakuraVNDialogueImage } from '../canvas/raidRenderer';
 
 export interface DarkSakuraKarmaRecord {
   kills: number;
@@ -71,69 +73,6 @@ export function getDarkSakuraTier(record: DarkSakuraKarmaRecord): 1 | 2 | 3 | 4 
 }
 
 /**
- * Generates HP-reactive dialogue quotes for Dark Sakura during combat:
- * - 'boss_low_hp': Boss drops to <= 30% HP
- * - 'break_gauge': Break gauge shattered
- * - 'player_low_hp': A player Servant drops to <= 25% HP
- * - 'guts_survived': A player Servant survives a fatal hit with Guts
- */
-export function getDarkSakuraHpReactiveQuote(
-  trigger: 'boss_low_hp' | 'break_gauge' | 'player_low_hp' | 'guts_survived',
-  record: DarkSakuraKarmaRecord,
-  servantName?: string
-): { quote: string } {
-  const tier = getDarkSakuraTier(record);
-
-  switch (trigger) {
-    case 'boss_low_hp':
-      if (tier === 4) {
-        return { quote: "Even when I'm breaking apart... you still look at me with those warm eyes. Why won't you just let me rest?" };
-      }
-      if (tier === 3) {
-        return { quote: "My core is crumbling... but your hand didn't tremble when you stayed your blade before. Is this really the end?" };
-      }
-      if (tier === 1) {
-        return { quote: "Fufu... You carve into my body so mercilessly! Go on then, executioner, finish your job!" };
-      }
-      return { quote: "The black mud spills from my wounds... Can you hear the shadows screaming beneath the surface?" };
-
-    case 'break_gauge':
-      if (tier === 4) {
-        return { quote: "The seal shattered... The abyssal core is exposed. Please... don't let the shadow consume us both!" };
-      }
-      if (tier === 1) {
-        return { quote: "You shattered my vessel! Fufu... Ahaha! Is that all you've got? The abyss only gets deeper from here!" };
-      }
-      return { quote: "Agh...! The Grail's corruption overflows! The true shadow awakens now!" };
-
-    case 'player_low_hp': {
-      const sName = servantName || 'your Servant';
-      if (tier === 4) {
-        return { quote: `Stop! ${sName} is at their limit... Don't force them to suffer for my sake!` };
-      }
-      if (tier === 1) {
-        return { quote: `Look at ${sName} stumbling in the mud... Just like all the rest, you'll watch them rot.` };
-      }
-      return { quote: `${sName} is drowning in my shadow mud... How much longer can they stand?` };
-    }
-
-    case 'guts_survived': {
-      const targetName = servantName || 'Your Servant';
-      if (tier === 4) {
-        return { quote: `They stood back up... ${targetName}'s soul refuses to break in this dark cavern.` };
-      }
-      if (tier === 1) {
-        return { quote: `Persistent bug! ${targetName} clings to life... How pathetic!` };
-      }
-      return { quote: `Refusing to fall? ${targetName}'s conviction is stubborn...` };
-    }
-
-    default:
-      return { quote: '' };
-  }
-}
-
-/**
  * Calculates the trust probability (0.0 to 1.0) when a Master chooses to SPARE her.
  */
 export function calculateSpareTrustChance(record: DarkSakuraKarmaRecord): number {
@@ -149,6 +88,54 @@ export function calculateSpareTrustChance(record: DarkSakuraKarmaRecord): number
   }
   // Tier 2: 50% coin flip
   return 0.50;
+}
+
+/**
+ * Generates reactive dialogue quotes for Dark Sakura mid-battle state changes.
+ */
+export function getDarkSakuraHpReactiveQuote(
+  trigger: 'boss_low_hp' | 'break_gauge' | 'player_low_hp' | 'guts_survived',
+  record: DarkSakuraKarmaRecord,
+  servantName?: string
+): { quote: string } {
+  const tier = getDarkSakuraTier(record);
+  let quote = '';
+
+  if (trigger === 'boss_low_hp') {
+    if (tier === 1) {
+      quote = "Is that all your bloodlust can manage? Even as my core fractures, the mud will drown you whole!";
+    } else if (tier === 3 || tier === 4) {
+      quote = "Ah... it hurts. But if this pain means keeping you here in the dark just a little longer... I'll endure it.";
+    } else {
+      quote = "My body is tearing apart at the seams... but the Grail won't let me stop now!";
+    }
+  } else if (trigger === 'break_gauge') {
+    if (tier === 1) {
+      quote = "You really think shattering one layer of my shadow will save you? Taste the full weight of Angra Mainyu!";
+    } else if (tier === 3 || tier === 4) {
+      quote = "Why... why do you keep fighting so hard? Must we really destroy each other at the bottom of this cavern?";
+    } else {
+      quote = "The shadow barrier shatters... yet the dark mud only flows thicker! Beware the black tide!";
+    }
+  } else if (trigger === 'player_low_hp') {
+    if (tier === 1) {
+      quote = `Look at you, trembling on your knees, ${servantName || 'Servant'}. One more stroke and you'll be dissolved in my mud!`;
+    } else if (tier === 3 || tier === 4) {
+      quote = `Please... don't push yourself any further, ${servantName || 'Servant'}! I don't want to hurt you anymore...`;
+    } else {
+      quote = `Your spirit is breaking under the weight of the corrupted Grail. Will you yield or fall?`;
+    }
+  } else if (trigger === 'guts_survived') {
+    if (tier === 1) {
+      quote = "Refusing to die? Hahaha! Crawl back out of the mud then—let's see how many times your guts can save you!";
+    } else if (tier === 3 || tier === 4) {
+      quote = "You stood back up... That stubborn light in your eyes... it's just like Senpai's...";
+    } else {
+      quote = "Miraculous endurance! But the dark tide never stops rising...";
+    }
+  }
+
+  return { quote };
 }
 
 /**
@@ -356,6 +343,17 @@ export async function handleDarkSakuraClimax(
   // Track each participant's choice: 'spare' | 'execute'
   const userChoices = new Map<string, 'spare' | 'execute'>();
 
+  let climaxVnFile: any = null;
+  try {
+    const vnRes = await renderDarkSakuraVNDialogueImage({
+      title: '🌸 CLIMAX: THE FATE OF THE CORRUPTED VESSEL',
+      speakerName: 'Dark Sakura',
+      speakerTag: 'Fuyuki Cavity • Final Choice',
+      dialogue: 'Is it over...? Are you going to sever my core cleanly, or... will you reach out your hand into this pitch-black mud once again?'
+    });
+    climaxVnFile = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_climax.png' });
+  } catch {}
+
   const buildClimaxEmbed = () => {
     const statusLines = participants.map((p: any) => {
       const choice = userChoices.get(p.userId);
@@ -363,7 +361,7 @@ export async function handleDarkSakuraClimax(
       return `• <@${p.userId}> (${p.username}): ${icon}`;
     }).join('\n');
 
-    return new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setTitle('🌸 CLIMAX: THE FATE OF THE CORRUPTED VESSEL')
       .setDescription(
         `*Dark Sakura falls to her knees at the center of the cavern. The black mud around her writhes, yet her breathing is shallow and trembling.*\n\n` +
@@ -378,9 +376,15 @@ export async function handleDarkSakuraClimax(
         `• **Failure:** The mud panics and devours you! Retreat with 0 SQ!\n\n` +
         `**Decisions of the Vanguard:**\n${statusLines}`
       )
-      .setThumbnail(DARK_SAKURA_ASSETS.vnDialogueSprite)
       .setColor(0x831843)
       .setFooter({ text: 'Holy Grail War PvE • Consequential Raid Engine' });
+
+    if (climaxVnFile) {
+      embed.setImage('attachment://dark_sakura_climax.png');
+    } else {
+      embed.setThumbnail(DARK_SAKURA_ASSETS.vnDialogueSprite);
+    }
+    return embed;
   };
 
   const climaxButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -398,7 +402,7 @@ export async function handleDarkSakuraClimax(
     content: '🚨 **THE FINAL DECISION OF THE HOLY GRAIL WAR**',
     embeds: [buildClimaxEmbed()],
     components: [climaxButtons],
-    files: []
+    files: climaxVnFile ? [climaxVnFile] : []
   }).catch(() => null);
 
   if (!promptMsg) return;

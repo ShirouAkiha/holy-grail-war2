@@ -11,7 +11,7 @@ import {
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { RAID_BOSSES, RaidBossConfig } from '../data/raidBosses';
-import { renderRaidBattlefield, RaidBattleState, RaidParticipantState } from '../canvas/raidRenderer';
+import { renderRaidBattlefield, renderDarkSakuraVNDialogueImage, RaidBattleState, RaidParticipantState } from '../canvas/raidRenderer';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
@@ -442,6 +442,17 @@ async function launchRaidLobby(
             await saveMaster(master);
           }
 
+          let pacifistVnFile: any = null;
+          try {
+            const vnRes = await renderDarkSakuraVNDialogueImage({
+              title: '🌸 PACIFIST MILESTONE: THE MAIDEN’S SANCTUARY',
+              speakerName: 'Dark Sakura',
+              speakerTag: 'Sanctuary • Unbroken Trust',
+              dialogue: 'Wait... put your weapons away. You\'ve walked into this cavern so many times without raising a blade... You don\'t need to fight me today.'
+            });
+            pacifistVnFile = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_pacifist.png' });
+          } catch {}
+
           const pacifistEmbed = new EmbedBuilder()
             .setTitle('🌸 PACIFIST MILESTONE: THE MAIDEN’S SANCTUARY')
             .setDescription(
@@ -453,14 +464,20 @@ async function launchRaidLobby(
               `• **+8 Universal EXP Embers** ✨\n` +
               `• **A gentle, warm pat on the head.** 🌸`
             )
-            .setImage(DARK_SAKURA_ASSETS.vnDialogueSprite)
             .setColor(0xf472b6)
             .setFooter({ text: 'Holy Grail War PvE • Pure Pacifist Resolution' });
+
+          if (pacifistVnFile) {
+            pacifistEmbed.setImage('attachment://dark_sakura_pacifist.png');
+          } else {
+            pacifistEmbed.setImage(DARK_SAKURA_ASSETS.vnDialogueSprite);
+          }
 
           await lobbyMsg.edit({
             content: '🌸 **An unexpected serenity falls across the cavern...**',
             embeds: [pacifistEmbed],
-            components: []
+            components: [],
+            files: pacifistVnFile ? [pacifistVnFile] : []
           }).catch(() => {});
           return;
         }
@@ -664,16 +681,38 @@ async function runRaidBattle(
   // Dark Sakura Opening Interlude Dialogue
   if (isDarkSakura) {
     const intro = generateDarkSakuraIntroDialogue(partyUsers);
+    let introVnFile: any = null;
+    try {
+      const vnRes = await renderDarkSakuraVNDialogueImage({
+        title: intro.title,
+        speakerName: 'Dark Sakura',
+        speakerTag: 'Fuyuki Cavity • Abyssal Encounter',
+        dialogue: intro.dialogue,
+        bannerQuote: intro.bannerQuote,
+        easterEggServant: intro.easterEggServant ? { name: intro.easterEggServant, quote: '' } : undefined
+      });
+      introVnFile = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_intro.png' });
+    } catch {}
+
     const introEmbed = new EmbedBuilder()
       .setTitle(intro.title)
       .setDescription(`${intro.dialogue}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n> 👁️ *“${intro.bannerQuote}”*`)
-      .setThumbnail(DARK_SAKURA_ASSETS.vnDialogueSprite)
-      .setImage(DARK_SAKURA_ASSETS.caveBackground)
       .setColor(0x831843)
-      .setFooter({ text: 'Fate/stay night Heaven’s Feel • Abyssal Encounter' });
+      .setFooter({ text: 'Fate/stay night Heaven’s Feel • Abyssal Interlude' });
+
+    if (introVnFile) {
+      introEmbed.setImage('attachment://dark_sakura_intro.png');
+    } else {
+      introEmbed.setThumbnail(DARK_SAKURA_ASSETS.vnDialogueSprite);
+      introEmbed.setImage(DARK_SAKURA_ASSETS.caveBackground);
+    }
+
     const targetChannel = interaction.channel || battleMsg?.channel;
     if (targetChannel && typeof targetChannel.send === 'function') {
-      targetChannel.send({ embeds: [introEmbed] }).catch(() => {});
+      targetChannel.send({
+        embeds: [introEmbed],
+        files: introVnFile ? [introVnFile] : []
+      }).catch(() => {});
     }
   }
 
