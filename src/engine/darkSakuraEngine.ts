@@ -21,6 +21,8 @@ export interface DarkSakuraKarmaRecord {
   betrayalCount: number;
   lastOutcome?: 'killed' | 'spared_mercy' | 'spared_betrayed' | 'peaceful';
   lastEncounterTime?: number;
+  lastIntroCategory?: string;
+  introCategoryStreak?: number;
 }
 
 export const DARK_SAKURA_ASSETS = {
@@ -316,11 +318,10 @@ export function detectServantEasterEgg(participants: { servant: any }[]): { key:
 
 /**
  * Generates dynamic, self-aware intro dialogues taking into account:
- * - Solo vs Co-op Team
- * - Immediate rematch (< 10 mins)
- * - Last encounter outcome (betrayal vs mercy vs kill)
- * - Party composition contrasts (Host Mercy vs Ally Butcher)
- * - Servant easter eggs
+ * - Candidate-based weighted random selection across eligible triggers
+ * - Anti-persistence guarantee: No dialogue category can persist for more than 2 consecutive raids
+ * - Pops up contextual reactions when needed (Fresh Betrayal, Easter Egg, Quick Rematch, Streaks, Tiers)
+ * - Seamless standalone delivery for Easter Eggs (no overlapping or conflicting texts)
  */
 export function generateDarkSakuraIntroDialogue(
   participants: { master: any; servant: any; username: string; userId: string }[]
@@ -335,8 +336,13 @@ export function generateDarkSakuraIntroDialogue(
   const now = Date.now();
   const isQuickRematch = hostRecord.lastEncounterTime && (now - hostRecord.lastEncounterTime < 10 * 60 * 1000);
 
-  let dialogue = '';
-  let bannerQuote = '';
+  interface IntroCandidate {
+    category: string;
+    weight: number;
+    generate: () => { dialogue: string; bannerQuote: string; easterEggServant?: string };
+  }
+
+  const candidates: IntroCandidate[] = [];
 
   if (isMulti) {
     // Multi-player team dynamics
@@ -346,118 +352,294 @@ export function generateDarkSakuraIntroDialogue(
     const allSlayers = tiers.every(t => t === 1);
     const allMercy = tiers.every(t => t >= 3);
 
+    if (egg) {
+      candidates.push({
+        category: 'easter_egg',
+        weight: 6,
+        generate: () => ({
+          dialogue: `Dark Sakura freezes as her eyes lock onto ${egg.name}...\n\n"${egg.quote}"`,
+          bannerQuote: `Dark Sakura's gaze locks onto ${egg.name}...`,
+          easterEggServant: egg.name
+        })
+      });
+    }
+
+    if (isQuickRematch) {
+      candidates.push({
+        category: 'quick_rematch',
+        weight: 3,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"Back so soon, vanguard? The mud hasn't even dried from our last encounter, yet you rush right back into the dark."`,
+            `"Returned already? Did the abyss leave such a bitter chill on your skin, or could you not resist the smell of corrupted mana?"`,
+            `"You barely caught your breath before charging back into my cavern... Is this courage, or mutual destruction?"`
+          ]),
+          bannerQuote: 'Back so soon? The mud hasn\'t even dried from our last encounter.'
+        })
+      });
+    }
+
     if (hostTier >= 3 && hasSlayer) {
-      dialogue = pickRandom([
-        `"${host.username}, who is this standing behind you? Their hands reek of my dried blood. Did you bring an executioner to finish what your soft heart couldn't?"`,
-        `"${host.username}... you brought someone whose weapon has cut me down repeatedly. Are you hiding behind a killer, or did they force you to bring them here?"`,
-        `"A gentle soul leading a bloodthirsty hound... What a bizarre pairing, ${host.username}. Will your kindness protect them when my shadow lashes out?"`,
-        `"${host.username}... I thought you were different, yet you march alongside an executioner. Did your resolve crumble so easily?"`
-      ]);
-      bannerQuote = 'Did you bring a butcher to finish what your soft heart couldn\'t?';
+      candidates.push({
+        category: 'coop_contrast',
+        weight: 5,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"${host.username}, who is this standing behind you? Their hands reek of my dried blood. Did you bring an executioner to finish what your soft heart couldn't?"`,
+            `"${host.username}... you brought someone whose weapon has cut me down repeatedly. Are you hiding behind a killer, or did they force you to bring them here?"`,
+            `"A gentle soul leading a bloodthirsty hound... What a bizarre pairing, ${host.username}. Will your kindness protect them when my shadow lashes out?"`,
+            `"${host.username}... I thought you were different, yet you march alongside an executioner. Did your resolve crumble so easily?"`
+          ]),
+          bannerQuote: 'Did you bring a butcher to finish what your soft heart couldn\'t?'
+        })
+      });
     } else if (allSlayers) {
-      dialogue = pickRandom([
-        `"A full circle of executioners gathered together... How flattering. You must really want to watch me dissolve under your Noble Phantasms today."`,
-        `"Four cold-blooded killers in one cavern... Ahaha! Step into the mud then—let's see who breaks first."`,
-        `"Not a single drop of hesitation among you... Excellent. I won't have to feel guilty when my black tendrils tear you to pieces."`,
-        `"A vanguard of pure butchers... Come then! Let All The World's Evil show you what true slaughter looks like!"`
-      ]);
-      bannerQuote = 'A full circle of executioners gathered together... How flattering.';
+      candidates.push({
+        category: 'coop_all_slayers',
+        weight: 5,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"A full circle of executioners gathered together... How flattering. You must really want to watch me dissolve under your Noble Phantasms today."`,
+            `"Four cold-blooded killers in one cavern... Ahaha! Step into the mud then—let's see who breaks first."`,
+            `"Not a single drop of hesitation among you... Excellent. I won't have to feel guilty when my black tendrils tear you to pieces."`,
+            `"A vanguard of pure butchers... Come then! Let All The World's Evil show you what true slaughter looks like!"`
+          ]),
+          bannerQuote: 'A full circle of executioners gathered together... How flattering.'
+        })
+      });
     } else if (allMercy) {
-      dialogue = pickRandom([
-        `"Not a single killer among all four of you? A circle of saints marching straight into the abyss... Do you really think this mud won't swallow you if you hesitate?"`,
-        `"Four soft-hearted Masters standing shoulder-to-shoulder in my cavern... Are you trying to save a monster, or planning a group execution of your own naivety?"`,
-        `"Fufu... So much gentle resolve in one dark place. It's almost sickening. Let's see if your collective mercy can survive my shadows."`,
-        `"None of you came to draw blood today? How foolishly idealistic... The corrupted Grail doesn't reward pacifists easily."`
-      ]);
-      bannerQuote = 'A circle of saints marching straight into the abyss...';
+      candidates.push({
+        category: 'coop_all_mercy',
+        weight: 5,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"Not a single killer among all four of you? A circle of saints marching straight into the abyss... Do you really think this mud won't swallow you if you hesitate?"`,
+            `"Four soft-hearted Masters standing shoulder-to-shoulder in my cavern... Are you trying to save a monster, or planning a group execution of your own naivety?"`,
+            `"Fufu... So much gentle resolve in one dark place. It's almost sickening. Let's see if your collective mercy can survive my shadows."`,
+            `"None of you came to draw blood today? How foolishly idealistic... The corrupted Grail doesn't reward pacifists easily."`
+          ]),
+          bannerQuote: 'A circle of saints marching straight into the abyss...'
+        })
+      });
     } else {
-      dialogue = pickRandom([
-        `"Another vanguard gathered to harvest the corrupted Grail... Some of you have drawn my blood, others held out a hand. Let's see which conviction triumphs today."`,
-        `"A divided team enters the cavern... Some come with mercy, others with bare blades. How long before you turn on each other in the dark?"`,
-        `"A mixture of killers and dreamers... How chaotic. My shadow will devour both all the same if you hesitate for even a second."`,
-        `"Conflict inside your own party before the battle even begins... Fufu. Step forward then, let's see whose will dictates the end."`
-      ]);
-      bannerQuote = 'Let\'s see which conviction triumphs today.';
+      candidates.push({
+        category: 'coop_mixed',
+        weight: 5,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"Another vanguard gathered to harvest the corrupted Grail... Some of you have drawn my blood, others held out a hand. Let's see which conviction triumphs today."`,
+            `"A divided team enters the cavern... Some come with mercy, others with bare blades. How long before you turn on each other in the dark?"`,
+            `"A mixture of killers and dreamers... How chaotic. My shadow will devour both all the same if you hesitate for even a second."`,
+            `"Conflict inside your own party before the battle even begins... Fufu. Step forward then, let's see whose will dictates the end."`
+          ]),
+          bannerQuote: 'Let\'s see which conviction triumphs today.'
+        })
+      });
     }
+
+    candidates.push({
+      category: 'coop_ambient',
+      weight: 2,
+      generate: () => ({
+        dialogue: pickRandom([
+          `"The shadows ripple as multiple spirit origins descend into the abyss... Will you support one another, or drown together in the black mud?"`,
+          `"A vanguard at the bottom of the world... Every blade drawn only feeds the corrupted Grail's appetite."`
+        ]),
+        bannerQuote: 'Will you support one another, or drown together in the black mud?'
+      })
+    });
   } else {
-    // Solo player dynamics
+    // Solo player dynamic candidate registration
+
+    // 1. First-time encounter
     if (hostRecord.spares === 0 && hostRecord.kills === 0) {
-      dialogue = pickRandom([
-        `"The leyline whispers of a new challenger... Welcome to the bottom of the world, ${host.username}. Don't drown in my shadows."`,
-        `"Another soul wanders into the cavern of shadows... Tell me, ${host.username}, did Zouken send you, or did you come to be devoured by your own foolishness?"`,
-        `"You step into my shadow without fear, ${host.username}... How amusing. Everyone thinks they can stay pure until the black mud fills their lungs."`,
-        `"A fresh face in the dark... Fufu. Don't look at me with those pitying eyes, ${host.username}. I was insane from the very start."`
-      ]);
-      bannerQuote = 'Welcome to the bottom of the world... Don\'t drown in my shadows.';
-    } else if (hostRecord.lastOutcome === 'spared_betrayed') {
-      dialogue = pickRandom([
-        `"In our last bout... the shadows swallowed you before you could pull away. Yet you step right back into my cavern without flinching. Are you courageous, or just an idiot, ${host.username}?"`,
-        `"You reached your hand into my black mud and felt it tear at your flesh... so why are you back, ${host.username}? Do you enjoy watching your devotion rot?"`,
-        `"My shadows devoured your hope last time, ${host.username}... and still you return. Did you come to hear me laugh at your broken resolve?"`,
-        `"I warned you that All The World's Evil drags down anyone who touches it. Yet here you stand again, ${host.username}... stubborn to the end."`
-      ]);
-      bannerQuote = 'Yet you step right back into my cavern without flinching...';
-    } else if (hostRecord.mercyStreak >= 3) {
-      dialogue = pickRandom([
-        `"That's ${hostRecord.mercyStreak} consecutive bouts where you stayed your blade at the very end... When will you learn that monsters don't deserve fairy tales, ${host.username}?"`,
-        `"${hostRecord.mercyStreak} times you offered mercy to a creature made of black mud... Are you trying to prove something to yourself, ${host.username}, or mock my despair?"`,
-        `"You refuse to cut me down, even after ${hostRecord.mercyStreak} encounters... My shadows grow restless around you, ${host.username}, but why doesn't your hand tremble?"`,
-        `"Fufu... ${hostRecord.mercyStreak} times you held back your final blow. If Shirou saw you now, would he call you kind, or foolish, ${host.username}?"`
-      ]);
-      bannerQuote = `When will you learn that monsters don't deserve fairy tales?`;
-    } else if (hostRecord.slayerStreak >= 3) {
-      dialogue = pickRandom([
-        `"Another round, another execution. You treat carving me apart like routine paperwork, don't you, ${host.username}? Come on then... draw your weapon."`,
-        `"${hostRecord.slayerStreak} times you've carved through my flesh without hesitation. Ahaha... You really enjoy the sound of the Grail breaking, don't you, ${host.username}?"`,
-        `"The executioner returns for their ${hostRecord.slayerStreak}th massacre... Your weapon is still dark with my blood, ${host.username}. Let's see if you can shatter my core again."`,
-        `"A blood-soaked streak of ${hostRecord.slayerStreak} executions... You don't see a girl here at all, do you, ${host.username}? Just a boss to harvest."`
-      ]);
-      bannerQuote = 'You treat carving me apart like routine paperwork, don\'t you?';
-    } else if (hostTier === 3) {
-      dialogue = pickRandom([
-        `"You're back... Even in this pitch-black cavern, your presence feels warm. My shadows hesitate around you, ${host.username}."`,
-        `"Why do you look at me like that, ${host.username}? I told you I'm corrupted to the root... yet your eyes never hold hatred."`,
-        `"Every time you step into this cavern, ${host.username}, the screaming inside my head grows a little quieter... Don't make me rely on you."`,
-        `"You stayed your hand so many times... Is it really possible that someone looks at this shadow and doesn't see a monster, ${host.username}?"`
-      ]);
-      bannerQuote = 'My shadows hesitate around you...';
-    } else if (hostTier === 1) {
-      dialogue = pickRandom([
-        `"Ah, the butcher returns. Eager to see if my core shatters faster this time, ${host.username}? Let me show you what it feels like to rot in the mud."`,
-        `"The merciless magus steps back into my cavern... Every time you open your mouth, ${host.username}, I remember why I stopped expecting salvation."`,
-        `"Cold, efficient, and relentless... You remind me of the crest worms, ${host.username}. Come, let's see whose malice cuts deeper."`,
-        `"You carved away every piece of mercy in your heart, didn't you, ${host.username}? Fufu... Good. Monsters are much easier to devour when they don't pretend to care."`
-      ]);
-      bannerQuote = 'Ah, the butcher returns. Eager to carve me open again?';
-    } else if (isQuickRematch) {
-      dialogue = pickRandom([
-        `"Back so soon? You barely cleaned the mud off your boots. Are you that eager to see me again, ${host.username}?"`,
-        `"Returned already, ${host.username}? Did the shadow's chill linger on your skin, or could you not resist the smell of corrupted mana?"`,
-        `"You barely caught your breath before running right back into my cavern... Is this courage, ${host.username}, or an obsession with your own doom?"`,
-        `"Still lingering around my shadow, ${host.username}? Fufu... The mud hasn't even dried from our last encounter."`
-      ]);
-      bannerQuote = 'Back so soon? You barely cleaned the mud off your boots.';
-    } else {
-      dialogue = pickRandom([
-        `"Another bout. Are you going to cut me down like a true magus, or pretend to be my savior today, ${host.username}? You Masters are all the same."`,
-        `"The mud stirs as you draw near, ${host.username}... Will you bring judgment or false hope to the bottom of the cavern today?"`,
-        `"Fufu... Another challenger testing their luck against All The World's Evil. Let's see how long your resolve lasts under the shadow, ${host.username}."`,
-        `"You step closer to the corrupted vessel, ${host.username}. Keep your guard up... the shadows don't care about your intentions."`
-      ]);
-      bannerQuote = 'Are you going to cut me down, or pretend to be my savior?';
+      candidates.push({
+        category: 'first_time',
+        weight: 10,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"The leyline whispers of a new challenger... Welcome to the bottom of the world, ${host.username}. Don't drown in my shadows."`,
+            `"Another soul wanders into the cavern of shadows... Tell me, ${host.username}, did Zouken send you, or did you come to be devoured by your own foolishness?"`,
+            `"You step into my shadow without fear, ${host.username}... How amusing. Everyone thinks they can stay pure until the black mud fills their lungs."`,
+            `"A fresh face in the dark... Fufu. Don't look at me with those pitying eyes, ${host.username}. I was insane from the very start."`
+          ]),
+          bannerQuote: 'Welcome to the bottom of the world... Don\'t drown in my shadows.'
+        })
+      });
     }
+
+    // 2. Easter Egg confrontation (High relevance when special Fate servants are present)
+    if (egg) {
+      candidates.push({
+        category: 'easter_egg',
+        weight: 6,
+        generate: () => ({
+          dialogue: `Dark Sakura freezes as her eyes lock onto ${egg.name}...\n\n"${egg.quote}"`,
+          bannerQuote: `Dark Sakura's gaze locks onto ${egg.name}...`,
+          easterEggServant: egg.name
+        })
+      });
+    }
+
+    // 3. Betrayal aftermath reaction (Immediate priority when shadows consumed the master last time)
+    if (hostRecord.lastOutcome === 'spared_betrayed') {
+      candidates.push({
+        category: 'betrayal_aftermath',
+        weight: 6,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"In our last bout... the shadows swallowed you before you could pull away. Yet you step right back into my cavern without flinching. Are you courageous, or just an idiot, ${host.username}?"`,
+            `"You reached your hand into my black mud and felt it tear at your flesh... so why are you back, ${host.username}? Do you enjoy watching your devotion rot?"`,
+            `"My shadows devoured your hope last time, ${host.username}... and still you return. Did you come to hear me laugh at your broken resolve?"`,
+            `"I warned you that All The World's Evil drags down anyone who touches it. Yet here you stand again, ${host.username}... stubborn to the end."`
+          ]),
+          bannerQuote: 'Yet you step right back into my cavern without flinching...'
+        })
+      });
+    }
+
+    // 4. Consecutive Mercy Streak reaction
+    if (hostRecord.mercyStreak >= 3) {
+      candidates.push({
+        category: 'streak_mercy',
+        weight: 4,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"That's ${hostRecord.mercyStreak} consecutive bouts where you stayed your blade at the very end... When will you learn that monsters don't deserve fairy tales, ${host.username}?"`,
+            `"${hostRecord.mercyStreak} times you offered mercy to a creature made of black mud... Are you trying to prove something to yourself, ${host.username}, or mock my despair?"`,
+            `"You refuse to cut me down, even after ${hostRecord.mercyStreak} encounters... My shadows grow restless around you, ${host.username}, but why doesn't your hand tremble?"`,
+            `"Fufu... ${hostRecord.mercyStreak} times you held back your final blow. If Shirou saw you now, would he call you kind, or foolish, ${host.username}?"`
+          ]),
+          bannerQuote: 'When will you learn that monsters don\'t deserve fairy tales?'
+        })
+      });
+    }
+
+    // 5. Consecutive Slayer Streak reaction
+    if (hostRecord.slayerStreak >= 3) {
+      candidates.push({
+        category: 'streak_slayer',
+        weight: 4,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"Another round, another execution. You treat carving me apart like routine paperwork, don't you, ${host.username}? Come on then... draw your weapon."`,
+            `"${hostRecord.slayerStreak} times you've carved through my flesh without hesitation. Ahaha... You really enjoy the sound of the Grail breaking, don't you, ${host.username}?"`,
+            `"The executioner returns for their ${hostRecord.slayerStreak}th massacre... Your weapon is still dark with my blood, ${host.username}. Let's see if you can shatter my core again."`,
+            `"A blood-soaked streak of ${hostRecord.slayerStreak} executions... You don't see a girl here at all, do you, ${host.username}? Just a boss to harvest."`
+          ]),
+          bannerQuote: 'You treat carving me apart like routine paperwork, don\'t you?'
+        })
+      });
+    }
+
+    // 6. Tier 3 Wavering Maiden temperament reaction
+    if (hostTier === 3) {
+      candidates.push({
+        category: 'tier_wavering',
+        weight: 4,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"You're back... Even in this pitch-black cavern, your presence feels warm. My shadows hesitate around you, ${host.username}."`,
+            `"Why do you look at me like that, ${host.username}? I told you I'm corrupted to the root... yet your eyes never hold hatred."`,
+            `"Every time you step into this cavern, ${host.username}, the screaming inside my head grows a little quieter... Don't make me rely on you."`,
+            `"You stayed your hand so many times... Is it really possible that someone looks at this shadow and doesn't see a monster, ${host.username}?"`
+          ]),
+          bannerQuote: 'My shadows hesitate around you...'
+        })
+      });
+    }
+
+    // 7. Tier 1 The Butcher temperament reaction
+    if (hostTier === 1) {
+      candidates.push({
+        category: 'tier_butcher',
+        weight: 4,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"Ah, the butcher returns. Eager to see if my core shatters faster this time, ${host.username}? Let me show you what it feels like to rot in the mud."`,
+            `"The merciless magus steps back into my cavern... Every time you open your mouth, ${host.username}, I remember why I stopped expecting salvation."`,
+            `"Cold, efficient, and relentless... You remind me of the crest worms, ${host.username}. Come, let's see whose malice cuts deeper."`,
+            `"You carved away every piece of mercy in your heart, didn't you, ${host.username}? Fufu... Good. Monsters are much easier to devour when they don't pretend to care."`
+          ]),
+          bannerQuote: 'Ah, the butcher returns. Eager to carve me open again?'
+        })
+      });
+    }
+
+    // 8. Quick Rematch reaction (< 10 minutes)
+    if (isQuickRematch) {
+      candidates.push({
+        category: 'quick_rematch',
+        weight: 3,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"Back so soon? You barely cleaned the mud off your boots. Are you that eager to see me again, ${host.username}?"`,
+            `"Returned already, ${host.username}? Did the shadow's chill linger on your skin, or could you not resist the smell of corrupted mana?"`,
+            `"You barely caught your breath before running right back into my cavern... Is this courage, ${host.username}, or an obsession with your own doom?"`,
+            `"Still lingering around my shadow, ${host.username}? Fufu... The mud hasn't even dried from our last encounter."`
+          ]),
+          bannerQuote: 'Back so soon? You barely cleaned the mud off your boots.'
+        })
+      });
+    }
+
+    // 9. Ambient / General cavern pool (Always available baseline)
+    candidates.push({
+      category: 'ambient',
+      weight: 2,
+      generate: () => ({
+        dialogue: pickRandom([
+          `"Another bout. Are you going to cut me down like a true magus, or pretend to be my savior today, ${host.username}? You Masters are all the same."`,
+          `"The mud stirs as you draw near, ${host.username}... Will you bring judgment or false hope to the bottom of the cavern today?"`,
+          `"Fufu... Another challenger testing their luck against All The World's Evil. Let's see how long your resolve lasts under the shadow, ${host.username}."`,
+          `"You step closer to the corrupted vessel, ${host.username}. Keep your guard up... the shadows don't care about your intentions."`
+        ]),
+        bannerQuote: 'Are you going to cut me down, or pretend to be my savior?'
+      })
+    });
   }
 
-  // Append servant Easter Egg if present (pure dialogue only)
-  if (egg) {
-    dialogue += `\n\n"${egg.quote}"`;
+  // Anti-Persistence Rule:
+  // Disqualify any candidate category that has already triggered for 2 consecutive raids
+  const prevCategory = hostRecord.lastIntroCategory || '';
+  const prevStreak = hostRecord.introCategoryStreak || 0;
+
+  const validCandidates = candidates.filter(c => {
+    if (c.category === prevCategory && prevStreak >= 2) {
+      return false; // Disqualified! Strictly cannot persist for more than 2 raids
+    }
+    return true;
+  });
+
+  const finalPool = validCandidates.length > 0 ? validCandidates : candidates;
+
+  // Weighted random candidate selection
+  const totalWeight = finalPool.reduce((sum, c) => sum + c.weight, 0);
+  let roll = Math.random() * totalWeight;
+  let chosen = finalPool[0];
+  for (const cand of finalPool) {
+    if (roll < cand.weight) {
+      chosen = cand;
+      break;
+    }
+    roll -= cand.weight;
   }
+
+  // Update persistence tracker
+  if (hostRecord.lastIntroCategory === chosen.category) {
+    hostRecord.introCategoryStreak = (hostRecord.introCategoryStreak || 1) + 1;
+  } else {
+    hostRecord.lastIntroCategory = chosen.category;
+    hostRecord.introCategoryStreak = 1;
+  }
+
+  const result = chosen.generate();
 
   return {
-    title: `🌑 SHADOW VESSEL: DARK SAKURA INTERLUDE`,
-    dialogue,
-    bannerQuote,
-    easterEggServant: egg?.name
+    title: '🌑 SHADOW VESSEL: DARK SAKURA INTERLUDE',
+    dialogue: result.dialogue,
+    bannerQuote: result.bannerQuote,
+    easterEggServant: result.easterEggServant
   };
 }
 
@@ -738,7 +920,6 @@ export async function handleDarkSakuraClimax(
       const expInfo = lvlDetail ? ` (${lvlDetail})` : '';
       resultReports.push(
         `• <@${p.userId}> (**${p.username}**) chose **⚔️ EXECUTE**:\n` +
-        `  └─ *Severed the shadow core cleanly.*\n` +
         `  └─ 💎 **Spoils:** **+${baseSq} SQ**, **+${baseExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+4x Universal EXP Embers** ✨ (2x ★5 SSR + 2x ★4 SR)`
       );
     } else {
@@ -789,7 +970,6 @@ export async function handleDarkSakuraClimax(
         const expInfo = lvlDetail ? ` (${lvlDetail})` : '';
         resultReports.push(
           `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[SHADOW PURIFIED]**:\n` +
-          `  └─ *The shadows receded with a trembling smile.*\n` +
           `  └─ 💎 **DOUBLED SPOILS:** **+${doubleSq} SQ**, **+${doubleExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+8x Universal EXP Embers** ✨ (4x ★5 SSR + 4x ★4 SR)${ceDropNotice}`
         );
       } else {
@@ -821,7 +1001,6 @@ export async function handleDarkSakuraClimax(
         const expInfo = lvlDetail ? ` (${lvlDetail})` : '';
         resultReports.push(
           `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[DEVOTION CONSUMED]**:\n` +
-          `  └─ *The black mud flared out of control!* *"I'm sorry... I can't hold it back!!"*\n` +
           `  └─ 📦 **Consolation:** **+${pityExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+2x Universal EXP Embers** ✨ (2x ★4 SR) *(0 SQ gained)*`
         );
       }

@@ -819,6 +819,9 @@ async function runRaidBattle(
   // Dark Sakura Opening Interlude Dialogue (Requires button click to proceed to battle)
   if (isDarkSakura) {
     const intro = generateDarkSakuraIntroDialogue(partyUsers);
+    if (partyUsers[0]?.master) {
+      saveMaster(partyUsers[0].master).catch(() => {});
+    }
     let vnAttachment: AttachmentBuilder | null = null;
     try {
       const vnRes = await renderDarkSakuraVNDialogueImage({

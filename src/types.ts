@@ -396,6 +396,8 @@ export interface MasterProfile {
     betrayalCount: number;
     lastOutcome?: 'killed' | 'spared_mercy' | 'spared_betrayed' | 'peaceful';
     lastEncounterTime?: number;
+    lastIntroCategory?: string;
+    introCategoryStreak?: number;
   };
   servants: MasterServantInstance[];
   craftEssences: CraftEssence[];
