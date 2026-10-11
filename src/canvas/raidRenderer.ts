@@ -354,7 +354,8 @@ function drawFGOSkillIcon(
   isDead: boolean,
   skillObj?: any,
   iconImg?: any,
-  isLocked?: boolean
+  isLocked?: boolean,
+  isSkillSealed?: boolean
 ) {
   ctx.save();
 
@@ -476,6 +477,30 @@ function drawFGOSkillIcon(
   ctx.fill();
   ctx.stroke();
   ctx.restore();
+
+  // 3.5 Skill Sealed Overlay (Red X / Bound in dark seals)
+  if (isSkillSealed && !isLocked && !isDead && cooldownTurns === 0) {
+    ctx.fillStyle = 'rgba(127, 29, 29, 0.88)';
+    ctx.fillRect(innerX, innerY, innerSize, innerSize);
+
+    ctx.strokeStyle = '#f87171';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(innerX + 6, innerY + 6);
+    ctx.lineTo(innerX + innerSize - 6, innerY + innerSize - 6);
+    ctx.moveTo(innerX + innerSize - 6, innerY + 6);
+    ctx.lineTo(innerX + 6, innerY + innerSize - 6);
+    ctx.stroke();
+
+    ctx.fillStyle = '#fee2e2';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 4;
+    ctx.fillText('SEALED', cx, cy + innerSize * 0.32);
+    ctx.shadowBlur = 0;
+  }
 
   // 4. Cooldown Overlay (if on cooldown or servant is dead)
   if (cooldownTurns > 0 || isDead) {
@@ -1268,9 +1293,10 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       const cd = p.skillCooldowns?.[s] || 0;
       const skObj = servantSkills[s];
       const isLocked = s === 2 && servantBond < 5;
+      const isSkillSealed = Boolean(p.activeBuffs && p.activeBuffs.some(b => b.type === 'skill_seal'));
       const iconUrl = getStatusIconUrl(skObj?.effectType || skObj?.name || (s === 0 ? 'buff_atk' : s === 1 ? 'arts' : 'crit_stars'));
       const iconImg = buffImageMap?.get(iconUrl);
-      drawFGOSkillIcon(ctx, sX, skillY, skillBoxSize, s, cd, !!p.isDead, skObj, iconImg, isLocked);
+      drawFGOSkillIcon(ctx, sX, skillY, skillBoxSize, s, cd, !!p.isDead, skObj, iconImg, isLocked, isSkillSealed);
     }
 
     // 2.5 Active Status Buff/Debuff Badges Row (Position Y: 538)
@@ -1284,7 +1310,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
         const img = buffImageMap?.get(iconUrl);
         const bX = slotX + 10 + bIdx * (buffSize + buffGap);
         const isCurseOrDot = b.type === 'curse' || b.type === 'burn' || b.type === 'poison';
-        const isDebuff = isCurseOrDot || b.type.includes('down') || b.type.includes('debuff') || b.type === 'stun' || b.type === 'np_seal';
+        const isDebuff = isCurseOrDot || b.type.includes('down') || b.type.includes('debuff') || b.type === 'stun' || b.type === 'np_seal' || b.type === 'skill_seal';
 
         ctx.save();
         ctx.fillStyle = isCurseOrDot ? 'rgba(88, 28, 135, 0.90)' : isDebuff ? 'rgba(153, 27, 27, 0.90)' : 'rgba(15, 23, 42, 0.90)';

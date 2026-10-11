@@ -1004,6 +1004,10 @@ async function runRaidBattle(
       refreshParticipantHand(active);
     }
 
+    const isSkillSealed = Boolean(active.activeBuffs && active.activeBuffs.some(b => b.type === 'skill_seal'));
+    const isNpSealed = Boolean(active.activeBuffs && active.activeBuffs.some(b => b.type === 'np_seal'));
+    const isStunned = Boolean(active.activeBuffs && active.activeBuffs.some(b => b.type === 'stun'));
+
     // Row 1: 5 Dealt Command Cards from Servant Class Deck (Exact layout from normal battles)
     const row1 = new ActionRowBuilder<ButtonBuilder>();
     const isQuickFirst = pendingCards[0] === 'Quick';
@@ -1044,10 +1048,10 @@ async function runRaidBattle(
         row1.addComponents(
           new ButtonBuilder()
             .setCustomId(`raid_card_hand_${idx}`)
-            .setLabel(`${cardType} (${critPct}%)`)
-            .setEmoji(emoji)
-            .setStyle(style)
-            .setDisabled(shouldDisableAll || pendingCards.length >= 3 || active.isDead)
+            .setLabel(isStunned ? `⚡ Stunned` : `${cardType} (${critPct}%)`)
+            .setEmoji(isStunned ? '⚡' : emoji)
+            .setStyle(isStunned ? ButtonStyle.Secondary : style)
+            .setDisabled(shouldDisableAll || isStunned || pendingCards.length >= 3 || active.isDead)
         );
       }
     });
@@ -1061,13 +1065,30 @@ async function runRaidBattle(
     const hasPending = pendingCards.length > 0;
     const masterSeals = active.commandSeals !== undefined ? active.commandSeals : 3;
 
+    let npLabel = isNpReady ? `NP [${displayNpType}] (${Math.round(active.npGauge)}%)` : `NP (${Math.round(active.npGauge)}%)`;
+    let npEmoji = isNpReady ? '💥' : (effectiveNpType === 'Buster' ? '🔴' : effectiveNpType === 'Arts' ? '🔵' : '🟢');
+    let npStyle = isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary;
+    let npDisabled = shouldDisableAll || !isNpReady || isNpSelected || pendingCards.length >= 3 || active.isDead;
+
+    if (isNpSealed) {
+      npLabel = `🚫 NP Sealed (${Math.round(active.npGauge)}%)`;
+      npEmoji = '🔒';
+      npStyle = ButtonStyle.Secondary;
+      npDisabled = true;
+    } else if (isStunned) {
+      npLabel = `⚡ Stunned (${Math.round(active.npGauge)}%)`;
+      npEmoji = '⚡';
+      npStyle = ButtonStyle.Secondary;
+      npDisabled = true;
+    }
+
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId('raid_card_np')
-        .setLabel(isNpReady ? `NP [${displayNpType}] (${Math.round(active.npGauge)}%)` : `NP (${Math.round(active.npGauge)}%)`)
-        .setEmoji(isNpReady ? '💥' : (effectiveNpType === 'Buster' ? '🔴' : effectiveNpType === 'Arts' ? '🔵' : '🟢'))
-        .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
-        .setDisabled(shouldDisableAll || !isNpReady || isNpSelected || pendingCards.length >= 3 || active.isDead),
+        .setLabel(npLabel)
+        .setEmoji(npEmoji)
+        .setStyle(npStyle)
+        .setDisabled(npDisabled),
       new ButtonBuilder()
         .setCustomId('raid_reset_cards')
         .setLabel('Clear')
@@ -1103,24 +1124,50 @@ async function runRaidBattle(
     const s1 = skills[0];
     const cd1 = active.skillCooldowns[0] || 0;
     const s1Name = s1 ? s1.name.slice(0, 13) : 'Skill 1';
+    let s1Label = cd1 > 0 ? `S1: ${s1Name} (${cd1}T)` : `✨ S1: ${s1Name}`;
+    let s1Style = cd1 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary;
+    let s1Disabled = shouldDisableAll || cd1 > 0 || !s1 || active.isDead;
+    if (isSkillSealed) {
+      s1Label = `🚫 S1: Sealed`;
+      s1Style = ButtonStyle.Secondary;
+      s1Disabled = true;
+    } else if (isStunned) {
+      s1Label = `⚡ S1: Stunned`;
+      s1Style = ButtonStyle.Secondary;
+      s1Disabled = true;
+    }
+
     row3.addComponents(
       new ButtonBuilder()
         .setCustomId('raid_skill_0')
-        .setLabel(cd1 > 0 ? `S1: ${s1Name} (${cd1}T)` : `✨ S1: ${s1Name}`)
-        .setStyle(cd1 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
-        .setDisabled(shouldDisableAll || cd1 > 0 || !s1 || active.isDead)
+        .setLabel(s1Label)
+        .setStyle(s1Style)
+        .setDisabled(s1Disabled)
     );
 
     // Skill 2
     const s2 = skills[1];
     const cd2 = active.skillCooldowns[1] || 0;
     const s2Name = s2 ? s2.name.slice(0, 13) : 'Skill 2';
+    let s2Label = cd2 > 0 ? `S2: ${s2Name} (${cd2}T)` : `🛡️ S2: ${s2Name}`;
+    let s2Style = cd2 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary;
+    let s2Disabled = shouldDisableAll || cd2 > 0 || !s2 || active.isDead;
+    if (isSkillSealed) {
+      s2Label = `🚫 S2: Sealed`;
+      s2Style = ButtonStyle.Secondary;
+      s2Disabled = true;
+    } else if (isStunned) {
+      s2Label = `⚡ S2: Stunned`;
+      s2Style = ButtonStyle.Secondary;
+      s2Disabled = true;
+    }
+
     row3.addComponents(
       new ButtonBuilder()
         .setCustomId('raid_skill_1')
-        .setLabel(cd2 > 0 ? `S2: ${s2Name} (${cd2}T)` : `🛡️ S2: ${s2Name}`)
-        .setStyle(cd2 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
-        .setDisabled(shouldDisableAll || cd2 > 0 || !s2 || active.isDead)
+        .setLabel(s2Label)
+        .setStyle(s2Style)
+        .setDisabled(s2Disabled)
     );
 
     // Skill 3 (Unlocked at Bond Level 5)
@@ -1128,12 +1175,25 @@ async function runRaidBattle(
     const cd3 = active.skillCooldowns[2] || 0;
     const isS3Unlocked = bondLevel >= 5;
     const s3Name = s3 ? s3.name.slice(0, 13) : 'Skill 3';
+    let s3Label = !isS3Unlocked ? '🔒 S3 (Bond Lv 5)' : cd3 > 0 ? `S3: ${s3Name} (${cd3}T)` : `🌟 S3: ${s3Name}`;
+    let s3Style = !isS3Unlocked || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Success;
+    let s3Disabled = shouldDisableAll || !isS3Unlocked || cd3 > 0 || !s3 || active.isDead;
+    if (isSkillSealed) {
+      s3Label = `🚫 S3: Sealed`;
+      s3Style = ButtonStyle.Secondary;
+      s3Disabled = true;
+    } else if (isStunned) {
+      s3Label = `⚡ S3: Stunned`;
+      s3Style = ButtonStyle.Secondary;
+      s3Disabled = true;
+    }
+
     row3.addComponents(
       new ButtonBuilder()
         .setCustomId('raid_skill_2')
-        .setLabel(!isS3Unlocked ? '🔒 S3 (Bond Lv 5)' : cd3 > 0 ? `S3: ${s3Name} (${cd3}T)` : `🌟 S3: ${s3Name}`)
-        .setStyle(!isS3Unlocked || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Success)
-        .setDisabled(shouldDisableAll || !isS3Unlocked || cd3 > 0 || !s3 || active.isDead),
+        .setLabel(s3Label)
+        .setStyle(s3Style)
+        .setDisabled(s3Disabled),
       new ButtonBuilder()
         .setCustomId('raid_pass_turn')
         .setLabel('Auto/Pass')
@@ -1189,7 +1249,16 @@ async function runRaidBattle(
       cardChainStr = ` • 🎴 **Selected:** ${chain}`;
     }
 
-    return `⚔️ **<@${active.userId}>'s Turn!** (**${activeServName}**) • ⏳ **Turn Timer: 2 Min** *(Auto-play on timeout)*${cardChainStr}`;
+    const isSkillSealed = Boolean(active.activeBuffs && active.activeBuffs.some(b => b.type === 'skill_seal'));
+    const isNpSealed = Boolean(active.activeBuffs && active.activeBuffs.some(b => b.type === 'np_seal'));
+    const isStunned = Boolean(active.activeBuffs && active.activeBuffs.some(b => b.type === 'stun'));
+
+    let afflictionStr = '';
+    if (isStunned) afflictionStr += ' • ⚡ **[STUNNED]**';
+    if (isSkillSealed) afflictionStr += ' • 🚫 **[SKILLS SEALED]**';
+    if (isNpSealed) afflictionStr += ' • 🔒 **[NP SEALED]**';
+
+    return `⚔️ **<@${active.userId}>'s Turn!** (**${activeServName}**) • ⏳ **Turn Timer: 2 Min** *(Auto-play on timeout)*${afflictionStr}${cardChainStr}`;
   };
 
   const renderAndPostTurn = async () => {
@@ -2016,11 +2085,15 @@ async function runRaidBattle(
           return;
         }
 
-        battleState.round++;
         battleState.participants.forEach(p => {
           p.skillCooldowns = p.skillCooldowns.map(cd => Math.max(0, cd - 1));
           if (p.activeBuffs) {
             p.activeBuffs.forEach(b => {
+              // Debuffs or buffs applied during the enemy phase that just finished
+              // are meant to take effect across subsequent player round(s).
+              if ((b as any).appliedRound === battleState.round) {
+                return;
+              }
               if (b.remainingTurns < 90) b.remainingTurns--;
             });
             p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
@@ -2029,6 +2102,7 @@ async function runRaidBattle(
             processCeTurnStartEffects(p);
           }
         });
+        battleState.round++;
 
         // Keep Boss turn HUD action active so players see the Boss's damage & action on the new turn
         // 5. Render and post the new round turn canvas (with active buttons & boss damage HUD)
@@ -2253,12 +2327,39 @@ async function runRaidBattle(
     }
 
     if (i.customId.startsWith('raid_card_hand_')) {
+      const isStunned = Boolean(active.activeBuffs && active.activeBuffs.some(b => b.type === 'stun'));
+      if (isStunned) {
+        const sName = active.servant.nickname || active.servant.template?.name || 'Servant';
+        await i.reply({
+          content: `⚡ **Stunned!** **${sName}** is incapacitated and cannot attack this turn! You may click **Auto/Pass** to end your turn.`,
+          flags: MessageFlags.Ephemeral
+        }).catch(() => {});
+        return;
+      }
       const handIdx = parseInt(i.customId.replace('raid_card_hand_', ''), 10);
       if (!pendingIndices.includes(handIdx) && pendingCards.length < 3 && handIdx >= 0 && handIdx < 5) {
         pendingIndices.push(handIdx);
         pendingCards.push(active.currentHand?.[handIdx] || 'Buster');
       }
     } else if (i.customId === 'raid_card_np') {
+      const isStunned = Boolean(active.activeBuffs && active.activeBuffs.some(b => b.type === 'stun'));
+      const isNpSealed = Boolean(active.activeBuffs && active.activeBuffs.some(b => b.type === 'np_seal'));
+      const sName = active.servant.nickname || active.servant.template?.name || 'Servant';
+
+      if (isStunned) {
+        await i.reply({
+          content: `⚡ **Stunned!** **${sName}** is incapacitated and cannot unleash their Noble Phantasm!`,
+          flags: MessageFlags.Ephemeral
+        }).catch(() => {});
+        return;
+      }
+      if (isNpSealed) {
+        await i.reply({
+          content: `🔒 **NP Sealed!** **${sName}**'s Noble Phantasm is sealed!`,
+          flags: MessageFlags.Ephemeral
+        }).catch(() => {});
+        return;
+      }
       if (!pendingCards.includes('NP') && pendingCards.length < 3 && active.npGauge >= 100) {
         pendingCards.push('NP');
       }
@@ -2277,6 +2378,26 @@ async function runRaidBattle(
       });
       return;
     } else if (i.customId.startsWith('raid_skill_') || i.customId.startsWith('raid_target_skill_') || i.customId.startsWith('raid_skill_np_')) {
+      const isSkillSealed = Boolean(active.activeBuffs && active.activeBuffs.some(b => b.type === 'skill_seal'));
+      const isStunned = Boolean(active.activeBuffs && active.activeBuffs.some(b => b.type === 'stun'));
+      const sName = active.servant.nickname || active.servant.template?.name || 'Servant';
+
+      if (isSkillSealed) {
+        await i.reply({
+          content: `🚫 **Skills Sealed!** **${sName}** is currently bound by **[Skill Seal]** and cannot activate personal skills!`,
+          flags: MessageFlags.Ephemeral
+        }).catch(() => {});
+        return;
+      }
+
+      if (isStunned) {
+        await i.reply({
+          content: `⚡ **Stunned!** **${sName}** is currently incapacitated and cannot activate personal skills!`,
+          flags: MessageFlags.Ephemeral
+        }).catch(() => {});
+        return;
+      }
+
       let sIdx: number;
       let targetUserId: string | null = null;
       let chosenNpType: 'Arts' | 'Buster' | null = null;
@@ -3519,8 +3640,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   // 2. Action 1: Tactical Skill
   if (isTiamat) {
     const tiamatSkillRoll = Math.random();
-    if (tiamatSkillRoll < 0.20) {
-      // Skill: Wailing Voice (1T Skill Seal on highest NP Servant)
+    if (tiamatSkillRoll < 0.17) {
+      // Skill 1: Wailing Voice (1T Skill Seal on highest NP Servant)
       const target = [...livingParticipants].sort((a, b) => (b.npGauge || 0) - (a.npGauge || 0))[0];
       if (target) {
         target.activeBuffs = target.activeBuffs || [];
@@ -3528,7 +3649,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
           name: 'Wailing Voice (Skill Seal)',
           type: 'skill_seal',
           value: 1,
-          remainingTurns: 1
+          remainingTurns: 1,
+          appliedRound: state.round
         });
         const tName = target.servant.nickname || target.servant.template?.name || 'Servant';
         enemyPhase.skillName = 'Wailing Voice';
@@ -3536,8 +3658,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         enemyPhase.debuffsInflicted.push(`Skill Seal (1T) on ${tName}`);
         state.recentLogs.push(`📢 **Tiamat released [Wailing Voice]!** Inflicted **1-Turn Skill Seal** on **${tName}**!`);
       }
-    } else if (tiamatSkillRoll < 0.40) {
-      // Skill: Mud Surge (shortens active buff durations by 1 turn on 2 random Servants)
+    } else if (tiamatSkillRoll < 0.34) {
+      // Skill 2: Mud Surge (shortens active buff durations by 1 turn on 2 random Servants)
       const shuffled = [...livingParticipants].sort(() => 0.5 - Math.random());
       const affected: string[] = [];
       shuffled.slice(0, 2).forEach(p => {
@@ -3553,8 +3675,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       enemyPhase.skillDesc = 'Shortened active buff durations by 1 turn';
       if (affected.length > 0) enemyPhase.debuffsInflicted.push(`Shortened buffs on ${affected.join(', ')}`);
       state.recentLogs.push(`🌊 **Tiamat unleashed [Mud Surge]!** Corrosive primordial tide shortened ally buff durations!`);
-    } else if (tiamatSkillRoll < 0.60) {
-      // Skill: Tremor Step (reduces front-most Servant DEF by 20% for 3 turns)
+    } else if (tiamatSkillRoll < 0.50) {
+      // Skill 3: Tremor Step (reduces front-most Servant DEF by 20% for 3 turns)
       const front = livingParticipants[0];
       if (front) {
         front.activeBuffs = front.activeBuffs || [];
@@ -3562,7 +3684,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
           name: 'Tremor DEF Down',
           type: 'def_down',
           value: 20,
-          remainingTurns: 3
+          remainingTurns: 3,
+          appliedRound: state.round
         });
         const tName = front.servant.nickname || front.servant.template?.name || 'Servant';
         enemyPhase.skillName = 'Tremor Step';
@@ -3570,8 +3693,26 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         enemyPhase.debuffsInflicted.push(`-20% DEF (3T) on ${tName}`);
         state.recentLogs.push(`👣 **Tiamat shook the abyss with [Tremor Step]!** Inflicted **-20% DEF (3T)** on **${tName}**!`);
       }
-    } else if (tiamatSkillRoll < 0.80) {
-      // Skill: Crying Eyes (drains 10% NP from 2 players)
+    } else if (tiamatSkillRoll < 0.67) {
+      // Skill 4: Jaw of the Primordial (focuses lowest-HP Servant for DEF shred)
+      const lowestHpTarget = [...livingParticipants].sort((a, b) => (a.currentHp / a.maxHp) - (b.currentHp / b.maxHp))[0];
+      if (lowestHpTarget) {
+        lowestHpTarget.activeBuffs = lowestHpTarget.activeBuffs || [];
+        lowestHpTarget.activeBuffs.push({
+          name: 'Jaw Shred (DEF Down)',
+          type: 'def_down',
+          value: 40,
+          remainingTurns: 3,
+          appliedRound: state.round
+        });
+        const tName = lowestHpTarget.servant.nickname || lowestHpTarget.servant.template?.name || 'Servant';
+        enemyPhase.skillName = 'Jaw of the Primordial';
+        enemyPhase.skillDesc = `-40% DEF on ${tName} for 3T`;
+        enemyPhase.debuffsInflicted.push(`-40% DEF Shred (3T) on ${tName}`);
+        state.recentLogs.push(`💥 **Tiamat clamped down with [Jaw of the Primordial]!** Shredded **40% DEF (3T)** on **${tName}**!`);
+      }
+    } else if (tiamatSkillRoll < 0.84) {
+      // Skill 5: Crying Eyes (drains 10% NP from 2 players)
       const shuffled = [...livingParticipants].sort(() => 0.5 - Math.random());
       const drainedNames: string[] = [];
       shuffled.slice(0, 2).forEach(p => {
@@ -3583,7 +3724,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       enemyPhase.debuffsInflicted.push(`Drained 10% NP from ${drainedNames.join(', ')}`);
       state.recentLogs.push(`👁️ **Tiamat shed tears of genesis [Crying Eyes]!** Drained **10% NP** from **${drainedNames.join(', ')}**!`);
     } else {
-      // Skill: Chaos Deluge (siphons 15% NP from all Servants, converts into +50k shield)
+      // Skill 6: Chaos Deluge (siphons 15% NP from all Servants, converts into +50k shield)
       let totalSiphoned = 0;
       livingParticipants.forEach(p => {
         const drain = Math.min(15, p.npGauge || 0);
@@ -3607,7 +3748,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
           name: 'Ribbon Skill Seal',
           type: 'skill_seal',
           value: 1,
-          remainingTurns: 1
+          remainingTurns: 1,
+          appliedRound: state.round
         });
         livingParticipants.forEach(p => {
           p.activeBuffs = p.activeBuffs || [];
@@ -3615,7 +3757,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
             name: 'Ribbon DEF Down',
             type: 'def_down',
             value: 15,
-            remainingTurns: 3
+            remainingTurns: 3,
+            appliedRound: state.round
           });
         });
         const tName = target.servant.nickname || target.servant.template?.name || 'Servant';
@@ -3625,7 +3768,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         state.recentLogs.push(`🎀 **Dark Sakura cast [Corrupted Ribbon Snare]!** Sealed skills on **${tName}** & eroded party DEF!`);
       }
     } else if (sakuraRoll < 0.50) {
-      // Skill 2: Black Mud Siphon (Siphons 15% NP from 2 Servants and heals Dark Sakura for 40,000 HP)
+      // Skill 2: Black Mud Siphon (Siphons 15% NP from 2 Servants, heals for 40,000 HP, and charges +1 NP diamond)
       const shuffled = [...livingParticipants].sort(() => 0.5 - Math.random());
       const siphonedNames: string[] = [];
       shuffled.slice(0, 2).forEach(p => {
@@ -3633,11 +3776,12 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         siphonedNames.push(p.servant.nickname || p.servant.template?.name || 'Servant');
       });
       state.bossCurrentHp = Math.min(state.bossMaxHp, state.bossCurrentHp + 40_000);
+      state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + 1);
       enemyPhase.skillName = 'Black Mud Siphon';
-      enemyPhase.skillDesc = `Drained 15% NP from ${siphonedNames.join(', ')} and restored 40,000 HP`;
+      enemyPhase.skillDesc = `Drained 15% NP from ${siphonedNames.join(', ')}, restored 40,000 HP, and charged +1 NP Diamond`;
       if (siphonedNames.length > 0) enemyPhase.debuffsInflicted.push(`-15% NP on ${siphonedNames.join(', ')}`);
-      enemyPhase.bossBuffsGained.push('+40,000 HP Restored');
-      state.recentLogs.push(`🌑 **Dark Sakura unleashed [Black Mud Siphon]!** Drained 15% NP from **${siphonedNames.join(', ')}** & restored 40,000 HP!`);
+      enemyPhase.bossBuffsGained.push('+40,000 HP Restored', '+1 NP Charge Diamond');
+      state.recentLogs.push(`🌑 **Dark Sakura unleashed [Black Mud Siphon]!** Drained 15% NP from **${siphonedNames.join(', ')}**, restored 40,000 HP & gained **+1 Charge Diamond**!`);
     } else if (sakuraRoll < 0.75) {
       // Skill 3: Shadow Surge (1,500 Curse DoT (3T) to all enemies)
       livingParticipants.forEach(p => {
@@ -3646,7 +3790,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
           name: 'Shadow Curse',
           type: 'curse',
           value: 1500,
-          remainingTurns: 3
+          remainingTurns: 3,
+          appliedRound: state.round
         });
       });
       enemyPhase.skillName = 'Shadow Surge';
@@ -3659,7 +3804,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         name: "Angra Mainyu's ATK Up",
         type: 'atk_up',
         value: 25,
-        remainingTurns: 2
+        remainingTurns: 2,
+        appliedRound: state.round
       });
       state.bossShield = (state.bossShield || 0) + 60_000;
       enemyPhase.skillName = "Angra Mainyu's Malice";
@@ -3678,7 +3824,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
             name: 'Demonic DEF Down',
             type: 'def_down',
             value: 20,
-            remainingTurns: 2
+            remainingTurns: 2,
+            appliedRound: state.round
           });
           p.critStars = Math.max(0, (p.critStars || 0) - 10);
         }
@@ -3695,7 +3842,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         name: 'Wailing of the Spire',
         type: 'atk_up',
         value: 25,
-        remainingTurns: 2
+        remainingTurns: 2,
+        appliedRound: state.round
       });
       if (isEnraged) {
         state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + 1);
@@ -3722,13 +3870,15 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
           name: 'Solomon\'s Curse',
           type: 'curse',
           value: 1200,
-          remainingTurns: 3
+          remainingTurns: 3,
+          appliedRound: state.round
         });
         highestNpTarget.activeBuffs.push({
           name: 'Solomon\'s ATK Down',
           type: 'atk_down',
           value: 20,
-          remainingTurns: 2
+          remainingTurns: 2,
+          appliedRound: state.round
         });
         const tName = highestNpTarget.servant.nickname || highestNpTarget.servant.template?.name || 'Servant';
         enemyPhase.skillName = 'Curse of the Solomon Throne';
@@ -3831,7 +3981,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
               name: 'Chaos Curse',
               type: 'curse',
               value: 1500,
-              remainingTurns: 3
+              remainingTurns: 3,
+              appliedRound: state.round
             });
           }
         });
@@ -3883,7 +4034,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
             name: 'Corrupted Grail Curse',
             type: 'curse',
             value: 2000,
-            remainingTurns: 3
+            remainingTurns: 3,
+            appliedRound: state.round
           });
         }
       });
@@ -3933,7 +4085,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
             name: 'Calamity Burn',
             type: 'curse',
             value: 1000,
-            remainingTurns: 3
+            remainingTurns: 3,
+            appliedRound: state.round
           });
         }
       });
@@ -4098,8 +4251,11 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
     state.recentLogs.push(`🔥 ${state.boss.name} took **${bossDotDmg.toLocaleString()} Affliction DoT DMG**!`);
   }
 
-  // Tick boss buffs down
-  state.bossBuffs.forEach(b => b.remainingTurns--);
+  // Tick boss buffs down (skip buffs gained during this turn)
+  state.bossBuffs.forEach(b => {
+    if ((b as any).appliedRound === state.round) return;
+    b.remainingTurns--;
+  });
   state.bossBuffs = state.bossBuffs.filter(b => b.remainingTurns > 0);
 
   while (state.recentLogs.length > 8) state.recentLogs.shift();
