@@ -372,10 +372,10 @@ export async function handleDarkSakuraClimax(
         `> *"Is it over...? Are you going to sever the core, or... reach out into the mud?"*\n\n` +
         `**Every Master must choose their conviction (30 seconds):**\n\n` +
         `⚔️ **[SEVER THE RIBBON (Execute)]**\n` +
-        `• **100% Guaranteed Base Rewards** (18–25 SQ, 45,000 EXP, 4x Embers)\n` +
-        `• Safe magus resolution. Lowers her trust for future bouts.\n\n` +
+        `• **Guaranteed Base Rewards** (18–25 SQ, 45,000 EXP, 4x Embers)\n` +
+        `• Sever the shadow core cleanly and end the corruption.\n\n` +
         `🌸 **[REACH OUT (Spare)]**\n` +
-        `• **High-Stakes Gamble:** Tested against your personal trust ratio!\n` +
+        `• **Offer Salvation:** Reach your hand into the abyssal mud to save her.\n` +
         `• **Success:** **2X DOUBLED DROPS** (36–50 SQ, 90,000 EXP, 8x Embers) + chance for ★5 CE *Ribbon of the Hollow Night*!\n` +
         `• **Failure:** The mud panics and devours you! Retreat with 0 SQ!\n\n` +
         `**Decisions of the Vanguard:**\n${statusLines}`
@@ -515,7 +515,7 @@ export async function handleDarkSakuraClimax(
         record.lastOutcome = 'spared_mercy';
 
         resultReports.push(
-          `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[TRUST SUCCEEDED! (${Math.round(trustChance * 100)}% Chance)]**:\n` +
+          `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[SHADOW PURIFIED]**:\n` +
           `  └─ *The shadows receded with a trembling smile.* Received **DOUBLED REWARDS: +${doubleSq} SQ** 💎, **+${doubleExp.toLocaleString()} EXP** ⚔️, 8x Embers${ceDropNotice}`
         );
       } else {
@@ -532,7 +532,7 @@ export async function handleDarkSakuraClimax(
         }
 
         resultReports.push(
-          `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[DEVOTION CONSUMED! (Failed ${Math.round(trustChance * 100)}% Trust)]**:\n` +
+          `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[DEVOTION CONSUMED]**:\n` +
           `  └─ *The black mud flared out of control!* *"I'm sorry... I can't hold it back!!"* Engulfed in shadow! **0 SQ obtained.**`
         );
       }

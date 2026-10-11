@@ -1656,56 +1656,56 @@ export async function renderDarkSakuraVNDialogueImage(
   ctx.fillText(titleText, titleX + 18, titleY + titleH / 2);
   ctx.restore();
 
-  // 4. Visual Novel Main Dialogue Frame (Bottom)
-  const boxX = 40;
-  const boxY = 440;
-  const boxW = 1200;
-  const boxH = 240;
+  // 4. Visual Novel Main Dialogue Frame (Bottom Portion of Canvas)
+  const boxX = 36;
+  const boxY = 420;
+  const boxW = 1208;
+  const boxH = 280;
 
   ctx.save();
   // Translucent dark glass box
   const boxGrad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
-  boxGrad.addColorStop(0, 'rgba(15, 7, 25, 0.94)');
-  boxGrad.addColorStop(0.5, 'rgba(26, 9, 38, 0.96)');
-  boxGrad.addColorStop(1, 'rgba(8, 3, 15, 0.98)');
+  boxGrad.addColorStop(0, 'rgba(15, 7, 25, 0.95)');
+  boxGrad.addColorStop(0.5, 'rgba(26, 9, 38, 0.97)');
+  boxGrad.addColorStop(1, 'rgba(8, 3, 15, 0.99)');
   ctx.fillStyle = boxGrad;
   ctx.strokeStyle = '#be185d'; // Deep Rose border
-  ctx.lineWidth = 3;
-  ctx.shadowColor = 'rgba(190, 24, 93, 0.5)';
-  ctx.shadowBlur = 18;
-  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 16, true, true);
+  ctx.lineWidth = 4;
+  ctx.shadowColor = 'rgba(190, 24, 93, 0.6)';
+  ctx.shadowBlur = 20;
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 18, true, true);
   ctx.shadowBlur = 0;
 
   // Inner Gold Accent Line
-  ctx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
-  ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, boxX + 4, boxY + 4, boxW - 8, boxH - 8, 12, false, true);
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.6)';
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, boxX + 6, boxY + 6, boxW - 12, boxH - 12, 14, false, true);
 
   // 5. Speaker Nameplate Badge (Top-left floating on frame)
   const speakerName = options.speakerName || options.speakerTag || 'Dark Sakura';
-  ctx.font = 'bold 24px sans-serif';
-  const nameW = Math.max(220, ctx.measureText(`🌸  ${speakerName.toUpperCase()}`).width + 40);
-  const nameH = 44;
-  const nameX = boxX + 24;
-  const nameY = boxY - 22; // Overlaps top edge
+  ctx.font = 'bold 30px sans-serif';
+  const nameW = Math.max(260, ctx.measureText(`🌸  ${speakerName.toUpperCase()}`).width + 52);
+  const nameH = 54;
+  const nameX = boxX + 32;
+  const nameY = boxY - 27; // Overlaps top edge
 
   const nameGrad = ctx.createLinearGradient(nameX, nameY, nameX + nameW, nameY);
   nameGrad.addColorStop(0, '#831843');
   nameGrad.addColorStop(1, '#500724');
   ctx.fillStyle = nameGrad;
   ctx.strokeStyle = '#f43f5e';
-  ctx.lineWidth = 2;
-  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 10, true, true);
+  ctx.lineWidth = 2.5;
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 12, true, true);
 
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.shadowColor = '#f59e0b';
-  ctx.shadowBlur = 8;
+  ctx.shadowBlur = 10;
   ctx.fillText(`🌸  ${speakerName.toUpperCase()}`, nameX + nameW / 2, nameY + nameH / 2);
   ctx.shadowBlur = 0;
 
-  // 6. Dialogue Text Rendering (Dynamic scaling so long dialogues never overflow or leak)
+  // 6. Dialogue Text Rendering (DOUBLED FONT SIZE ~46px for ultra-clear readability)
   const cleanDialogue = (options.dialogue || '')
     .replace(/\*\*/g, '')
     .replace(/\*/g, '')
@@ -1716,15 +1716,15 @@ export async function renderDarkSakuraVNDialogueImage(
     : `“${cleanDialogue}”`;
 
   const easterEggOrBanner = options.easterEggBanner || options.bannerQuote;
-  const textX = boxX + 32;
-  const textY = boxY + 36;
-  const maxTextWidth = boxW - 64;
-  // Available height inside the VN frame: leaves 40px for the sub-banner + chevron at bottom
-  const availableTextHeight = easterEggOrBanner ? boxH - 90 : boxH - 56;
+  const textX = boxX + 40;
+  const textY = boxY + 48;
+  const maxTextWidth = boxW - 80;
+  // Available height inside the VN frame: leaves space for sub-banner + chevron
+  const availableTextHeight = easterEggOrBanner ? boxH - 96 : boxH - 60;
 
-  // Dynamically compute optimal font size and line height so entire dialogue fits perfectly
-  let vnFontSize = 24;
-  let vnLineHeight = 34;
+  // Dynamically compute optimal font size and line height (starts at 46px - doubled size!)
+  let vnFontSize = 46;
+  let vnLineHeight = 62;
 
   const calculateTotalHeight = (fontSize: number, lineHeight: number): { height: number; lines: string[] } => {
     ctx.font = `bold ${fontSize}px sans-serif`;
@@ -1772,7 +1772,7 @@ export async function renderDarkSakuraVNDialogueImage(
   };
 
   let measured = calculateTotalHeight(vnFontSize, vnLineHeight);
-  while (measured.height > availableTextHeight && vnFontSize > 14) {
+  while (measured.height > availableTextHeight && vnFontSize > 22) {
     vnFontSize -= 1;
     vnLineHeight = Math.round(vnFontSize * 1.35);
     measured = calculateTotalHeight(vnFontSize, vnLineHeight);
@@ -1785,11 +1785,9 @@ export async function renderDarkSakuraVNDialogueImage(
   ctx.clip();
 
   ctx.font = `bold ${vnFontSize}px sans-serif`;
-  ctx.fillStyle = '#f8fafc'; // Crisp bright white
+  ctx.fillStyle = '#ffffff'; // Pure bright white
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.shadowColor = '#000000';
-  ctx.shadowBlur = 8;
 
   let currentDrawY = textY;
   const maxPossibleLines = Math.floor(availableTextHeight / vnLineHeight);
@@ -1801,21 +1799,25 @@ export async function renderDarkSakuraVNDialogueImage(
       }
     }
     if (line) {
+      // Crisp dark stroke outline for maximum contrast and legibility
+      ctx.strokeStyle = '#020617';
+      ctx.lineWidth = 6;
+      ctx.strokeText(line, textX, currentDrawY);
+
       ctx.fillText(line, textX, currentDrawY);
     }
     currentDrawY += vnLineHeight;
   }
-  ctx.shadowBlur = 0;
   ctx.restore();
 
   // 7. Easter Egg Banner / Subtext at bottom of box if provided
   if (easterEggOrBanner) {
     const subText = easterEggOrBanner.replace(/\*/g, '').trim();
-    ctx.font = 'italic bold 18px sans-serif';
+    ctx.font = 'italic bold 22px sans-serif';
     ctx.fillStyle = '#f472b6'; // Pink
     ctx.textAlign = 'left';
     ctx.textBaseline = 'bottom';
-    ctx.fillText(`✨ ${subText}`, boxX + 32, boxY + boxH - 18);
+    ctx.fillText(`✨ ${subText}`, boxX + 40, boxY + boxH - 20);
   }
 
   // 8. Pulsing Diamond Chevron (Next Indicator)
