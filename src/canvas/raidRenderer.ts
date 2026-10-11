@@ -571,6 +571,12 @@ export interface RaidBattleState {
   chaosSporesActive?: boolean; // Phase 2 odd-turn 20% DEF shield
   bossShield?: number; // Chaos Deluge shield
   bossDialogueNotice?: string;
+  pendingBossVnCutIn?: {
+    title: string;
+    speakerName?: string;
+    dialogue: string;
+    easterEggBanner?: string;
+  };
   triggeredBossLowHp?: boolean;
   triggeredGutsDialogue?: boolean;
   finishingBlow?: {
@@ -970,301 +976,185 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.fillText(`TURN  ${state.round} Turn(s)`, trX + 16, trY + 72);
   ctx.restore();
 
-  // 3. Top-Center/Right In-Canvas Tactical Action / Visual Novel Dialogue HUD
-  // Neatly positioned between Boss HP Bar (left) and Quest Info Box (right) with zero overlap!
+  // 3. Top-Center/Right In-Canvas Tactical Action HUD (Always visible with zero obstruction)
+  // Neatly positioned between Boss HP Bar (left) and Quest Info Box (right)
   ctx.save();
   const logBoxX = 575;
   const logBoxY = 20;
   const logBoxW = trX - logBoxX - 16; // ~424px
   const logBoxH = 185; // Fits right above servant cards (Y: 210)
 
-  // Determine if Dark Sakura has dialogue to speak
-  const hasBossDialogue = Boolean(state.bossDialogueNotice && state.bossDialogueNotice.trim().length > 0);
+  // ========================================================
+  // STANDARD TACTICAL ACTION HUD (Always active, no dialogue overlay)
+  // ========================================================
+  const logBgGrad = ctx.createLinearGradient(logBoxX, logBoxY, logBoxX, logBoxY + logBoxH);
+  logBgGrad.addColorStop(0, 'rgba(15, 23, 42, 0.94)');
+  logBgGrad.addColorStop(1, 'rgba(2, 6, 23, 0.98)');
+  ctx.fillStyle = logBgGrad;
+  ctx.strokeStyle = '#f59e0b'; // Gold border
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, logBoxX, logBoxY, logBoxW, logBoxH, 10, true, true);
 
-  if (hasBossDialogue) {
-    // ========================================================
-    // VISUAL NOVEL DIALOGUE FRAME (Seamlessly fills central HUD)
-    // ========================================================
-    const vnGrad = ctx.createLinearGradient(logBoxX, logBoxY, logBoxX, logBoxY + logBoxH);
-    vnGrad.addColorStop(0, 'rgba(28, 9, 36, 0.96)');
-    vnGrad.addColorStop(1, 'rgba(12, 4, 20, 0.98)');
-    ctx.fillStyle = vnGrad;
-    ctx.strokeStyle = '#f43f5e'; // Crimson rose border
-    ctx.lineWidth = 2;
-    ctx.shadowColor = '#e11d48';
-    ctx.shadowBlur = 8;
-    drawRoundRect(ctx, logBoxX, logBoxY, logBoxW, logBoxH, 10, true, true);
-    ctx.shadowBlur = 0;
+  // Top highlight line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(logBoxX + 10, logBoxY + 1.5);
+  ctx.lineTo(logBoxX + logBoxW - 10, logBoxY + 1.5);
+  ctx.stroke();
 
-    // Inner gold accent line
-    ctx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, logBoxX + 3, logBoxY + 3, logBoxW - 6, logBoxH - 6, 8, false, true);
+  // Determine the active single focus action
+  let categoryTitle = 'BATTLE IN PROGRESS';
+  let categoryColor = '#38bdf8';
+  let categoryBg = 'rgba(56, 189, 248, 0.2)';
+  let headline = 'Active Combat Phase';
+  let headlineColor = '#ffffff';
+  let bigStat = 'READY TO STRIKE';
+  let bigStatColor = '#fde047';
+  let subDetail = 'Select 3 Command Cards below';
+  let subDetailColor = '#38bdf8';
 
-    // Speaker Nameplate Pill (Top Left)
-    const speakerPillX = logBoxX + 12;
-    const speakerPillY = logBoxY + 10;
-    const speakerText = isDarkSakura ? '🌸 DARK SAKURA' : `👑 ${dynamicBossName.toUpperCase()}`;
-    ctx.font = 'bold 12px sans-serif';
-    const spkW = ctx.measureText(speakerText).width + 18;
-    const spkH = 22;
-
-    ctx.fillStyle = 'rgba(244, 63, 94, 0.25)';
-    ctx.strokeStyle = '#fda4af';
-    ctx.lineWidth = 1.2;
-    drawRoundRect(ctx, speakerPillX, speakerPillY, spkW, spkH, 5, true, true);
-
-    ctx.fillStyle = '#fecdd3';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(speakerText, speakerPillX + spkW / 2, speakerPillY + spkH / 2);
-
-    // Dialogue State Pill (Top Right)
-    const phaseText = `PHASE ${state.currentPhase || 1} • R${state.round || 1}`;
-    ctx.font = 'bold 11px sans-serif';
-    const phW = ctx.measureText(phaseText).width + 14;
-    const phH = 20;
-    const phX = logBoxX + logBoxW - phW - 12;
-    const phY = logBoxY + 11;
-    ctx.fillStyle = 'rgba(251, 191, 36, 0.15)';
-    ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, phX, phY, phW, phH, 4, true, true);
-    ctx.fillStyle = '#fde68a';
-    ctx.fillText(phaseText, phX + phW / 2, phY + phH / 2);
-
-    // Divider Line
-    ctx.strokeStyle = 'rgba(244, 63, 94, 0.3)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(logBoxX + 10, logBoxY + 36);
-    ctx.lineTo(logBoxX + logBoxW - 10, logBoxY + 36);
-    ctx.stroke();
-
-    // Boss Portrait Avatar (Left side of dialogue frame)
-    const avSize = 72;
-    const avX = logBoxX + 12;
-    const avY = logBoxY + 44;
-    let textStartX = logBoxX + 14;
-
-    if (bossAvatarImg) {
-      ctx.save();
-      drawRoundRect(ctx, avX, avY, avSize, avSize, 8, true, true);
-      ctx.fillStyle = '#0f172a';
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 1.5;
-      ctx.clip();
-      ctx.drawImage(bossAvatarImg, avX, avY, avSize, avSize);
-      ctx.restore();
-      textStartX = avX + avSize + 12;
-    }
-
-    // Cleaned dialogue text
-    const rawNotice = (state.bossDialogueNotice || '')
-      .replace(/^🌸\s*\*?Dark Sakura:\*?\s*/i, '')
+  // Helper to clean Markdown and special artifacts from canvas text
+  const cleanHudText = (text: string): string => {
+    if (!text) return '';
+    return text
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')
+      .replace(/__/g, '')
+      .replace(/_/g, '')
+      .replace(/~~/g, '')
+      .replace(/`/g, '')
+      .replace(/<@!?[0-9]+>/g, '')
+      .replace(/\[/g, '')
+      .replace(/\]/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
+  };
 
-    const maxDialogueW = logBoxX + logBoxW - textStartX - 16;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = 6;
-    drawWrappedVNText(ctx, `“${rawNotice}”`, textStartX, logBoxY + 46, maxDialogueW, 23, 4);
-    ctx.shadowBlur = 0;
+  if (state.lastHudAction) {
+    const act = state.lastHudAction;
+    categoryTitle = cleanHudText(act.category || 'COMBAT ACTION');
+    categoryColor = act.categoryColor || '#38bdf8';
+    categoryBg = `${categoryColor}33`;
+    headline = cleanHudText(act.headline || 'Battle Action');
+    headlineColor = '#ffffff';
+    bigStat = cleanHudText(act.bigStat || 'ACTION EXECUTED');
+    bigStatColor = act.bigStatColor || '#fde047';
+    subDetail = cleanHudText(act.subDetail || 'Select Command Cards to attack');
+    subDetailColor = act.subDetailColor || '#38bdf8';
+  } else if (state.lastEnemyPhase) {
+    const ep = state.lastEnemyPhase;
+    categoryTitle = 'ENEMY ACTION';
+    categoryColor = '#f87171';
+    categoryBg = 'rgba(239, 68, 68, 0.22)';
 
-    // Bottom Action Ticker (subtle context line so tactical events remain visible)
-    if (state.lastHudAction || state.lastEnemyPhase) {
-      const tickerText = state.lastHudAction
-        ? `▶ ${state.lastHudAction.headline || 'Action'}: ${state.lastHudAction.bigStat || ''}`
-        : `▶ ${state.lastEnemyPhase?.skillName || 'Enemy Action'}: ${state.lastEnemyPhase?.totalDamage ? `${state.lastEnemyPhase.totalDamage.toLocaleString()} DMG` : 'Skill Executed'}`;
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillStyle = '#94a3b8';
-      ctx.textAlign = 'left';
-      ctx.fillText(tickerText.slice(0, 52), logBoxX + 14, logBoxY + logBoxH - 14);
-    }
+    headline = cleanHudText(ep.skillName ? `${dynamicBossName} • ${ep.skillName}` : `${dynamicBossName} Strike`);
+    headlineColor = '#fca5a5';
 
-    // Blinking indicator diamond
-    const timeSec = Date.now() / 1000;
-    const pulseAlpha = 0.5 + 0.5 * Math.sin(timeSec * 5);
-    drawDiamond(ctx, logBoxX + logBoxW - 14, logBoxY + logBoxH - 14, 10, `rgba(251, 191, 36, ${pulseAlpha})`, '#fef08a', 1);
-
-  } else {
-    // ========================================================
-    // STANDARD TACTICAL ACTION HUD
-    // ========================================================
-    const logBgGrad = ctx.createLinearGradient(logBoxX, logBoxY, logBoxX, logBoxY + logBoxH);
-    logBgGrad.addColorStop(0, 'rgba(15, 23, 42, 0.94)');
-    logBgGrad.addColorStop(1, 'rgba(2, 6, 23, 0.98)');
-    ctx.fillStyle = logBgGrad;
-    ctx.strokeStyle = '#f59e0b'; // Gold border
-    ctx.lineWidth = 2;
-    drawRoundRect(ctx, logBoxX, logBoxY, logBoxW, logBoxH, 10, true, true);
-
-    // Top highlight line
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(logBoxX + 10, logBoxY + 1.5);
-    ctx.lineTo(logBoxX + logBoxW - 10, logBoxY + 1.5);
-    ctx.stroke();
-
-    // Determine the active single focus action
-    let categoryTitle = 'BATTLE IN PROGRESS';
-    let categoryColor = '#38bdf8';
-    let categoryBg = 'rgba(56, 189, 248, 0.2)';
-    let headline = 'Active Combat Phase';
-    let headlineColor = '#ffffff';
-    let bigStat = 'READY TO STRIKE';
-    let bigStatColor = '#fde047';
-    let subDetail = 'Select 3 Command Cards below';
-    let subDetailColor = '#38bdf8';
-
-    // Helper to clean Markdown and special artifacts from canvas text
-    const cleanHudText = (text: string): string => {
-      if (!text) return '';
-      return text
-        .replace(/\*\*/g, '')
-        .replace(/\*/g, '')
-        .replace(/__/g, '')
-        .replace(/_/g, '')
-        .replace(/~~/g, '')
-        .replace(/`/g, '')
-        .replace(/<@!?[0-9]+>/g, '')
-        .replace(/\[/g, '')
-        .replace(/\]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    };
-
-    if (state.lastHudAction) {
-      const act = state.lastHudAction;
-      categoryTitle = cleanHudText(act.category || 'COMBAT ACTION');
-      categoryColor = act.categoryColor || '#38bdf8';
-      categoryBg = `${categoryColor}33`;
-      headline = cleanHudText(act.headline || 'Battle Action');
-      headlineColor = '#ffffff';
-      bigStat = cleanHudText(act.bigStat || 'ACTION EXECUTED');
-      bigStatColor = act.bigStatColor || '#fde047';
-      subDetail = cleanHudText(act.subDetail || 'Select Command Cards to attack');
-      subDetailColor = act.subDetailColor || '#38bdf8';
-    } else if (state.lastEnemyPhase) {
-      const ep = state.lastEnemyPhase;
-      categoryTitle = 'ENEMY ACTION';
-      categoryColor = '#f87171';
-      categoryBg = 'rgba(239, 68, 68, 0.22)';
-
-      headline = cleanHudText(ep.skillName ? `${dynamicBossName} • ${ep.skillName}` : `${dynamicBossName} Strike`);
-      headlineColor = '#fca5a5';
-
-      if (ep.totalDamage && ep.totalDamage > 0) {
-        bigStat = `${ep.totalDamage.toLocaleString()} DMG DEALT`;
-        bigStatColor = '#ef4444';
-      } else {
-        bigStat = cleanHudText(ep.actionName || 'SKILL ACTIVATED');
-        bigStatColor = '#fbbf24';
-      }
-
-      if (ep.debuffsInflicted && ep.debuffsInflicted.length > 0) {
-        subDetail = cleanHudText(`Debuff: ${ep.debuffsInflicted.join(', ')}`);
-        subDetailColor = '#c084fc';
-      } else if (ep.specialEvents && ep.specialEvents.length > 0) {
-        subDetail = cleanHudText(ep.specialEvents[0]);
-        subDetailColor = '#38bdf8';
-      } else {
-        subDetail = 'Enemy Turn Phase Concluded';
-        subDetailColor = '#cbd5e1';
-      }
+    if (ep.totalDamage && ep.totalDamage > 0) {
+      bigStat = `${ep.totalDamage.toLocaleString()} DMG DEALT`;
+      bigStatColor = '#ef4444';
     } else {
-      categoryTitle = 'RAID COMMENCED';
-      categoryColor = '#fbbf24';
-      categoryBg = 'rgba(251, 191, 36, 0.2)';
-      headline = cleanHudText(`Encounter: ${dynamicBossName}`);
-      headlineColor = '#ffffff';
-      bigStat = `PHASE ${state.currentPhase || 1} ENGAGED`;
-      bigStatColor = '#38bdf8';
-      subDetail = 'Break all 3 Gauges to defeat Calamity';
-      subDetailColor = '#94a3b8';
+      bigStat = cleanHudText(ep.actionName || 'SKILL ACTIVATED');
+      bigStatColor = '#fbbf24';
     }
 
-    // Draw Category Pill (Top Left)
-    ctx.font = 'bold 12px sans-serif';
-    const catText = categoryTitle.toUpperCase();
-    const catPillW = ctx.measureText(catText).width + 16;
-    const catPillH = 22;
-    const catPillX = logBoxX + 14;
-    const catPillY = logBoxY + 10;
-    ctx.fillStyle = categoryBg;
-    ctx.strokeStyle = categoryColor;
-    ctx.lineWidth = 1.2;
-    drawRoundRect(ctx, catPillX, catPillY, catPillW, catPillH, 5, true, true);
-
-    ctx.fillStyle = categoryColor;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(catText, catPillX + catPillW / 2, catPillY + catPillH / 2);
-
-    // Draw Round Pill (Top Right)
-    const roundText = `ROUND ${state.round || 1}`;
-    ctx.font = 'bold 12px sans-serif';
-    const roundPillW = ctx.measureText(roundText).width + 16;
-    const roundPillH = 22;
-    const roundPillX = logBoxX + logBoxW - roundPillW - 14;
-    const roundPillY = logBoxY + 10;
-    ctx.fillStyle = 'rgba(148, 163, 184, 0.15)';
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, roundPillX, roundPillY, roundPillW, roundPillH, 5, true, true);
-
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillText(roundText, roundPillX + roundPillW / 2, roundPillY + roundPillH / 2);
-
-    // Divider Line
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(logBoxX + 10, logBoxY + 38);
-    ctx.lineTo(logBoxX + logBoxW - 10, logBoxY + 38);
-    ctx.stroke();
-
-    // 1. Line 1: Character / Action Name (Dynamic text sizing so it NEVER cuts off)
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = headlineColor;
-    let headFontSize = 22;
-    ctx.font = `bold ${headFontSize}px sans-serif`;
-    while (ctx.measureText(headline).width > logBoxW - 32 && headFontSize > 14) {
-      headFontSize -= 1;
-      ctx.font = `bold ${headFontSize}px sans-serif`;
+    if (ep.debuffsInflicted && ep.debuffsInflicted.length > 0) {
+      subDetail = cleanHudText(`Debuff: ${ep.debuffsInflicted.join(', ')}`);
+      subDetailColor = '#c084fc';
+    } else if (ep.specialEvents && ep.specialEvents.length > 0) {
+      subDetail = cleanHudText(ep.specialEvents[0]);
+      subDetailColor = '#38bdf8';
+    } else {
+      subDetail = 'Enemy Turn Phase Concluded';
+      subDetailColor = '#cbd5e1';
     }
-    ctx.fillText(headline, logBoxX + 16, logBoxY + 74);
-
-    // 2. Line 2: Giant Stat / Damage / Skill (Dynamic text sizing so it NEVER cuts off)
-    ctx.fillStyle = bigStatColor;
-    let statFontSize = 34;
-    ctx.font = `bold ${statFontSize}px sans-serif`;
-    while (ctx.measureText(bigStat).width > logBoxW - 32 && statFontSize > 16) {
-      statFontSize -= 1;
-      ctx.font = `bold ${statFontSize}px sans-serif`;
-    }
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    ctx.shadowBlur = 6;
-    ctx.fillText(bigStat, logBoxX + 16, logBoxY + 128);
-    ctx.shadowBlur = 0;
-
-    // 3. Line 3: Secondary Sub-Detail / Effect (Bigger ~24px bold)
-    ctx.fillStyle = subDetailColor;
-    let subFontSize = 24;
-    ctx.font = `bold ${subFontSize}px sans-serif`;
-    while (ctx.measureText(subDetail).width > logBoxW - 32 && subFontSize > 13) {
-      subFontSize -= 1;
-      ctx.font = `bold ${subFontSize}px sans-serif`;
-    }
-    ctx.fillText(subDetail, logBoxX + 16, logBoxY + 175);
+  } else {
+    categoryTitle = 'RAID COMMENCED';
+    categoryColor = '#fbbf24';
+    categoryBg = 'rgba(251, 191, 36, 0.2)';
+    headline = cleanHudText(`Encounter: ${dynamicBossName}`);
+    headlineColor = '#ffffff';
+    bigStat = `PHASE ${state.currentPhase || 1} ENGAGED`;
+    bigStatColor = '#38bdf8';
+    subDetail = 'Break all 3 Gauges to defeat Calamity';
+    subDetailColor = '#94a3b8';
   }
+
+  // Draw Category Pill (Top Left)
+  ctx.font = 'bold 12px sans-serif';
+  const catText = categoryTitle.toUpperCase();
+  const catPillW = ctx.measureText(catText).width + 16;
+  const catPillH = 22;
+  const catPillX = logBoxX + 14;
+  const catPillY = logBoxY + 10;
+  ctx.fillStyle = categoryBg;
+  ctx.strokeStyle = categoryColor;
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, catPillX, catPillY, catPillW, catPillH, 5, true, true);
+
+  ctx.fillStyle = categoryColor;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(catText, catPillX + catPillW / 2, catPillY + catPillH / 2);
+
+  // Draw Round Pill (Top Right)
+  const roundText = `ROUND ${state.round || 1}`;
+  ctx.font = 'bold 12px sans-serif';
+  const roundPillW = ctx.measureText(roundText).width + 16;
+  const roundPillH = 22;
+  const roundPillX = logBoxX + logBoxW - roundPillW - 14;
+  const roundPillY = logBoxY + 10;
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.15)';
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, roundPillX, roundPillY, roundPillW, roundPillH, 5, true, true);
+
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillText(roundText, roundPillX + roundPillW / 2, roundPillY + roundPillH / 2);
+
+  // Divider Line
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(logBoxX + 10, logBoxY + 38);
+  ctx.lineTo(logBoxX + logBoxW - 10, logBoxY + 38);
+  ctx.stroke();
+
+  // 1. Line 1: Character / Action Name (Dynamic text sizing so it NEVER cuts off)
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = headlineColor;
+  let headFontSize = 22;
+  ctx.font = `bold ${headFontSize}px sans-serif`;
+  while (ctx.measureText(headline).width > logBoxW - 32 && headFontSize > 14) {
+    headFontSize -= 1;
+    ctx.font = `bold ${headFontSize}px sans-serif`;
+  }
+  ctx.fillText(headline, logBoxX + 16, logBoxY + 74);
+
+  // 2. Line 2: Giant Stat / Damage / Skill (Dynamic text sizing so it NEVER cuts off)
+  ctx.fillStyle = bigStatColor;
+  let statFontSize = 34;
+  ctx.font = `bold ${statFontSize}px sans-serif`;
+  while (ctx.measureText(bigStat).width > logBoxW - 32 && statFontSize > 16) {
+    statFontSize -= 1;
+    ctx.font = `bold ${statFontSize}px sans-serif`;
+  }
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+  ctx.shadowBlur = 6;
+  ctx.fillText(bigStat, logBoxX + 16, logBoxY + 128);
+  ctx.shadowBlur = 0;
+
+  // 3. Line 3: Secondary Sub-Detail / Effect (Bigger ~24px bold)
+  ctx.fillStyle = subDetailColor;
+  let subFontSize = 24;
+  ctx.font = `bold ${subFontSize}px sans-serif`;
+  while (ctx.measureText(subDetail).width > logBoxW - 32 && subFontSize > 13) {
+    subFontSize -= 1;
+    ctx.font = `bold ${subFontSize}px sans-serif`;
+  }
+  ctx.fillText(subDetail, logBoxX + 16, logBoxY + 175);
 
   ctx.restore();
 
@@ -1815,30 +1705,112 @@ export async function renderDarkSakuraVNDialogueImage(
   ctx.fillText(`🌸  ${speakerName.toUpperCase()}`, nameX + nameW / 2, nameY + nameH / 2);
   ctx.shadowBlur = 0;
 
-  // 6. Dialogue Text Rendering (LARGE 26px bold text with crisp outline)
-  ctx.font = 'bold 26px sans-serif';
-  ctx.fillStyle = '#f8fafc'; // Crisp bright white
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-
+  // 6. Dialogue Text Rendering (Dynamic scaling so long dialogues never overflow or leak)
   const cleanDialogue = (options.dialogue || '')
     .replace(/\*\*/g, '')
     .replace(/\*/g, '')
     .trim();
 
+  const formattedDialogue = cleanDialogue.startsWith('"') || cleanDialogue.startsWith('“')
+    ? cleanDialogue
+    : `“${cleanDialogue}”`;
+
+  const easterEggOrBanner = options.easterEggBanner || options.bannerQuote;
+  const textX = boxX + 32;
+  const textY = boxY + 36;
+  const maxTextWidth = boxW - 64;
+  // Available height inside the VN frame: leaves 40px for the sub-banner + chevron at bottom
+  const availableTextHeight = easterEggOrBanner ? boxH - 90 : boxH - 56;
+
+  // Dynamically compute optimal font size and line height so entire dialogue fits perfectly
+  let vnFontSize = 24;
+  let vnLineHeight = 34;
+
+  const calculateTotalHeight = (fontSize: number, lineHeight: number): { height: number; lines: string[] } => {
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    const paragraphs = formattedDialogue.split('\n');
+    const allLines: string[] = [];
+
+    for (const para of paragraphs) {
+      if (!para.trim()) {
+        allLines.push('');
+        continue;
+      }
+      const words = para.split(' ');
+      let currentLine = '';
+      for (const w of words) {
+        // Handle exceptionally long tokens that exceed maxTextWidth on their own
+        if (ctx.measureText(w).width > maxTextWidth) {
+          if (currentLine) {
+            allLines.push(currentLine);
+            currentLine = '';
+          }
+          let brokenWord = '';
+          for (let c = 0; c < w.length; c++) {
+            if (ctx.measureText(brokenWord + w[c]).width > maxTextWidth) {
+              allLines.push(brokenWord);
+              brokenWord = w[c];
+            } else {
+              brokenWord += w[c];
+            }
+          }
+          currentLine = brokenWord;
+          continue;
+        }
+
+        const testLine = currentLine ? `${currentLine} ${w}` : w;
+        if (ctx.measureText(testLine).width > maxTextWidth && currentLine) {
+          allLines.push(currentLine);
+          currentLine = w;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      if (currentLine) allLines.push(currentLine);
+    }
+    return { height: allLines.length * lineHeight, lines: allLines };
+  };
+
+  let measured = calculateTotalHeight(vnFontSize, vnLineHeight);
+  while (measured.height > availableTextHeight && vnFontSize > 14) {
+    vnFontSize -= 1;
+    vnLineHeight = Math.round(vnFontSize * 1.35);
+    measured = calculateTotalHeight(vnFontSize, vnLineHeight);
+  }
+
+  // Draw rendered lines with safety clipping region so it NEVER leaks out of the dialogue box
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(textX - 8, textY - 4, maxTextWidth + 16, availableTextHeight + 8);
+  ctx.clip();
+
+  ctx.font = `bold ${vnFontSize}px sans-serif`;
+  ctx.fillStyle = '#f8fafc'; // Crisp bright white
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
   ctx.shadowColor = '#000000';
   ctx.shadowBlur = 8;
-  const textX = boxX + 32;
-  const textY = boxY + 42;
-  const maxTextWidth = boxW - 64;
 
-  drawWrappedVNText(ctx, `"${cleanDialogue}"`, textX, textY, maxTextWidth, 36, 4);
+  let currentDrawY = textY;
+  const maxPossibleLines = Math.floor(availableTextHeight / vnLineHeight);
+  for (let idx = 0; idx < measured.lines.length && idx < maxPossibleLines; idx++) {
+    let line = measured.lines[idx];
+    if (idx === maxPossibleLines - 1 && measured.lines.length > maxPossibleLines) {
+      if (!line.endsWith('…') && !line.endsWith('...')) {
+        line = `${line.slice(0, Math.max(0, line.length - 3))}…`;
+      }
+    }
+    if (line) {
+      ctx.fillText(line, textX, currentDrawY);
+    }
+    currentDrawY += vnLineHeight;
+  }
   ctx.shadowBlur = 0;
+  ctx.restore();
 
   // 7. Easter Egg Banner / Subtext at bottom of box if provided
-  const subBanner = options.easterEggBanner || options.bannerQuote;
-  if (subBanner) {
-    const subText = subBanner.replace(/\*/g, '').trim();
+  if (easterEggOrBanner) {
+    const subText = easterEggOrBanner.replace(/\*/g, '').trim();
     ctx.font = 'italic bold 18px sans-serif';
     ctx.fillStyle = '#f472b6'; // Pink
     ctx.textAlign = 'left';

@@ -628,5 +628,16 @@ export async function handleDarkSakuraClimax(
     editPayload.files = [reactionAttachment];
   }
 
-  await promptMsg.edit(editPayload).catch(() => {});
+  try {
+    await promptMsg.edit(editPayload);
+  } catch (editErr) {
+    console.warn('Failed to edit promptMsg with ending VN reaction, falling back to channel.send:', editErr);
+    try {
+      if (promptMsg.channel && typeof promptMsg.channel.send === 'function') {
+        await promptMsg.channel.send(editPayload);
+      }
+    } catch (sendErr) {
+      console.error('Failed channel.send fallback for ending reaction:', sendErr);
+    }
+  }
 }

@@ -661,52 +661,82 @@ async function runRaidBattle(
 
   const triggeredPlayerLowHp = new Set<string>();
 
-  // Dark Sakura Opening Interlude Dialogue
-  if (isDarkSakura) {
-    const intro = generateDarkSakuraIntroDialogue(partyUsers);
-    let introAttachment: AttachmentBuilder | null = null;
-    try {
-      const vnRes = await renderDarkSakuraVNDialogueImage({
-        title: intro.title,
-        speakerName: 'Dark Sakura',
-        dialogue: intro.dialogue,
-        easterEggBanner: intro.bannerQuote
-      });
-      introAttachment = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_intro_vn.png' });
-    } catch (e) {
-      console.error('Failed to render Dark Sakura VN intro image:', e);
-    }
-
-    const introEmbed = new EmbedBuilder()
-      .setTitle(`🌸 ${intro.title}`)
-      .setDescription(
-        `### 🌸 Dark Sakura\n` +
-        `> *“${intro.dialogue}”*\n\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `👁️ *“${intro.bannerQuote}”*`
-      )
-      .setColor(0x831843)
-      .setFooter({ text: 'Fate/stay night Heaven’s Feel • Abyssal Encounter' });
-
-    if (introAttachment) {
-      introEmbed.setImage('attachment://dark_sakura_intro_vn.png');
-    } else {
-      introEmbed.setThumbnail(DARK_SAKURA_ASSETS.vnDialogueSprite);
-      introEmbed.setImage(DARK_SAKURA_ASSETS.caveBackground);
-    }
-
-    const targetChannel = interaction.channel || battleMsg?.channel;
-    if (targetChannel && typeof targetChannel.send === 'function') {
-      const sendPayload: any = { embeds: [introEmbed] };
-      if (introAttachment) sendPayload.files = [introAttachment];
-      targetChannel.send(sendPayload).catch(() => {});
-    }
-  }
-
   let pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
   let pendingIndices: number[] = [];
   let currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
   let isProcessingTurn = false;
+
+  // Active Visual Novel Dialogue cut-in auto-disappear timer (like duel.ts)
+  let activeVnCutInTimer: any = null;
+  let activeVnCutInEmbed: EmbedBuilder | null = null;
+  let activeVnCutInFile: AttachmentBuilder | null = null;
+
+  const clearVnCutInTimer = () => {
+    if (activeVnCutInTimer) {
+      clearTimeout(activeVnCutInTimer);
+      activeVnCutInTimer = null;
+    }
+  };
+
+  const scheduleVnAutoClear = (delayMs = 3000) => {
+    clearVnCutInTimer();
+    activeVnCutInTimer = setTimeout(async () => {
+      activeVnCutInTimer = null;
+      activeVnCutInEmbed = null;
+      activeVnCutInFile = null;
+      try {
+        if (battleMsg && typeof battleMsg.edit === 'function') {
+          const { buffer } = await renderRaidBattlefield(battleState, false);
+          const freshAttachment = new AttachmentBuilder(buffer, { name: 'raid_battlefield.png' });
+          const components = buildBattleButtons();
+          const active = currentActiveParticipant;
+          await battleMsg.edit({
+            content: buildTurnContent(active, pendingCards),
+            embeds: [],
+            files: [freshAttachment],
+            components
+          }).catch(() => {});
+        }
+      } catch (err) {
+        console.warn('[raid] VN cut-in auto-clear error:', err);
+      }
+    }, delayMs);
+  };
+
+  const triggerDarkSakuraVnCutIn = async (opts: {
+    title: string;
+    speakerName?: string;
+    dialogue: string;
+    easterEggBanner?: string;
+  }) => {
+    try {
+      const vnRes = await renderDarkSakuraVNDialogueImage({
+        title: opts.title,
+        speakerName: opts.speakerName || 'Dark Sakura',
+        dialogue: opts.dialogue,
+        easterEggBanner: opts.easterEggBanner
+      });
+      activeVnCutInFile = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_vn.png' });
+      activeVnCutInEmbed = new EmbedBuilder()
+        .setTitle(`🌸 ${opts.title.replace(/\*/g, '')}`)
+        .setImage('attachment://dark_sakura_vn.png')
+        .setColor(0x831843)
+        .setFooter({ text: 'Fate/stay night Heaven’s Feel • Visual Novel Dialogue' });
+    } catch (err) {
+      console.error('Failed to trigger Dark Sakura VN cut-in:', err);
+    }
+  };
+
+  // Dark Sakura Opening Interlude Dialogue (Appears as initial Visual Novel UI and auto-clears)
+  if (isDarkSakura) {
+    const intro = generateDarkSakuraIntroDialogue(partyUsers);
+    await triggerDarkSakuraVnCutIn({
+      title: intro.title,
+      speakerName: 'Dark Sakura',
+      dialogue: intro.dialogue,
+      easterEggBanner: intro.bannerQuote
+    });
+  }
 
   function ensureActiveParticipantIsAlive(): void {
     const participants = battleState.participants;
@@ -1014,19 +1044,29 @@ async function runRaidBattle(
       cardChainStr = ` • 🎴 **Selected:** ${chain}`;
     }
 
-    let dialoguePrefix = '';
-    if (battleState.bossDialogueNotice) {
-      dialoguePrefix = `> ${battleState.bossDialogueNotice}\n\n`;
-    }
-
-    return `${dialoguePrefix}⚔️ **<@${active.userId}>'s Turn!** (**${activeServName}**) • ⏳ **Turn Timer: 2 Min** *(Auto-play on timeout)*${cardChainStr}`;
+    return `⚔️ **<@${active.userId}>'s Turn!** (**${activeServName}**) • ⏳ **Turn Timer: 2 Min** *(Auto-play on timeout)*${cardChainStr}`;
   };
 
   const renderAndPostTurn = async () => {
+    // If a boss VN cut-in was queued during enemy phase / reaction, trigger it now
+    if (battleState.pendingBossVnCutIn) {
+      await triggerDarkSakuraVnCutIn(battleState.pendingBossVnCutIn);
+      battleState.pendingBossVnCutIn = undefined;
+    }
+
     const { buffer } = await renderRaidBattlefield(battleState, false);
     const attachment = new AttachmentBuilder(buffer, { name: 'raid_battlefield.png' });
     const components = buildBattleButtons();
     const active = currentActiveParticipant;
+
+    const filesToSend: AttachmentBuilder[] = [attachment];
+    const embedsToSend: EmbedBuilder[] = [];
+
+    const hasCutIn = Boolean(activeVnCutInEmbed && activeVnCutInFile);
+    if (hasCutIn && activeVnCutInEmbed && activeVnCutInFile) {
+      embedsToSend.push(activeVnCutInEmbed);
+      filesToSend.push(activeVnCutInFile);
+    }
 
     const channelToSend = interaction.channel || battleMsg?.channel;
     let newBattleMsg: any = null;
@@ -1034,8 +1074,8 @@ async function runRaidBattle(
       try {
         newBattleMsg = await channelToSend.send({
           content: buildTurnContent(active, pendingCards),
-          embeds: [],
-          files: [attachment],
+          embeds: embedsToSend,
+          files: filesToSend,
           components
         });
       } catch (sendErr: any) {
@@ -1047,8 +1087,8 @@ async function runRaidBattle(
       try {
         newBattleMsg = await interaction.followUp({
           content: buildTurnContent(active, pendingCards),
-          embeds: [],
-          files: [attachment],
+          embeds: embedsToSend,
+          files: filesToSend,
           components
         });
       } catch (followErr) {
@@ -1071,10 +1111,14 @@ async function runRaidBattle(
     } else if (battleMsg && typeof battleMsg.edit === 'function') {
       await battleMsg.edit({
         content: buildTurnContent(active, pendingCards),
-        embeds: [],
-        files: [attachment],
+        embeds: embedsToSend,
+        files: filesToSend,
         components
       }).catch(() => {});
+    }
+
+    if (hasCutIn) {
+      scheduleVnAutoClear(3000);
     }
 
     resetTurnTimer();
@@ -1713,9 +1757,14 @@ async function runRaidBattle(
           const hostRecord = getDarkSakuraRecord(host.master);
           const quoteRes = getDarkSakuraHpReactiveQuote('boss_low_hp', hostRecord);
           if (quoteRes.quote) {
-            battleState.bossDialogueNotice = `🌸 **Dark Sakura:** ${quoteRes.quote}`;
             battleState.recentLogs.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
             battleState.fullCombatLog?.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
+            await triggerDarkSakuraVnCutIn({
+              title: '🌑 SHADOW INSTABILITY • FLEETING GRACE',
+              speakerName: 'Dark Sakura',
+              dialogue: quoteRes.quote,
+              easterEggBanner: 'Her shadows tremble as her core reaches critical threshold.'
+            });
           }
         }
       }
@@ -1744,28 +1793,14 @@ async function runRaidBattle(
             const hostRecord = getDarkSakuraRecord(host.master);
             const quoteRes = getDarkSakuraHpReactiveQuote('break_gauge', hostRecord);
             if (quoteRes.quote) {
-              battleState.bossDialogueNotice = `🌸 **Dark Sakura:** ${quoteRes.quote}`;
-              try {
-                const vnRes = await renderDarkSakuraVNDialogueImage({
-                  title: '💥 BREAK GAUGE SHATTERED: SHADOW UNLEASHED',
-                  speakerName: 'Dark Sakura',
-                  dialogue: quoteRes.quote,
-                  easterEggBanner: 'The black mud surges violently as her magical limiter crumbles!'
-                });
-                const vnAttach = new AttachmentBuilder(vnRes.buffer, { name: 'dark_sakura_break_vn.png' });
-                const breakEmbed = new EmbedBuilder()
-                  .setTitle('💥 [BREAK GAUGE SHATTERED] • The Shadow Vessel Awakens')
-                  .setDescription(`### 🌸 Dark Sakura\n> *“${quoteRes.quote}”*`)
-                  .setImage('attachment://dark_sakura_break_vn.png')
-                  .setColor(0xe11d48)
-                  .setFooter({ text: 'Fate/stay night Heaven’s Feel • Phase Shift' });
-                const targetChan = interaction.channel || battleMsg?.channel;
-                if (targetChan && typeof targetChan.send === 'function') {
-                  targetChan.send({ embeds: [breakEmbed], files: [vnAttach] }).catch(() => {});
-                }
-              } catch (e) {
-                console.error('Failed to send break gauge VN embed:', e);
-              }
+              battleState.recentLogs.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
+              battleState.fullCombatLog?.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
+              await triggerDarkSakuraVnCutIn({
+                title: '💥 BREAK GAUGE SHATTERED: SHADOW UNLEASHED',
+                speakerName: 'Dark Sakura',
+                dialogue: quoteRes.quote,
+                easterEggBanner: 'The black mud surges violently as her magical limiter crumbles!'
+              });
             }
           }
 
@@ -1786,6 +1821,7 @@ async function runRaidBattle(
         } else {
           battleState.bossCurrentHp = 0;
           clearTurnTimer();
+          clearVnCutInTimer();
           await cleanupNpGif();
           collector.stop('victory');
           battleState.finishingBlow = {
@@ -1828,6 +1864,7 @@ async function runRaidBattle(
         const anyAlive = battleState.participants.some(p => !p.isDead);
         if (!anyAlive) {
           clearTurnTimer();
+          clearVnCutInTimer();
           await cleanupNpGif();
           collector.stop('defeated');
           await concludeRaidDefeat(battleMsg, boss, battleState);
@@ -1914,6 +1951,12 @@ async function runRaidBattle(
 
   collector.on('collect', async (i: any) => {
     if (!isInteractionForThisRaid(i)) return;
+
+    // Dismiss active Visual Novel dialogue cut-in immediately on any player action (like duel.ts)
+    clearVnCutInTimer();
+    activeVnCutInEmbed = null;
+    activeVnCutInFile = null;
+
     if (isProcessingTurn && i.customId !== 'raid_status' && i.customId !== 'raid_combat_log') {
       try {
         if (!i.replied && !i.deferred) {
@@ -3220,6 +3263,7 @@ async function runRaidBattle(
 
   collector.on('end', async () => {
     clearTurnTimer();
+    clearVnCutInTimer();
     await cleanupNpGif();
   });
 
@@ -3815,17 +3859,22 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
     enemyPhase.actionTarget = hitTargetNames.join(', ');
 
     // Dark Sakura Mid-Battle HP Reactive Dialogue (Player Servant Low HP <= 25%)
-    if (isDarkSakura) {
+    if (isDarkSakura && !state.pendingBossVnCutIn) {
       const host = state.participants[0];
       const hostRecord = getDarkSakuraRecord(host.master);
       livingParticipants.forEach(p => {
-        if (!p.isDead && (p.currentHp / p.maxHp) <= 0.25) {
+        if (!p.isDead && (p.currentHp / p.maxHp) <= 0.25 && !state.pendingBossVnCutIn) {
           const servName = p.servant.nickname || p.servant.template?.name || 'Servant';
           const quoteRes = getDarkSakuraHpReactiveQuote('player_low_hp', hostRecord, servName);
           if (quoteRes.quote) {
-            state.bossDialogueNotice = `🌸 **Dark Sakura:** ${quoteRes.quote}`;
             state.recentLogs.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
             state.fullCombatLog?.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
+            state.pendingBossVnCutIn = {
+              title: '🌸 SHADOW PITY • CRITICAL WOUND',
+              speakerName: 'Dark Sakura',
+              dialogue: quoteRes.quote,
+              easterEggBanner: 'She watches your wounded Servant with hesitant, conflicted eyes.'
+            };
           }
         }
       });
@@ -3948,9 +3997,14 @@ function applyDamageToRaidParticipant(
         const hostRecord = getDarkSakuraRecord(host.master);
         const quoteRes = getDarkSakuraHpReactiveQuote('guts_survived', hostRecord, pName);
         if (quoteRes.quote) {
-          state.bossDialogueNotice = `🌸 **Dark Sakura:** ${quoteRes.quote}`;
           state.recentLogs.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
           state.fullCombatLog?.push(`🌸 **Dark Sakura:** ${quoteRes.quote}`);
+          state.pendingBossVnCutIn = {
+            title: '✨ GUTS DEFIANCE • UNYIELDING SPIRIT',
+            speakerName: 'Dark Sakura',
+            dialogue: quoteRes.quote,
+            easterEggBanner: 'Your Servant defies lethal corruption, standing firm upon the cavern floor.'
+          };
         }
       }
 
@@ -3980,7 +4034,12 @@ function applyDamageToRaidParticipant(
           p.isDead = false;
           const pityMsg = `🌸 **[SHADOW HESITATION]** Dark Sakura stayed her hand at the last moment! *“...Tch. Don't look at me with those dying eyes. Get back up!”*`;
           state.recentLogs.push(pityMsg);
-          state.bossDialogueNotice = `🌸 **Dark Sakura:** *“...Tch. Don’t look at me with those dying eyes, ${pName}. Get back on your feet and finish your turn...!”*`;
+          state.pendingBossVnCutIn = {
+            title: '🌸 SHADOW HESITATION • MERCY GRANTED',
+            speakerName: 'Dark Sakura',
+            dialogue: `...Tch. Don’t look at me with those dying eyes, ${pName}. Get back on your feet and finish your turn...!`,
+            easterEggBanner: 'Dark Sakura abruptly reined in the abyssal mud at the final fraction of a second.'
+          };
           return { wasFatal: false, gutsTriggered: true, gutsLog: pityMsg };
         }
       }
