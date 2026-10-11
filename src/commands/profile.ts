@@ -16,6 +16,7 @@ import {
 } from '../engine/grailwar';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { getServantAvatarAndCardArt } from '../data/servants';
+import { getDarkSakuraRecord, getDarkSakuraTier, calculateSpareTrustChance } from '../engine/darkSakuraEngine';
 
 export const data = new SlashCommandBuilder()
   .setName('profile')
@@ -71,6 +72,21 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
     churchStanding += ` *(⚠️ 💎 ${master.bountyRewardSq} SQ Bounty Active)*`;
   }
 
+  const sakuraRec = getDarkSakuraRecord(master);
+  const sakuraTier = getDarkSakuraTier(sakuraRec);
+  const sakuraTrustPct = Math.round(calculateSpareTrustChance(sakuraRec) * 100);
+  const tierNames: Record<number, string> = {
+    1: '🩸 Tier 1: The Butcher',
+    2: '🖤 Tier 2: Skeptic Magus',
+    3: '🌸 Tier 3: Wavering Maiden',
+    4: '✨ Tier 4: Pacifist Devotion'
+  };
+  const sakuraSection =
+    `🌸 **DARK SAKURA KARMA & RAID TIER:**\n` +
+    `• **Temperament Tier:** **${tierNames[sakuraTier]}** (Trust Chance: **${sakuraTrustPct}%**)\n` +
+    `• **Raid Choices:** 🌸 **${sakuraRec.spares}** Spares | 🌑 **${sakuraRec.betrayalCount || 0}** Betrayals | 🩸 **${sakuraRec.kills}** Kills\n` +
+    `• **Active Streaks:** 🔥 **${sakuraRec.mercyStreak}** Mercy Streak | ⚔️ **${sakuraRec.slayerStreak}** Slayer Streak\n\n`;
+
   // ==========================================
   // SAFE MODE EMBED (Chaldea Protected Sanctuary)
   // ==========================================
@@ -98,6 +114,7 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
         `• **Servant Dissolutions:** 💀 **${kills}** Defeated\n` +
         `• **Church Standing:** ${churchStanding}\n` +
         `• **AI BYOK Key:** ${master.customApiConfig?.enabled ? '🟢 **Active (Unlimited Chats)**' : '⚪ **Standard Server Leyline (25/day)**'}\n\n` +
+        sakuraSection +
         `🗡️ **ACTIVE CONTRACTED SERVANT:**\n` +
         `• **Servant:** **${servantName}** (${servantClass})\n` +
         `• **Vitality:** ❤️ [${hpBar}] \`${calcMaxHp.toLocaleString()} / ${calcMaxHp.toLocaleString()}\` (100%) — 🟢 **Full Health (Chaldea Ready)**\n` +
@@ -169,6 +186,7 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
       `• **Duel Record:** ⚔️ **${duelsWon}W - ${duelsLost}L** (${winRate}% Win Rate)\n` +
       `• **Church Standing:** ${churchStanding}\n` +
       `• **AI BYOK Key:** ${master.customApiConfig?.enabled ? '🟢 **Active (Unlimited Chats)**' : '⚪ **Standard Server Leyline (25/day)**'}\n\n` +
+      sakuraSection +
       `🗡️ **ACTIVE CONTRACTED SERVANT:**\n` +
       `• **Servant:** **${servantName}** (${servantClass})\n` +
       `• **Vitality:** ❤️ [${hpBar}] \`${healInfo.currentHp.toLocaleString()} / ${healInfo.maxHp.toLocaleString()}\` (${healInfo.percent}%) — ${healInfo.statusTag}\n` +

@@ -57,35 +57,35 @@ export function getDarkSakuraRecord(master: any): DarkSakuraKarmaRecord {
 /**
  * Evaluates Dark Sakura's Temperament Tier for a Master:
  * High-frequency raid progression designed for players doing multiple raids daily:
- * - Tier 4: Pacifist Devotion (Sanctuary / Pacifist Milestone Clear) - Requires 50+ spares with 0 kills OR 75+ spares with >=95% ratio & 25+ streak
- * - Tier 3: Wavering Maiden (Hard-earned tolerance) - Requires at least 20+ raids, 16+ spares, >=80% spare ratio, and 8+ consecutive mercy streak
- * - Tier 1: The Butcher (Cold-blooded Executioner) - Requires at least 20+ raids, 16+ kills, >=80% kill ratio, and 8+ consecutive slayer streak
- * - Tier 2: Skeptic Magus (Guarded / Neutral) - Default for anyone with < 20 raids or mixed/fluctuating choices
+ * - Tier 4: Pacifist Devotion (Sanctuary / Pacifist Milestone Clear) - Requires 20+ mercy attempts with 0 kills OR 25+ mercy attempts with >=85% mercy ratio & 8+ mercy streak
+ * - Tier 3: Wavering Maiden (Hard-earned tolerance) - Requires at least 6+ total encounters, 5+ mercy attempts, >=50% mercy ratio, and mercy streak/commitment
+ * - Tier 1: The Butcher (Cold-blooded Executioner) - Requires at least 6+ total encounters, 5+ kills, >=60% kill ratio, and 3+ consecutive slayer streak
+ * - Tier 2: Skeptic Magus (Guarded / Neutral) - Default for anyone with < 6 raids or mixed/fluctuating choices
  */
 export function getDarkSakuraTier(record: DarkSakuraKarmaRecord): 1 | 2 | 3 | 4 {
-  const total = record.spares + record.kills;
+  const mercyAttempts = record.spares + (record.betrayalCount || 0);
+  const total = mercyAttempts + record.kills;
 
-  // Tier 4: True Pacifist Devotion (Ultra-rare high bar)
-  if (record.spares >= 50 && record.kills === 0) return 4;
-  if (record.spares >= 75 && (record.spares / Math.max(1, total)) >= 0.95 && record.mercyStreak >= 25) return 4;
+  // Tier 4: True Pacifist Devotion
+  if (mercyAttempts >= 20 && record.kills === 0) return 4;
+  if (mercyAttempts >= 25 && (mercyAttempts / Math.max(1, total)) >= 0.85 && record.mercyStreak >= 8) return 4;
 
-  // Anyone with fewer than 20 total raids remains in Tier 2 (Guarded / Skeptical)
-  // She does not open her heart or acknowledge anyone after just a few runs.
-  if (total < 20) return 2;
+  // Total encounters under 6 remain in Tier 2 (Guarded)
+  if (total < 6) return 2;
 
-  const spareRatio = record.spares / total;
-
-  // Tier 3: Wavering Maiden (Requires sustained mercy over multiple days of raiding)
-  if (record.spares >= 16 && spareRatio >= 0.80 && record.mercyStreak >= 8) {
+  // Tier 3: Wavering Maiden (Requires sustained mercy choices)
+  const mercyRatio = mercyAttempts / total;
+  if (mercyAttempts >= 5 && mercyRatio >= 0.50 && (record.mercyStreak >= 3 || (record.kills === 0 && mercyAttempts >= 5))) {
     return 3;
   }
 
-  // Tier 1: The Butcher (Requires persistent execution over multiple days of raiding)
-  if (record.kills >= 16 && ((record.kills / total) >= 0.80) && record.slayerStreak >= 8) {
+  // Tier 1: The Butcher (Requires persistent execution)
+  const killRatio = record.kills / total;
+  if (record.kills >= 5 && killRatio >= 0.60 && record.slayerStreak >= 3) {
     return 1;
   }
 
-  // Everyone else is Tier 2 (Guarded / Testing)
+  // Everyone else is Tier 2 (Guarded)
   return 2;
 }
 
@@ -240,23 +240,24 @@ export function getDarkSakuraHpReactiveQuote(
  */
 export function calculateSpareTrustChance(record: DarkSakuraKarmaRecord): number {
   const tier = getDarkSakuraTier(record);
+  const mercyAttempts = record.spares + (record.betrayalCount || 0);
+
   if (tier === 4) {
-    // Pacifist Devotion: 55% - 65% (Even at peak pacifism, Angra Mainyu's corruption and her dark urges make sparing a tense gamble)
-    return Math.min(0.65, 0.55 + Math.min(record.mercyStreak * 0.003, 0.10));
+    // Pacifist Devotion: 85% - 95% trust success
+    return Math.min(0.95, 0.85 + Math.min(record.mercyStreak * 0.01, 0.10));
   }
   if (tier === 3) {
-    // Wavering Maiden (Hard-earned trust after 20+ raids & 8+ streak):
-    // 24% base, scales with streak up to max 34% (so 2 out of 3 times, shadows still lash out!)
-    return Math.min(0.34, 0.24 + Math.min((record.mercyStreak - 8) * 0.01, 0.10));
+    // Wavering Maiden: 60% base trust, scaling up to 85% with mercy streak
+    return Math.min(0.85, 0.60 + Math.min(record.mercyStreak * 0.03, 0.25));
   }
   if (tier === 1) {
-    // The Butcher (Hardened executioner): Mud lashes out violently (3% - 6%)
-    return Math.max(0.03, 0.06 - Math.min((record.slayerStreak - 8) * 0.005, 0.03));
+    // The Butcher: Hardened executioner (10% - 15% trust)
+    return Math.max(0.05, 0.15 - Math.min(record.slayerStreak * 0.02, 0.10));
   }
-  // Tier 2 (Neutral / Under 20 raids or mixed):
-  // Reaching into the corrupt mud of All The World's Evil is deadly!
-  // 10% base + up to 4% for small mercy streaks (max 14% success)
-  return Math.min(0.14, 0.10 + Math.min(record.mercyStreak * 0.005, 0.04));
+  // Tier 2 (Skeptic Magus / Guarded):
+  // 35% base trust chance + 4% per mercy attempt/streak up to 70%!
+  // Reaching out repeatedly steadily purifies her heart even when mud lashes out.
+  return Math.min(0.70, 0.35 + Math.min(mercyAttempts * 0.04, 0.35));
 }
 
 /**
@@ -1013,7 +1014,8 @@ export async function handleDarkSakuraClimax(
         participantOutcomes.push('spared_betrayed');
         // Betrayal / mud devour!
         record.betrayalCount += 1;
-        record.mercyStreak = 0;
+        record.mercyStreak += 1; // Master's choice was Mercy; commitment is preserved!
+        record.slayerStreak = 0;
         record.lastOutcome = 'spared_betrayed';
 
         // Minor pity EXP (15,000) & 2x SR Embers consolation
