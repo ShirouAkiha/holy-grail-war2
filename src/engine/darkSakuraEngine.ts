@@ -56,36 +56,39 @@ export function getDarkSakuraRecord(master: any): DarkSakuraKarmaRecord {
 
 /**
  * Evaluates Dark Sakura's Temperament Tier for a Master:
- * High-frequency raid progression designed for players doing multiple raids daily:
- * - Tier 4: Pacifist Devotion (Sanctuary / Pacifist Milestone Clear) - Requires 20+ mercy attempts with 0 kills OR 25+ mercy attempts with >=85% mercy ratio & 8+ mercy streak
- * - Tier 3: Wavering Maiden (Hard-earned tolerance) - Requires at least 6+ total encounters, 5+ mercy attempts, >=50% mercy ratio, and mercy streak/commitment
- * - Tier 1: The Butcher (Cold-blooded Executioner) - Requires at least 6+ total encounters, 5+ kills, >=60% kill ratio, and 3+ consecutive slayer streak
- * - Tier 2: Skeptic Magus (Guarded / Neutral) - Default for anyone with < 6 raids or mixed/fluctuating choices
+ * Extended progression scaled for deep investment and narrative weight:
+ * - Tier 4: Pacifist Devotion (Sanctuary) - Requires 50+ total raids & (50+ mercies with 0 kills OR 40+ mercies with >=80% ratio & 10+ mercy streak)
+ * - Tier 3: Wavering Maiden (Touched by Mercy) - Requires 30+ total raids & 20+ mercies with >=65% ratio & 5+ mercy streak (or 0 kills)
+ * - Tier 1: The Butcher (Cold-blooded Executioner) - Requires 15+ total raids & 10+ kills with >=65% ratio & 5+ slayer streak
+ * - Tier 2: Skeptic Magus (Guarded / Default) - Default for <30 raids, mixed karma, or early progression
  */
 export function getDarkSakuraTier(record: DarkSakuraKarmaRecord): 1 | 2 | 3 | 4 {
   const mercyAttempts = record.spares + (record.betrayalCount || 0);
   const total = mercyAttempts + record.kills;
 
-  // Tier 4: True Pacifist Devotion
-  if (mercyAttempts >= 20 && record.kills === 0) return 4;
-  if (mercyAttempts >= 25 && (mercyAttempts / Math.max(1, total)) >= 0.85 && record.mercyStreak >= 8) return 4;
-
-  // Total encounters under 6 remain in Tier 2 (Guarded)
-  if (total < 6) return 2;
-
-  // Tier 3: Wavering Maiden (Requires sustained mercy choices)
-  const mercyRatio = mercyAttempts / total;
-  if (mercyAttempts >= 5 && mercyRatio >= 0.50 && (record.mercyStreak >= 3 || (record.kills === 0 && mercyAttempts >= 5))) {
-    return 3;
+  // Tier 4: Pacifist Devotion (Requires 50+ total raids)
+  if (total >= 50) {
+    if (mercyAttempts >= 50 && record.kills === 0) return 4;
+    if (mercyAttempts >= 40 && (mercyAttempts / total) >= 0.80 && record.mercyStreak >= 10) return 4;
   }
 
-  // Tier 1: The Butcher (Requires persistent execution)
-  const killRatio = record.kills / total;
-  if (record.kills >= 5 && killRatio >= 0.60 && record.slayerStreak >= 3) {
-    return 1;
+  // Tier 3: Wavering Maiden (Requires 30+ total raids)
+  if (total >= 30) {
+    const mercyRatio = mercyAttempts / total;
+    if (mercyAttempts >= 20 && mercyRatio >= 0.65 && (record.mercyStreak >= 5 || (record.kills === 0 && mercyAttempts >= 30))) {
+      return 3;
+    }
   }
 
-  // Everyone else is Tier 2 (Guarded)
+  // Tier 1: The Butcher (Requires 15+ total raids)
+  if (total >= 15) {
+    const killRatio = record.kills / total;
+    if (record.kills >= 10 && killRatio >= 0.65 && record.slayerStreak >= 5) {
+      return 1;
+    }
+  }
+
+  // Tier 2: Skeptic Magus (Guarded / Neutral default)
   return 2;
 }
 
@@ -121,20 +124,9 @@ export function getDarkSakuraHpReactiveQuote(
       if (tier === 3) {
         return {
           quote: pickRandom([
-            "My vessel is crumbling... but your hand didn't tremble when you stayed your blade before. Is this really where my dream ends?",
-            "The black mud is spilling out of control... don't step any closer! Please... I don't want my urges to devour you!",
-            "I'm falling apart at the seams... yet even now, you won't strike to kill me. Why are you so foolishly kind?",
-            "It hurts so much... but the pain is nothing compared to the fear of hurting you when I lose control..."
-          ])
-        };
-      }
-      if (tier === 2) {
-        return {
-          quote: pickRandom([
-            "My core is cracking... but don't assume I'm defeated! The black mud only gets thicker when I bleed!",
-            "You've pushed me to the brink... Is this where you deliver your hypocritical mercy, magus?",
-            "Wounding this vessel won't save you! All The World's Evil will drag you into the abyss with me!",
-            "Ah... I'm bleeding... But a corrupted Grail doesn't stop overflowing just because you cut it open!"
+            "My core is crumbling... but your hand didn't tremble when you stayed your blade before. Is this really the end?",
+            "The black mud is spilling... don't step any closer, or my urges will devour you!",
+            "I'm falling apart... but you still haven't drawn your weapon to finish me. Why?"
           ])
         };
       }
@@ -143,20 +135,18 @@ export function getDarkSakuraHpReactiveQuote(
           quote: pickRandom([
             "Fufu... You carve into my body so mercilessly! Go on then, executioner, finish your job!",
             "Ahaha! More blood for the mud! Cut me open as much as you like, butcher!",
-            "Is that all your blades can do? I've bled for eleven years—this pain is nothing!",
-            "Fufu... You're carving straight through my heart, butcher! Is this the thrill you were looking for?",
-            "My vessel is collapsing under your blades... Go on, finish your bloody masterpiece!",
-            "Ahaha! Keep cutting! Every drop of blood I shed turns into more curses to drag you down with me!",
-            "You don't even flinch when my flesh tears... You really are the most horrific thing in this cavern!",
-            "Nearly dead... but don't think for a second that my death gives you a happy ending!"
+            "Is that all your blades can do? I've bled for eleven years—this pain is nothing!"
           ])
         };
       }
+      // Tier 2 (Skeptic Magus)
       return {
         quote: pickRandom([
-          "The black mud spills from my wounds... Can you hear the shadows screaming beneath the surface?",
-          "My vessel trembles... but All The World's Evil won't stop until every Leyline burns!",
-          "You think wounding this body matters? The shadow only hungers for more mana!"
+          "My vessel is cracking open... Is this where you strike the killing blow, or will you hesitate like a foolish magus?",
+          "Ugh... The black mud leaks everywhere! If you're going to finish me, do it now before the shadow takes over completely!",
+          "Wounding me won't stop the Grail's curse! The deeper you cut, the darker the cavern becomes!",
+          "Agh...! My core is unstable! Don't get arrogant just because my body is breaking!",
+          "Fufu... You managed to push me this far? Now let's see if you have the stomach to deal with what comes next!"
         ])
       };
 
@@ -170,45 +160,23 @@ export function getDarkSakuraHpReactiveQuote(
           ])
         };
       }
-      if (tier === 3) {
-        return {
-          quote: pickRandom([
-            "Agh...! The seal shattered! The abyssal core is exposed... please, keep your distance before the shadow swallows us both!",
-            "My restraints broke...! Hold on... I'm trying with everything I have to suppress Angra Mainyu!",
-            "The black mud overflows...! I'm so sorry... I can't hold back the hunger much longer!",
-            "That blow tore through the dark shell... I can see you clearly now, Master! Please... don't give up on me!"
-          ])
-        };
-      }
-      if (tier === 2) {
-        return {
-          quote: pickRandom([
-            "Shattering my outer barrier...? Fufu... You only unlocked a deeper layer of All The World's Evil!",
-            "You cracked my outer vessel, magus! Now watch as the unfiltered mud surges to swallow you whole!",
-            "Breaking my gauge doesn't grant you victory... It just strips away whatever control I had left!",
-            "Fufu... You shattered the seal! Hope you're ready for the true nightmare underneath!"
-          ])
-        };
-      }
       if (tier === 1) {
         return {
           quote: pickRandom([
             "You shattered my vessel! Fufu... Ahaha! Is that all you've got? The abyss only gets deeper from here!",
             "Shattering my outer core only releases more shadow! Come, executioner, let's drown together!",
-            "Ah... Such violence! You really love tearing me apart, don't you?",
-            "You shattered my outer shell like glass! Ahaha... Welcome to the real abyss, executioner!",
-            "That blow... delicious! But breaking my gauge only leaks more black mud onto your boots!",
-            "Tearing through my defenses like an animal! Come then, butcher, see what lies underneath!",
-            "Shatter me all you want! The Grail's curses will only drown you faster!",
-            "Fufu... You love breaking things, don't you? Let's see if your mind breaks before my body does!"
+            "Ah... Such violence! You really love tearing me apart, don't you?"
           ])
         };
       }
+      // Tier 2 (Skeptic Magus)
       return {
         quote: pickRandom([
-          "Agh...! The Grail's corruption overflows! The true shadow awakens now!",
-          "The barrier cracked... The black mud surges forward! Stand back!",
-          "You forced open the abyssal gates... Now taste the full weight of Angra Mainyu!"
+          "The barrier shattered! Fufu... You think breaking my outer shell makes you safe? The shadow is unleashed now!",
+          "Agh...! You forced open the abyssal gates! Now taste the true weight of All The World's Evil!",
+          "You cracked the seal... The corrupted mana is overflowing! Try to survive this, magus!",
+          "Impudent...! Shattering my defense only makes the mud surge faster!",
+          "Ahaha! You broke my shell! Now watch the cavern drown in darkness!"
         ])
       };
 
@@ -223,45 +191,23 @@ export function getDarkSakuraHpReactiveQuote(
           ])
         };
       }
-      if (tier === 3) {
-        return {
-          quote: pickRandom([
-            `Master, ${sName} is bleeding! Please... retreat or use your Command Seals! I don't want to be the one who ends you!`,
-            `Stop fighting so hard for me! Look at ${sName}'s wounds... no monster like me is worth your life!`,
-            `${sName}'s spirit origin is fading... My shadow is reaching for you on its own! Run... please, run while you still can!`,
-            `Ah... no! ${sName}'s mana is fluctuating wildly... I can't bear the thought of crushing someone who showed me warmth!`
-          ])
-        };
-      }
-      if (tier === 2) {
-        return {
-          quote: pickRandom([
-            `Look at ${sName} faltering! Your cautious strategy is collapsing, magus!`,
-            `${sName}'s mana reserves are nearly drained... Will you abandon them or drown beside them?`,
-            `Your heroic spirit is reaching their limit! Is this as far as your conviction goes?`,
-            `${sName} can barely hold their weapon... The shadow is preparing to digest their spirit origin!`
-          ])
-        };
-      }
       if (tier === 1) {
         return {
           quote: pickRandom([
             `Look at ${sName} stumbling in the mud... Just like all the rest, you'll watch them rot.`,
             `${sName}'s blood tastes so sweet... Will you watch them dissolve, executioner?`,
-            `Fufu... Another servant about to be digested in my shadow. How pathetic.`,
-            `${sName} is bleeding out in the mud... Are you going to sacrifice them like all the rest, executioner?`,
-            `${sName}'s spirit origin is cracking! Fufu... Will you watch them dissolve without lifting a finger?`,
-            `Look at ${sName} gasping for mana... You treat your own Servants like disposable weapons!`,
-            `${sName} can barely stand... Send them to their grave, butcher! That's what you do best!`,
-            `${sName}'s life is fading... Is this the cold efficiency you pride yourself on?`
+            `Fufu... Another servant about to be digested in my shadow. How pathetic.`
           ])
         };
       }
+      // Tier 2 (Skeptic Magus)
       return {
         quote: pickRandom([
-          `${sName} is drowning in my shadow mud... How much longer can they stand?`,
-          `The miasma is suffocating ${sName}... Their knees are giving out.`,
-          `${sName}'s mana is being drained away... They won't last another turn.`
+          `${sName} is stumbling in the black mud... Are you going to sacrifice them, or call a retreat?`,
+          `Look at ${sName}'s spirit origin fading... That's what happens when you linger in my cavern without a clear plan!`,
+          `${sName}'s knees are giving out under my miasma... Make your choice, magus, before the shadow swallows them!`,
+          `Fufu... ${sName} can barely lift their weapon. How much longer will you force them to bleed for you?`,
+          `The corrupted mud is choking ${sName}... Their time is running out!`
         ])
       };
     }
@@ -277,45 +223,23 @@ export function getDarkSakuraHpReactiveQuote(
           ])
         };
       }
-      if (tier === 3) {
-        return {
-          quote: pickRandom([
-            `They survived that...? Ah... thank goodness... My heart almost stopped thinking I had killed ${targetName}.`,
-            `That miracle... ${targetName}'s bond with you gave them the strength to stand back up! You really are incredible, Master...`,
-            `Even under the crush of All The World's Evil, ${targetName}'s light refuses to die... It's almost blinding...`,
-            `You won't let the shadow take ${targetName} down... Thank you for staying alive. Thank you...`
-          ])
-        };
-      }
-      if (tier === 2) {
-        return {
-          quote: pickRandom([
-            `${targetName} clung to life...? Fufu... A magus always keeps a trick hidden up their sleeve.`,
-            `Refusing to die? Impressive tenacity... but my shadow will test that resolve again next turn!`,
-            `${targetName} triggered Guts! You really won't give up without a fight, will you?`,
-            `Cheating death once won't save ${targetName} from the dark mud... but I admire your stubbornness!`
-          ])
-        };
-      }
       if (tier === 1) {
         return {
           quote: pickRandom([
             `Persistent bug! ${targetName} clings to life... How pathetic!`,
             `Refusing to die? Fufu... That only means I get to tear ${targetName} apart again!`,
-            `Struggling back from death? All you did was buy a few more seconds in the dark!`,
-            `${targetName} refused to die? How annoying! But a butcher's servant should know when to lie down!`,
-            `Crawling back from the brink? Fufu... That only gives me another chance to tear ${targetName} to pieces!`,
-            `${targetName} clings to life with pure spite... Just like their cold-hearted Master!`,
-            `Cheating death won't save ${targetName} from the mud! I'll just crush them again next turn!`,
-            `${targetName} survived? Persistent pest! Let's see if their guts survive my next shadow storm!`
+            `Struggling back from death? All you did was buy a few more seconds in the dark!`
           ])
         };
       }
+      // Tier 2 (Skeptic Magus)
       return {
         quote: pickRandom([
-          `Refusing to fall? ${targetName}'s conviction is stubborn...`,
-          `${targetName} pulled back from the brink... Impressive, but futile.`,
-          `Still standing after that hit? The shadow will chew through them next time.`
+          `${targetName} survived that fatal blow...? What stubborn tenacity! But how long can that last in the dark?`,
+          `Standing back up from the brink of death? Fufu... Your Servant is as persistent as a bad dream.`,
+          `Clinging to life with Guts? Impressive... but the shadow's appetite is bottomless!`,
+          `${targetName} refuses to fall... Is that your willpower driving them, or just sheer desperation?`,
+          `Refusing to crumble... Fine! Let's see how many times their spirit origin can take my black tendrils!`
         ])
       };
     }
@@ -324,29 +248,9 @@ export function getDarkSakuraHpReactiveQuote(
       if (tier === 4) {
         return {
           quote: pickRandom([
-            "Your Noble Phantasm... Please, strike with all your strength so this darkness can end!",
-            "That radiant light... Is it meant to free me from the shadow?",
-            "Unleashing your ultimate truth... Thank you for believing in me until the end."
-          ])
-        };
-      }
-      if (tier === 3) {
-        return {
-          quote: pickRandom([
-            "That blinding light... It burns away the black mud for a fleeting second... It feels so warm...",
-            "Unleashing your ultimate strike! Let that holy light cleanse this cavern... even if it pierces right through me!",
-            "What a beautiful, resolute noble phantasm... If a light like that is directed at me, maybe I can truly be saved...",
-            "Pouring everything into one blow... I can feel your conviction shaking the very core of the corrupted Grail!"
-          ])
-        };
-      }
-      if (tier === 2) {
-        return {
-          quote: pickRandom([
-            "A Noble Phantasm! Let's see if your heroic spirit's light can pierce this 11-year darkness!",
-            "A grand Noble Phantasm! But to All The World's Evil, even holy weapons are swallowed by the black mud!",
-            "Striking with your ultimate attack! Let's see if your heroic spirit's light can shatter my corrupted core!",
-            "Pouring all your mana into that strike? Go on then—show me the strength of your conviction!"
+            "A Noble Phantasm...? Master, please... use that power to break my chains!",
+            "Such bright light... Don't let the shadow devour your spirit origin!",
+            "Unleashing your ultimate strike... I'm sorry you have to carry this burden!"
           ])
         };
       }
@@ -360,11 +264,13 @@ export function getDarkSakuraHpReactiveQuote(
           ])
         };
       }
+      // Tier 2 (Skeptic Magus)
       return {
         quote: pickRandom([
-          "A Noble Phantasm! The black mud surges to meet your light!",
-          "Unleashing your true name attack... Let us see if your light can pierce the abyss!",
-          "Bring forth your ultimate blade! The corrupted Grail accepts all challenges!"
+          "Unleashing a Noble Phantasm against me? Fufu... Bring forth your legendary light and see if it can pierce this darkness!",
+          "A grand Noble Phantasm! But to All The World's Evil, even holy weapons are swallowed by the black mud!",
+          "Striking with your ultimate attack! Let's see if your heroic spirit's light can shatter my corrupted core!",
+          "Pouring all your mana into that strike? Go on then—show me the strength of your conviction!"
         ])
       };
     }
@@ -450,6 +356,50 @@ export function detectServantEasterEgg(participants: { servant: any }[]): { key:
           "Saber... You stayed by my side in the deep dark. Let's show this vanguard the true weight of the corrupted Grail.",
           "Saber Alter... Your black armor matches my shadow dress perfectly. Shall we drown these intruding Masters together?",
           "My faithful knight of darkness... Let your Excalibur Morgan consume whatever light remains in this cavern."
+        ])
+      };
+    }
+    if (tId.includes('rin') || sName.includes('ishtar') || sName.includes('ereshkigal') || sName.includes('tohsaka')) {
+      return {
+        key: 'rin',
+        name: 'Tohsaka Rin',
+        quote: pickRandom([
+          "Nee-san...? Why are you standing opposite me with those jewels? You always got the sunlight... while I was given the basement worms.",
+          "Tohsaka... Did you bring your Azoth sword to finish me off? Just like you always excelled at everything in Fuyuki High...",
+          "Nee-san... Look at my ribbons. Aren't they pretty? They're stained with all the blood you never had to spill."
+        ])
+      };
+    }
+    if (tId.includes('muramasa') || sName.includes('shirou') || sName.includes('senji muramasa')) {
+      return {
+        key: 'shirou',
+        name: 'Senji Muramasa / Shirou',
+        quote: pickRandom([
+          "Senpai...? No... that spirit origin is different, yet those warm eyes... why do you forge swords in this dark cavern?",
+          "That old blacksmith's stance... Fufu. You look so much like the person who used to eat my home-cooked meals every evening.",
+          "Senpai... If you forge a blade to sever my shadow dress, will you promise to hold my hand when it's over?"
+        ])
+      };
+    }
+    if (tId.includes('hercules') || tId.includes('heracles') || sName.includes('heracles') || (tId.includes('berserker') && sName.includes('basaka'))) {
+      return {
+        key: 'heracles',
+        name: 'Heracles',
+        quote: pickRandom([
+          "Berserker... My giant black knight. Break these intruders apart just like you protected Ilya in the snowy forest!",
+          "Heracles... Your black mud-drenched axe-sword is invincible. Crush this vanguard under your Nine Lives!",
+          "The greatest hero of Greece... doused in All The World's Evil. Let us drown Fuyuki in shadow together."
+        ])
+      };
+    }
+    if (tId.includes('cu_chulainn') || sName.includes('cu chulainn') || (tId.includes('lancer') && sName.includes('cu'))) {
+      return {
+        key: 'lancer',
+        name: 'Cú Chulainn',
+        quote: pickRandom([
+          "Lancer... You died standing up to save me from Zouken back then, didn't you? Yet your crimson spear won't reach the core of my shadow now.",
+          "The Hound of Ulster... Such a loyal dog. Will your Gáe Bulg pierce my heart, or be swallowed by the mud?",
+          "Lancer... Fufu. Still running around trying to act like a hero in this rotten war?"
         ])
       };
     }
@@ -717,20 +667,12 @@ export function generateDarkSakuraIntroDialogue(
         weight: 4,
         generate: () => ({
           dialogue: pickRandom([
-            `"You... you came back again, ${host.username}? Even knowing what a dirty, terrible thing I've become under this mud?"`,
-            `"Please... don't look at me with such gentle eyes, ${host.username}. If you keep being kind, I won't be able to stay a proper monster..."`,
-            `"Every time you spare me, ${host.username}, the shadow inside me screams in agony... because it knows I want to reach out to your hand."`,
-            `"I spent eleven years in the cold dark waiting for someone... but now that you're here, ${host.username}, I'm so afraid I'll drag you down with me."`,
-            `"Is it really alright for someone like me to hope, ${host.username}? A sin-stained vessel that swallowed whole cities..."`,
-            `"The curses are pounding behind my ribs, telling me to drown you... but when I see you, ${host.username}, my heart aches so much it hurts."`,
-            `"Why won't you just destroy me, ${host.username}? It would be so much easier if you hated me like everyone else..."`,
-            `"The black mud is so heavy today, ${host.username}... but your presence is the only light keeping me from losing my mind completely."`,
-            `"If this is a dream born from your mercy, ${host.username}... please don't wake me up until the shadows fade away."`,
-            `"I dreamt of a quiet, warm house without worms or rain... and in that dream, you were standing by my side, ${host.username}."`,
-            `"The Grail wants me to devour your heroic spirit, ${host.username}... but I'm fighting it with every broken piece of my soul."`,
-            `"You keep choosing to spare me, ${host.username}... so even if my body tears apart, I will hold back the mud for as long as I can."`
+            `"You're back... Even in this pitch-black cavern, your presence feels warm. My shadows hesitate around you, ${host.username}."`,
+            `"Why do you look at me like that, ${host.username}? I told you I'm corrupted to the root... yet your eyes never hold hatred."`,
+            `"Every time you step into this cavern, ${host.username}, the screaming inside my head grows a little quieter... Don't make me rely on you."`,
+            `"You stayed your hand so many times... Is it really possible that someone looks at this shadow and doesn't see a monster, ${host.username}?"`
           ]),
-          bannerQuote: 'Please... don\'t look at me with such gentle eyes.'
+          bannerQuote: 'My shadows hesitate around you...'
         })
       });
     }
@@ -745,19 +687,34 @@ export function generateDarkSakuraIntroDialogue(
             `"Ah, the butcher returns. Eager to see if my core shatters faster this time, ${host.username}? Let me show you what it feels like to rot in the mud."`,
             `"The merciless magus steps back into my cavern... Every time you open your mouth, ${host.username}, I remember why I stopped expecting salvation."`,
             `"Cold, efficient, and relentless... You remind me of the crest worms, ${host.username}. Come, let's see whose malice cuts deeper."`,
-            `"You carved away every piece of mercy in your heart, didn't you, ${host.username}? Fufu... Good. Monsters are much easier to devour when they don't pretend to care."`,
-            `"Back to collect another harvest, ${host.username}? You don't even wipe the dark mud off your blade anymore... you just come straight for my throat."`,
-            `"Ah, my executioner... Tell me, ${host.username}, do you count how many times you've killed me, or am I just a line item in your combat records?"`,
-            `"Look at those eyes, ${host.username}... So cold, so empty. You aren't here to save Fuyuki. You're just here to watch the Grail burn."`,
-            `"Fufu... I can feel the hatred radiating from your spirit origin, ${host.username}. No pretense, no hollow words of sympathy... Just raw, ruthless execution."`,
-            `"You treat this cavern like a slaughterhouse, ${host.username}. Step into the mud then! Let's see if your blade breaks before my vessel dissolves!"`,
-            `"The merciless butcher returns... You've carved through my flesh so many times that even the shadows recognize the sound of your footsteps, ${host.username}."`,
-            `"Do you ever hesitate for even a fraction of a second, ${host.username}? No... of course you don't. That's why you're my favorite nightmare."`,
-            `"Welcome back, ${host.username}. Your weapon is still stained from our last encounter... Come on then, show me how fast you can shatter my core today!"`,
-            `"Another execution on your schedule, ${host.username}? Zouken thought he owned my pain, but you... you're the one who turned it into a blood sport."`,
-            `"You carved away every shred of pity long ago, ${host.username}. Good! I prefer an executioner who doesn't waste time with lies!"`
+            `"You carved away every piece of mercy in your heart, didn't you, ${host.username}? Fufu... Good. Monsters are much easier to devour when they don't pretend to care."`
           ]),
           bannerQuote: 'Ah, the butcher returns. Eager to carve me open again?'
+        })
+      });
+    }
+
+    // 7b. Tier 2 Skeptic Magus temperament reaction
+    if (hostTier === 2) {
+      candidates.push({
+        category: 'tier_skeptic',
+        weight: 4,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"You step into my shadow once more, ${host.username}... Tell me, are you here seeking the Grail's power, or are you just playing the foolish hero today?"`,
+            `"Don't look at me with those cautious eyes, ${host.username}. If you hesitate for even a moment in this mud, my tendrils will slice right through your spirit origins."`,
+            `"Another bout, ${host.username}... You haven't decided whether to cut me down or stay your hand, have you? Indecision in the dark is fatal."`,
+            `"Fufu... You march into Zouken's nightmare as if you still have choices left, ${host.username}. Let's see how long your calm demeanor lasts."`,
+            `"Are you trying to test my patience, ${host.username}? You swing your blade, then pull back... Make up your mind before the black mud decides for you!"`,
+            `"All The World's Evil doesn't care about your noble ideals, ${host.username}. To the shadow, you're just another piece of mana waiting to be digested."`,
+            `"You stand at the edge of the abyss, ${host.username}. Neither a cold executioner nor a saint... Just another magus who thinks they can handle the dark."`,
+            `"Why do you keep returning to this cavern, ${host.username}? Is it curiosity, or are you waiting for me to show a moment of weakness?"`,
+            `"Keep your weapon drawn, ${host.username}. The moment you let your guard down in front of a corrupted Grail, you become food for the worms."`,
+            `"You haven't stained your hands completely, yet you haven't saved anyone either, ${host.username}. How long can you walk on this narrow tightrope?"`,
+            `"Fufu... A guarded magus enters the shadow. Good! I prefer opponents who know that trusting a monster gets you killed."`,
+            `"The cavern air is heavy with black mud, ${host.username}... Show me if your resolve is strong enough to survive another trial."`
+          ]),
+          bannerQuote: 'Neither an executioner nor a saint... Just another magus in the dark.'
         })
       });
     }
