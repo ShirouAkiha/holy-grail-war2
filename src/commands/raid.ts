@@ -25,7 +25,8 @@ import {
   generateDarkSakuraIntroDialogue,
   handleDarkSakuraClimax,
   getDarkSakuraRecord,
-  getDarkSakuraHpReactiveQuote
+  getDarkSakuraHpReactiveQuote,
+  getDarkSakuraTier
 } from '../engine/darkSakuraEngine';
 
 export const data = new SlashCommandBuilder()

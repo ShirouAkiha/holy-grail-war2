@@ -71,6 +71,69 @@ export function getDarkSakuraTier(record: DarkSakuraKarmaRecord): 1 | 2 | 3 | 4 
 }
 
 /**
+ * Generates HP-reactive dialogue quotes for Dark Sakura during combat:
+ * - 'boss_low_hp': Boss drops to <= 30% HP
+ * - 'break_gauge': Break gauge shattered
+ * - 'player_low_hp': A player Servant drops to <= 25% HP
+ * - 'guts_survived': A player Servant survives a fatal hit with Guts
+ */
+export function getDarkSakuraHpReactiveQuote(
+  trigger: 'boss_low_hp' | 'break_gauge' | 'player_low_hp' | 'guts_survived',
+  record: DarkSakuraKarmaRecord,
+  servantName?: string
+): { quote: string } {
+  const tier = getDarkSakuraTier(record);
+
+  switch (trigger) {
+    case 'boss_low_hp':
+      if (tier === 4) {
+        return { quote: "Even when I'm breaking apart... you still look at me with those warm eyes. Why won't you just let me rest?" };
+      }
+      if (tier === 3) {
+        return { quote: "My core is crumbling... but your hand didn't tremble when you stayed your blade before. Is this really the end?" };
+      }
+      if (tier === 1) {
+        return { quote: "Fufu... You carve into my body so mercilessly! Go on then, executioner, finish your job!" };
+      }
+      return { quote: "The black mud spills from my wounds... Can you hear the shadows screaming beneath the surface?" };
+
+    case 'break_gauge':
+      if (tier === 4) {
+        return { quote: "The seal shattered... The abyssal core is exposed. Please... don't let the shadow consume us both!" };
+      }
+      if (tier === 1) {
+        return { quote: "You shattered my vessel! Fufu... Ahaha! Is that all you've got? The abyss only gets deeper from here!" };
+      }
+      return { quote: "Agh...! The Grail's corruption overflows! The true shadow awakens now!" };
+
+    case 'player_low_hp': {
+      const sName = servantName || 'your Servant';
+      if (tier === 4) {
+        return { quote: `Stop! ${sName} is at their limit... Don't force them to suffer for my sake!` };
+      }
+      if (tier === 1) {
+        return { quote: `Look at ${sName} stumbling in the mud... Just like all the rest, you'll watch them rot.` };
+      }
+      return { quote: `${sName} is drowning in my shadow mud... How much longer can they stand?` };
+    }
+
+    case 'guts_survived': {
+      const targetName = servantName || 'Your Servant';
+      if (tier === 4) {
+        return { quote: `They stood back up... ${targetName}'s soul refuses to break in this dark cavern.` };
+      }
+      if (tier === 1) {
+        return { quote: `Persistent bug! ${targetName} clings to life... How pathetic!` };
+      }
+      return { quote: `Refusing to fall? ${targetName}'s conviction is stubborn...` };
+    }
+
+    default:
+      return { quote: '' };
+  }
+}
+
+/**
  * Calculates the trust probability (0.0 to 1.0) when a Master chooses to SPARE her.
  */
 export function calculateSpareTrustChance(record: DarkSakuraKarmaRecord): number {

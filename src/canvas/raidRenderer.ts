@@ -531,6 +531,9 @@ export interface RaidBattleState {
   turnDamageTaken?: number; // Damage dealt by players this turn
   chaosSporesActive?: boolean; // Phase 2 odd-turn 20% DEF shield
   bossShield?: number; // Chaos Deluge shield
+  bossDialogueNotice?: string;
+  triggeredBossLowHp?: boolean;
+  triggeredGutsDialogue?: boolean;
   finishingBlow?: {
     userId: string;
     servantName: string;
