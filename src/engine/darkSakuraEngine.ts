@@ -115,9 +115,11 @@ export function getDarkSakuraHpReactiveQuote(
       if (tier === 4) {
         return {
           quote: pickRandom([
+            "My vessel is breaking... but for the first time, I'm not afraid. If I collapse here, will you catch me before I hit the cold ground?",
+            "The shadow is losing its grip on my body... Please, just stay close to me. Your presence is the only anchor keeping my soul anchored to this world.",
+            "Even as my mana leaks into the dark... I can feel your heart beating next to mine. Thank you for never giving up on me...",
             "Even when I'm breaking apart... you still look at me with those warm eyes. Why won't you just let me rest?",
-            "My vessel is shattering... but your blade never once sought my throat. Master... is this your kindness?",
-            "The shadow is pulling me under... yet you stand there without fear. Please... stay safe."
+            "My vessel is shattering... but your blade never once sought my throat. Master... is this your kindness?"
           ])
         };
       }
@@ -154,8 +156,10 @@ export function getDarkSakuraHpReactiveQuote(
       if (tier === 4) {
         return {
           quote: pickRandom([
+            "The dark core shattered...! The corruption is leaking everywhere... Quick, take my hand before the mud pulls us apart!",
+            "Aah...! The Grail's restraints broke! Don't look away... I'm holding back the shadow with everything I have for you!",
+            "My vessel cracked wide open... but inside, the light you gave me is still burning bright!",
             "The seal shattered... The abyssal core is exposed. Please... don't let the shadow consume us both!",
-            "The corruption is overflowing! Keep your distance... I can't guarantee I won't hurt you!",
             "My restraints broke...! Hold on... I'm trying to suppress the shadow!"
           ])
         };
@@ -166,6 +170,15 @@ export function getDarkSakuraHpReactiveQuote(
             "You shattered my vessel! Fufu... Ahaha! Is that all you've got? The abyss only gets deeper from here!",
             "Shattering my outer core only releases more shadow! Come, executioner, let's drown together!",
             "Ah... Such violence! You really love tearing me apart, don't you?"
+          ])
+        };
+      }
+      if (tier === 3) {
+        return {
+          quote: pickRandom([
+            "The seal broke...! The shadow is thrashing inside me, but I won't let it reach you!",
+            "Agh...! You cracked my shell... I'm trying so hard to keep the black mud from touching you!",
+            "My defenses shattered... Please, Master, stay firm! Don't let the abyss swallow your hope!"
           ])
         };
       }
@@ -185,9 +198,11 @@ export function getDarkSakuraHpReactiveQuote(
       if (tier === 4) {
         return {
           quote: pickRandom([
+            `No...! ${sName} is bleeding because of my cursed mud! Please... retreat or heal them! I can't bear watching those you care about get hurt!`,
+            `Stop... don't force ${sName} to suffer for my sake! My heart breaks every time I see them bleed in front of me!`,
+            `${sName}'s spirit origin is flickering... Please be careful! I don't want my curse to leave another scar on your heart!`,
             `Stop! ${sName} is at their limit... Don't force them to suffer for my sake!`,
-            `${sName} can barely stand... Please, retreat before the shadow devours them completely!`,
-            `Their spirit origin is fading... Don't make them die in this dark cavern for me!`
+            `${sName} can barely stand... Please, retreat before the shadow devours them completely!`
           ])
         };
       }
@@ -197,6 +212,15 @@ export function getDarkSakuraHpReactiveQuote(
             `Look at ${sName} stumbling in the mud... Just like all the rest, you'll watch them rot.`,
             `${sName}'s blood tastes so sweet... Will you watch them dissolve, executioner?`,
             `Fufu... Another servant about to be digested in my shadow. How pathetic.`
+          ])
+        };
+      }
+      if (tier === 3) {
+        return {
+          quote: pickRandom([
+            `Ah...! ${sName} is stumbling in the black mud! Please, Master, call a retreat before my shadow devours them!`,
+            `${sName}'s spirit origin is weakening under my curse... I don't want to be the cause of their death!`,
+            `Please... heal ${sName}! I can't control the black tendrils when they smell blood!`
           ])
         };
       }
@@ -217,9 +241,11 @@ export function getDarkSakuraHpReactiveQuote(
       if (tier === 4) {
         return {
           quote: pickRandom([
+            `${targetName} stood back up... Their loyalty to you is so beautiful. It reminds me of why I fell in love with your kindness...`,
+            `Refusing to fall in the dark cavern... Seeing ${targetName}'s resolve makes me want to fight back against this curse even harder!`,
+            `Surviving the abyssal tendrils... Your bond with ${targetName} is an unbreakable shield that even the Grail cannot shatter!`,
             `They stood back up... ${targetName}'s soul refuses to break in this dark cavern.`,
-            `Such stubborn resolve... ${targetName} rises again despite the shadow's weight.`,
-            `${targetName} survived...? Their bond with you must be truly unbreakable.`
+            `Such stubborn resolve... ${targetName} rises again despite the shadow's weight.`
           ])
         };
       }
@@ -229,6 +255,15 @@ export function getDarkSakuraHpReactiveQuote(
             `Persistent bug! ${targetName} clings to life... How pathetic!`,
             `Refusing to die? Fufu... That only means I get to tear ${targetName} apart again!`,
             `Struggling back from death? All you did was buy a few more seconds in the dark!`
+          ])
+        };
+      }
+      if (tier === 3) {
+        return {
+          quote: pickRandom([
+            `${targetName} stood back up from the brink of death...! Their trust in you is truly magnificent...`,
+            `Rising again despite the shadow's crushing weight... Seeing ${targetName} fight like that gives me strength too!`,
+            `They survived my abyssal strike...? That bond between you two is truly unbreakable!`
           ])
         };
       }
@@ -248,9 +283,11 @@ export function getDarkSakuraHpReactiveQuote(
       if (tier === 4) {
         return {
           quote: pickRandom([
+            "A Noble Phantasm... What a warm, radiant light! Master, please... use that power to break my chains!",
+            "Such a beautiful, unyielding strike... Pour all your conviction into this blow! I trust you with my life!",
+            "That light... It feels like a morning sun breaking through a winter morning. Purify the shadow inside me!",
             "A Noble Phantasm...? Master, please... use that power to break my chains!",
-            "Such bright light... Don't let the shadow devour your spirit origin!",
-            "Unleashing your ultimate strike... I'm sorry you have to carry this burden!"
+            "Such bright light... Don't let the shadow devour your spirit origin!"
           ])
         };
       }
@@ -656,6 +693,29 @@ export function generateDarkSakuraIntroDialogue(
             `"A blood-soaked streak of ${hostRecord.slayerStreak} executions... You don't see a girl here at all, do you, ${host.username}? Just a boss to harvest."`
           ]),
           bannerQuote: 'You treat carving me apart like routine paperwork, don\'t you?'
+        })
+      });
+    }
+
+    // 5b. Tier 4 Pacifist Devotion temperament reaction
+    if (hostTier === 4) {
+      candidates.push({
+        category: 'tier_pacifist',
+        weight: 8,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"Fifty times you have walked into this dark cavern, ${host.username}, and not once have you drawn a weapon to kill me... Why do you look at a monster like me with such gentle eyes?"`,
+            `"The black mud is so cold, ${host.username}, but whenever you stand before me, the shivering stops... You really aren't going to abandon me, are you?"`,
+            `"I used to think my existence was only meant to bring ruin, ${host.username}... but if a person like you exists in this world, then maybe... maybe I was allowed to be born after all."`,
+            `"Even when the Grail's shadow screams at me to tear you apart, my heart refuses to move... I would rather break my own core than hurt a single hair on your head, ${host.username}."`,
+            `"You've held out your hand to me so many times, ${host.username}... Please, hold me tight. Don't let the shadow pull me back into the abyss!"`,
+            `"I was so afraid, ${host.username}... afraid that one day you'd realize how dirty I am and leave me in the dark. But you just keep coming back..."`,
+            `"If this corrupt body is the price for receiving your warmth, ${host.username}, then I don't care about the Grail anymore... I only want to stay by your side."`,
+            `"Fifty battles, ${host.username}... Fifty times you chose mercy over execution. For the first time in my life, I feel like I'm allowed to breathe."`,
+            `"Please, ${host.username}... don't look at me like I'm a tragic victim. Just call my name... Sakura. Hearing you say it makes the darkness melt away."`,
+            `"If the entire world demands my execution, will you still be my hero, ${host.username}? ...Ah, what a foolish question. You've already answered it fifty times over."`
+          ]),
+          bannerQuote: 'Why do you look at a monster like me with such gentle eyes?'
         })
       });
     }
