@@ -346,11 +346,12 @@ export function generateDarkSakuraIntroDialogue(
 
   if (isMulti) {
     // Multi-player team dynamics
-    const tiers = participants.map(p => getDarkSakuraTier(getDarkSakuraRecord(p.master)));
-    const hasSlayer = tiers.some(t => t === 1);
-    const hasMercy = tiers.some(t => t >= 3);
-    const allSlayers = tiers.every(t => t === 1);
-    const allMercy = tiers.every(t => t >= 3);
+    const records = participants.map(p => getDarkSakuraRecord(p.master));
+    const tiers = records.map(r => getDarkSakuraTier(r));
+    const hasSlayer = tiers.some(t => t === 1) || records.some(r => r.slayerStreak >= 3);
+    const hasMercy = tiers.some(t => t >= 3) || records.some(r => r.mercyStreak >= 3);
+    const allSlayers = tiers.every(t => t === 1) || (records.length > 1 && records.every(r => r.slayerStreak >= 2));
+    const allMercy = tiers.every(t => t >= 3) || (records.length > 1 && records.every(r => r.mercyStreak >= 2));
 
     if (egg) {
       candidates.push({
@@ -360,6 +361,40 @@ export function generateDarkSakuraIntroDialogue(
           dialogue: `Dark Sakura freezes as her eyes lock onto ${egg.name}...\n\n"${egg.quote}"`,
           bannerQuote: `Dark Sakura's gaze locks onto ${egg.name}...`,
           easterEggServant: egg.name
+        })
+      });
+    }
+
+    // Host personal Mercy Streak in co-op (Boosted weight)
+    if (hostRecord.mercyStreak >= 2) {
+      const streakWeight = hostRecord.mercyStreak >= 5 ? 15 : (hostRecord.mercyStreak >= 3 ? 12 : 8);
+      candidates.push({
+        category: 'streak_mercy',
+        weight: streakWeight,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"You brought allies this time, ${host.username}... yet that's ${hostRecord.mercyStreak} times in a row you've shown mercy. Are your companions here to share your softness, or watch you drown?"`,
+            `"${hostRecord.mercyStreak} consecutive bouts of holding back your killing blow, ${host.username}... Even surrounded by a vanguard, your gentle resolve hasn't cracked."`,
+            `"${host.username}, your ${hostRecord.mercyStreak}-encounter mercy streak precedes you. Did your party follow you because of that kindness, or despite it?"`
+          ]),
+          bannerQuote: `Even with allies, that's ${hostRecord.mercyStreak} times you've stayed your blade.`
+        })
+      });
+    }
+
+    // Host personal Slayer Streak in co-op (Boosted weight)
+    if (hostRecord.slayerStreak >= 2) {
+      const streakWeight = hostRecord.slayerStreak >= 5 ? 15 : (hostRecord.slayerStreak >= 3 ? 12 : 8);
+      candidates.push({
+        category: 'streak_slayer',
+        weight: streakWeight,
+        generate: () => ({
+          dialogue: pickRandom([
+            `"The butcher ${host.username} brings reinforcements for their ${hostRecord.slayerStreak}th execution... Are these hounds here to help you carve, or just to scavenge the remnants?"`,
+            `"${hostRecord.slayerStreak} massacres in a row, ${host.username}... and now you lead an entire party to harvest my core. How utterly ruthless."`,
+            `"A streak of ${hostRecord.slayerStreak} executions, and still you bring more blades to the cavern, ${host.username}... Ahaha! Let's see if your vanguard can keep up with your bloodlust!"`
+          ]),
+          bannerQuote: `A streak of ${hostRecord.slayerStreak} executions... and now you lead a party.`
         })
       });
     }
@@ -396,7 +431,7 @@ export function generateDarkSakuraIntroDialogue(
     } else if (allSlayers) {
       candidates.push({
         category: 'coop_all_slayers',
-        weight: 5,
+        weight: 10,
         generate: () => ({
           dialogue: pickRandom([
             `"A full circle of executioners gathered together... How flattering. You must really want to watch me dissolve under your Noble Phantasms today."`,
@@ -410,7 +445,7 @@ export function generateDarkSakuraIntroDialogue(
     } else if (allMercy) {
       candidates.push({
         category: 'coop_all_mercy',
-        weight: 5,
+        weight: 10,
         generate: () => ({
           dialogue: pickRandom([
             `"Not a single killer among all four of you? A circle of saints marching straight into the abyss... Do you really think this mud won't swallow you if you hesitate?"`,
@@ -498,11 +533,12 @@ export function generateDarkSakuraIntroDialogue(
       });
     }
 
-    // 4. Consecutive Mercy Streak reaction
-    if (hostRecord.mercyStreak >= 3) {
+    // 4. Consecutive Mercy Streak reaction (High Weight Priority)
+    if (hostRecord.mercyStreak >= 2) {
+      const streakWeight = hostRecord.mercyStreak >= 5 ? 15 : (hostRecord.mercyStreak >= 3 ? 12 : 8);
       candidates.push({
         category: 'streak_mercy',
-        weight: 4,
+        weight: streakWeight,
         generate: () => ({
           dialogue: pickRandom([
             `"That's ${hostRecord.mercyStreak} consecutive bouts where you stayed your blade at the very end... When will you learn that monsters don't deserve fairy tales, ${host.username}?"`,
@@ -515,11 +551,12 @@ export function generateDarkSakuraIntroDialogue(
       });
     }
 
-    // 5. Consecutive Slayer Streak reaction
-    if (hostRecord.slayerStreak >= 3) {
+    // 5. Consecutive Slayer Streak reaction (High Weight Priority)
+    if (hostRecord.slayerStreak >= 2) {
+      const streakWeight = hostRecord.slayerStreak >= 5 ? 15 : (hostRecord.slayerStreak >= 3 ? 12 : 8);
       candidates.push({
         category: 'streak_slayer',
-        weight: 4,
+        weight: streakWeight,
         generate: () => ({
           dialogue: pickRandom([
             `"Another round, another execution. You treat carving me apart like routine paperwork, don't you, ${host.username}? Come on then... draw your weapon."`,
