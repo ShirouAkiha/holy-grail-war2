@@ -104,10 +104,27 @@ function writeJsonAtomic(filePath: string, data: any, backupPrefix?: string): vo
 
     // Atomic write to prevent partial file writes on process restart
     const tmpPath = `${filePath}.${Date.now()}.${Math.random().toString(36).substring(2, 7)}.tmp`;
-    fs.writeFileSync(tmpPath, serialized, 'utf-8');
-    fs.renameSync(tmpPath, filePath);
+    try {
+      fs.writeFileSync(tmpPath, serialized, 'utf-8');
+      try {
+        fs.renameSync(tmpPath, filePath);
+      } catch (renameErr: any) {
+        // Windows / Bun file lock fallback (EPERM / EACCES / EBUSY)
+        // If the target file is locked or anti-virus/IDE has a lock, fallback to copyFile or direct write
+        try {
+          fs.copyFileSync(tmpPath, filePath);
+          fs.unlinkSync(tmpPath);
+        } catch {
+          fs.writeFileSync(filePath, serialized, 'utf-8');
+          try { fs.unlinkSync(tmpPath); } catch {}
+        }
+      }
+    } catch (writeErr) {
+      // Direct write fallback if temp file creation failed
+      fs.writeFileSync(filePath, serialized, 'utf-8');
+    }
   } catch (err) {
-    console.error(`[Database] Failed to atomically write ${filePath}:`, err);
+    console.error(`[Database] Failed to write ${filePath}:`, err);
   }
 }
 

@@ -801,11 +801,11 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.fillText(dynamicBossName, textStartX, bossHudY + 44);
   ctx.shadowBlur = 0;
 
-  // Boss HP Bar: Width: 380px, Height: 18px for multi-phase (460x26 for Barbatos)
+  // Boss HP Bar: Width: 380px, Height: 22px for multi-phase (460x26 for Barbatos)
   const bossHpW = hasPhases ? 380 : 460;
-  const bossHpH = hasPhases ? 18 : 26;
+  const bossHpH = hasPhases ? 22 : 26;
   const bossHpX = textStartX;
-  const bossHpY = hasPhases ? bossHudY + 54 : bossHudY + 52;
+  const bossHpY = hasPhases ? bossHudY + 52 : bossHudY + 52;
 
   const bossHpGrad = ctx.createLinearGradient(bossHpX, 0, bossHpX + bossHpW, 0);
   if (isDarkSakura) {
@@ -823,9 +823,9 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
   drawProgressBar(ctx, bossHpX, bossHpY, bossHpW, bossHpH, curHp, maxHp, bossHpGrad, 'rgba(15, 23, 42, 0.95)', '#94a3b8');
 
-  // HP Numbers on Boss HP Bar
+  // HP Numbers on Boss HP Bar (Large bold 15px sans-serif)
   ctx.fillStyle = '#ffffff';
-  ctx.font = hasPhases ? 'bold 13px sans-serif' : 'bold 15px sans-serif';
+  ctx.font = 'bold 15px sans-serif';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   ctx.fillText(
@@ -970,257 +970,303 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.fillText(`TURN  ${state.round} Turn(s)`, trX + 16, trY + 72);
   ctx.restore();
 
-  // 3. Top-Center/Right In-Canvas Tactical Action HUD (3x Bigger, Single Focused Action)
+  // 3. Top-Center/Right In-Canvas Tactical Action / Visual Novel Dialogue HUD
+  // Neatly positioned between Boss HP Bar (left) and Quest Info Box (right) with zero overlap!
   ctx.save();
-  const logBoxX = 540;
-  const logBoxY = 24;
-  const logBoxW = trX - logBoxX - 16; // ~459px
-  const logBoxH = 205; // Fits right above servant sprites
+  const logBoxX = 575;
+  const logBoxY = 20;
+  const logBoxW = trX - logBoxX - 16; // ~424px
+  const logBoxH = 185; // Fits right above servant cards (Y: 210)
 
-  // Semi-Transparent Glass Panel
-  const logBgGrad = ctx.createLinearGradient(logBoxX, logBoxY, logBoxX, logBoxY + logBoxH);
-  logBgGrad.addColorStop(0, 'rgba(15, 23, 42, 0.94)');
-  logBgGrad.addColorStop(1, 'rgba(2, 6, 23, 0.98)');
-  ctx.fillStyle = logBgGrad;
-  ctx.strokeStyle = '#f59e0b'; // Gold border
-  ctx.lineWidth = 2;
-  drawRoundRect(ctx, logBoxX, logBoxY, logBoxW, logBoxH, 10, true, true);
+  // Determine if Dark Sakura has dialogue to speak
+  const hasBossDialogue = Boolean(state.bossDialogueNotice && state.bossDialogueNotice.trim().length > 0);
 
-  // Top highlight line
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(logBoxX + 10, logBoxY + 1.5);
-  ctx.lineTo(logBoxX + logBoxW - 10, logBoxY + 1.5);
-  ctx.stroke();
-
-  // Determine the active single focus action
-  let categoryTitle = 'BATTLE IN PROGRESS';
-  let categoryColor = '#38bdf8';
-  let categoryBg = 'rgba(56, 189, 248, 0.2)';
-  let headline = 'Active Combat Phase';
-  let headlineColor = '#ffffff';
-  let bigStat = 'READY TO STRIKE';
-  let bigStatColor = '#fde047';
-  let subDetail = 'Select 3 Command Cards below';
-  let subDetailColor = '#38bdf8';
-
-  // Helper to clean Markdown and special artifacts from canvas text
-  const cleanHudText = (text: string): string => {
-    if (!text) return '';
-    return text
-      .replace(/\*\*/g, '')
-      .replace(/\*/g, '')
-      .replace(/__/g, '')
-      .replace(/_/g, '')
-      .replace(/~~/g, '')
-      .replace(/`/g, '')
-      .replace(/<@!?[0-9]+>/g, '')
-      .replace(/\[/g, '')
-      .replace(/\]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
-
-  if (state.lastHudAction) {
-    const act = state.lastHudAction;
-    categoryTitle = cleanHudText(act.category || 'COMBAT ACTION');
-    categoryColor = act.categoryColor || '#38bdf8';
-    categoryBg = `${categoryColor}33`;
-    headline = cleanHudText(act.headline || 'Battle Action');
-    headlineColor = '#ffffff';
-    bigStat = cleanHudText(act.bigStat || 'ACTION EXECUTED');
-    bigStatColor = act.bigStatColor || '#fde047';
-    subDetail = cleanHudText(act.subDetail || 'Select Command Cards to attack');
-    subDetailColor = act.subDetailColor || '#38bdf8';
-  } else if (state.lastEnemyPhase) {
-    const ep = state.lastEnemyPhase;
-    categoryTitle = 'ENEMY ACTION';
-    categoryColor = '#f87171';
-    categoryBg = 'rgba(239, 68, 68, 0.22)';
-
-    headline = cleanHudText(ep.skillName ? `${dynamicBossName} • ${ep.skillName}` : `${dynamicBossName} Strike`);
-    headlineColor = '#fca5a5';
-
-    if (ep.totalDamage && ep.totalDamage > 0) {
-      bigStat = `${ep.totalDamage.toLocaleString()} DMG DEALT`;
-      bigStatColor = '#ef4444';
-    } else {
-      bigStat = cleanHudText(ep.actionName || 'SKILL ACTIVATED');
-      bigStatColor = '#fbbf24';
-    }
-
-    if (ep.debuffsInflicted && ep.debuffsInflicted.length > 0) {
-      subDetail = cleanHudText(`Debuff: ${ep.debuffsInflicted.join(', ')}`);
-      subDetailColor = '#c084fc';
-    } else if (ep.specialEvents && ep.specialEvents.length > 0) {
-      subDetail = cleanHudText(ep.specialEvents[0]);
-      subDetailColor = '#38bdf8';
-    } else {
-      subDetail = 'Enemy Turn Phase Concluded';
-      subDetailColor = '#cbd5e1';
-    }
-  } else {
-    categoryTitle = 'RAID COMMENCED';
-    categoryColor = '#fbbf24';
-    categoryBg = 'rgba(251, 191, 36, 0.2)';
-    headline = cleanHudText(`Encounter: ${dynamicBossName}`);
-    headlineColor = '#ffffff';
-    bigStat = `PHASE ${state.currentPhase || 1} ENGAGED`;
-    bigStatColor = '#38bdf8';
-    subDetail = 'Break all 3 Gauges to defeat Calamity';
-    subDetailColor = '#94a3b8';
-  }
-
-  // Draw Category Pill (Top Left)
-  ctx.font = 'bold 12px sans-serif';
-  const catText = categoryTitle.toUpperCase();
-  const catPillW = ctx.measureText(catText).width + 16;
-  const catPillH = 22;
-  const catPillX = logBoxX + 14;
-  const catPillY = logBoxY + 10;
-  ctx.fillStyle = categoryBg;
-  ctx.strokeStyle = categoryColor;
-  ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, catPillX, catPillY, catPillW, catPillH, 5, true, true);
-
-  ctx.fillStyle = categoryColor;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(catText, catPillX + catPillW / 2, catPillY + catPillH / 2);
-
-  // Draw Round Pill (Top Right)
-  const roundText = `ROUND ${state.round || 1}`;
-  ctx.font = 'bold 12px sans-serif';
-  const roundPillW = ctx.measureText(roundText).width + 16;
-  const roundPillH = 22;
-  const roundPillX = logBoxX + logBoxW - roundPillW - 14;
-  const roundPillY = logBoxY + 10;
-  ctx.fillStyle = 'rgba(148, 163, 184, 0.15)';
-  ctx.strokeStyle = '#94a3b8';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, roundPillX, roundPillY, roundPillW, roundPillH, 5, true, true);
-
-  ctx.fillStyle = '#cbd5e1';
-  ctx.fillText(roundText, roundPillX + roundPillW / 2, roundPillY + roundPillH / 2);
-
-  // Divider Line
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(logBoxX + 10, logBoxY + 38);
-  ctx.lineTo(logBoxX + logBoxW - 10, logBoxY + 38);
-  ctx.stroke();
-
-  // 1. Line 1: Character / Action Name (Dynamic text sizing so it NEVER cuts off)
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = headlineColor;
-  let headFontSize = 22;
-  ctx.font = `bold ${headFontSize}px sans-serif`;
-  while (ctx.measureText(headline).width > logBoxW - 32 && headFontSize > 14) {
-    headFontSize -= 1;
-    ctx.font = `bold ${headFontSize}px sans-serif`;
-  }
-  ctx.fillText(headline, logBoxX + 16, logBoxY + 74);
-
-  // 2. Line 2: Giant Stat / Damage / Skill (Dynamic text sizing so it NEVER cuts off)
-  ctx.fillStyle = bigStatColor;
-  let statFontSize = 34;
-  ctx.font = `bold ${statFontSize}px sans-serif`;
-  while (ctx.measureText(bigStat).width > logBoxW - 32 && statFontSize > 16) {
-    statFontSize -= 1;
-    ctx.font = `bold ${statFontSize}px sans-serif`;
-  }
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-  ctx.shadowBlur = 6;
-  ctx.fillText(bigStat, logBoxX + 16, logBoxY + 128);
-  ctx.shadowBlur = 0;
-
-  // 3. Line 3: Secondary Sub-Detail / Effect (Bigger ~24px bold)
-  ctx.fillStyle = subDetailColor;
-  let subFontSize = 24;
-  ctx.font = `bold ${subFontSize}px sans-serif`;
-  while (ctx.measureText(subDetail).width > logBoxW - 32 && subFontSize > 13) {
-    subFontSize -= 1;
-    ctx.font = `bold ${subFontSize}px sans-serif`;
-  }
-  ctx.fillText(subDetail, logBoxX + 16, logBoxY + 175);
-
-  ctx.restore();
-
-  // 3.5 In-Battle Visual Novel Dialogue Box Overlay (Placed neatly in midground Y: 112-204)
-  if (state.bossDialogueNotice) {
-    ctx.save();
-    const vnX = 240;
-    const vnY = 112;
-    const vnW = 780;
-    const vnH = 92;
-
-    // Translucent glass panel
-    const vnGrad = ctx.createLinearGradient(vnX, vnY, vnX, vnY + vnH);
-    vnGrad.addColorStop(0, 'rgba(24, 9, 38, 0.96)');
+  if (hasBossDialogue) {
+    // ========================================================
+    // VISUAL NOVEL DIALOGUE FRAME (Seamlessly fills central HUD)
+    // ========================================================
+    const vnGrad = ctx.createLinearGradient(logBoxX, logBoxY, logBoxX, logBoxY + logBoxH);
+    vnGrad.addColorStop(0, 'rgba(28, 9, 36, 0.96)');
     vnGrad.addColorStop(1, 'rgba(12, 4, 20, 0.98)');
     ctx.fillStyle = vnGrad;
-    ctx.strokeStyle = '#f43f5e';
+    ctx.strokeStyle = '#f43f5e'; // Crimson rose border
     ctx.lineWidth = 2;
-    ctx.shadowColor = '#f43f5e';
-    ctx.shadowBlur = 10;
-    drawRoundRect(ctx, vnX, vnY, vnW, vnH, 10, true, true);
+    ctx.shadowColor = '#e11d48';
+    ctx.shadowBlur = 8;
+    drawRoundRect(ctx, logBoxX, logBoxY, logBoxW, logBoxH, 10, true, true);
     ctx.shadowBlur = 0;
 
-    // Inner gold border
-    ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+    // Inner gold accent line
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
     ctx.lineWidth = 1;
-    drawRoundRect(ctx, vnX + 3, vnY + 3, vnW - 6, vnH - 6, 8, false, true);
+    drawRoundRect(ctx, logBoxX + 3, logBoxY + 3, logBoxW - 6, logBoxH - 6, 8, false, true);
 
-    // Left avatar portrait
-    let textX = vnX + 18;
-    if (loadedImages.bossAvatarImg) {
-      const avSize = 74;
-      const avX = vnX + 10;
-      const avY = vnY + 9;
+    // Speaker Nameplate Pill (Top Left)
+    const speakerPillX = logBoxX + 12;
+    const speakerPillY = logBoxY + 10;
+    const speakerText = isDarkSakura ? '🌸 DARK SAKURA' : `👑 ${dynamicBossName.toUpperCase()}`;
+    ctx.font = 'bold 12px sans-serif';
+    const spkW = ctx.measureText(speakerText).width + 18;
+    const spkH = 22;
+
+    ctx.fillStyle = 'rgba(244, 63, 94, 0.25)';
+    ctx.strokeStyle = '#fda4af';
+    ctx.lineWidth = 1.2;
+    drawRoundRect(ctx, speakerPillX, speakerPillY, spkW, spkH, 5, true, true);
+
+    ctx.fillStyle = '#fecdd3';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(speakerText, speakerPillX + spkW / 2, speakerPillY + spkH / 2);
+
+    // Dialogue State Pill (Top Right)
+    const phaseText = `PHASE ${state.currentPhase || 1} • R${state.round || 1}`;
+    ctx.font = 'bold 11px sans-serif';
+    const phW = ctx.measureText(phaseText).width + 14;
+    const phH = 20;
+    const phX = logBoxX + logBoxW - phW - 12;
+    const phY = logBoxY + 11;
+    ctx.fillStyle = 'rgba(251, 191, 36, 0.15)';
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, phX, phY, phW, phH, 4, true, true);
+    ctx.fillStyle = '#fde68a';
+    ctx.fillText(phaseText, phX + phW / 2, phY + phH / 2);
+
+    // Divider Line
+    ctx.strokeStyle = 'rgba(244, 63, 94, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(logBoxX + 10, logBoxY + 36);
+    ctx.lineTo(logBoxX + logBoxW - 10, logBoxY + 36);
+    ctx.stroke();
+
+    // Boss Portrait Avatar (Left side of dialogue frame)
+    const avSize = 72;
+    const avX = logBoxX + 12;
+    const avY = logBoxY + 44;
+    let textStartX = logBoxX + 14;
+
+    if (bossAvatarImg) {
       ctx.save();
       drawRoundRect(ctx, avX, avY, avSize, avSize, 8, true, true);
       ctx.fillStyle = '#0f172a';
       ctx.strokeStyle = '#fbbf24';
       ctx.lineWidth = 1.5;
       ctx.clip();
-      ctx.drawImage(loadedImages.bossAvatarImg, avX, avY, avSize, avSize);
+      ctx.drawImage(bossAvatarImg, avX, avY, avSize, avSize);
       ctx.restore();
-      textX = vnX + 96;
+      textStartX = avX + avSize + 12;
     }
 
-    const maxTextW = vnW - (textX - vnX) - 24;
-
-    // Speaker Name Badge
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillStyle = '#fda4af';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText('🌸 DARK SAKURA', textX, vnY + 12);
-
-    // Cleaned Dialogue Text (20px bold sans-serif)
-    const rawNotice = state.bossDialogueNotice
+    // Cleaned dialogue text
+    const rawNotice = (state.bossDialogueNotice || '')
       .replace(/^🌸\s*\*?Dark Sakura:\*?\s*/i, '')
       .replace(/\*\*/g, '')
       .replace(/\*/g, '')
       .trim();
 
-    ctx.font = 'bold 20px sans-serif';
+    const maxDialogueW = logBoxX + logBoxW - textStartX - 16;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
     ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = '#000000';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
     ctx.shadowBlur = 6;
-    drawWrappedVNText(ctx, `"${rawNotice}"`, textX, vnY + 36, maxTextW, 25, 2);
+    drawWrappedVNText(ctx, `“${rawNotice}”`, textStartX, logBoxY + 46, maxDialogueW, 23, 4);
     ctx.shadowBlur = 0;
 
-    // Blinking Next Chevron
+    // Bottom Action Ticker (subtle context line so tactical events remain visible)
+    if (state.lastHudAction || state.lastEnemyPhase) {
+      const tickerText = state.lastHudAction
+        ? `▶ ${state.lastHudAction.headline || 'Action'}: ${state.lastHudAction.bigStat || ''}`
+        : `▶ ${state.lastEnemyPhase?.skillName || 'Enemy Action'}: ${state.lastEnemyPhase?.totalDamage ? `${state.lastEnemyPhase.totalDamage.toLocaleString()} DMG` : 'Skill Executed'}`;
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.textAlign = 'left';
+      ctx.fillText(tickerText.slice(0, 52), logBoxX + 14, logBoxY + logBoxH - 14);
+    }
+
+    // Blinking indicator diamond
     const timeSec = Date.now() / 1000;
     const pulseAlpha = 0.5 + 0.5 * Math.sin(timeSec * 5);
-    drawDiamond(ctx, vnX + vnW - 18, vnY + vnH - 18, 12, `rgba(251, 191, 36, ${pulseAlpha})`, '#fef08a', 1);
+    drawDiamond(ctx, logBoxX + logBoxW - 14, logBoxY + logBoxH - 14, 10, `rgba(251, 191, 36, ${pulseAlpha})`, '#fef08a', 1);
 
-    ctx.restore();
+  } else {
+    // ========================================================
+    // STANDARD TACTICAL ACTION HUD
+    // ========================================================
+    const logBgGrad = ctx.createLinearGradient(logBoxX, logBoxY, logBoxX, logBoxY + logBoxH);
+    logBgGrad.addColorStop(0, 'rgba(15, 23, 42, 0.94)');
+    logBgGrad.addColorStop(1, 'rgba(2, 6, 23, 0.98)');
+    ctx.fillStyle = logBgGrad;
+    ctx.strokeStyle = '#f59e0b'; // Gold border
+    ctx.lineWidth = 2;
+    drawRoundRect(ctx, logBoxX, logBoxY, logBoxW, logBoxH, 10, true, true);
+
+    // Top highlight line
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(logBoxX + 10, logBoxY + 1.5);
+    ctx.lineTo(logBoxX + logBoxW - 10, logBoxY + 1.5);
+    ctx.stroke();
+
+    // Determine the active single focus action
+    let categoryTitle = 'BATTLE IN PROGRESS';
+    let categoryColor = '#38bdf8';
+    let categoryBg = 'rgba(56, 189, 248, 0.2)';
+    let headline = 'Active Combat Phase';
+    let headlineColor = '#ffffff';
+    let bigStat = 'READY TO STRIKE';
+    let bigStatColor = '#fde047';
+    let subDetail = 'Select 3 Command Cards below';
+    let subDetailColor = '#38bdf8';
+
+    // Helper to clean Markdown and special artifacts from canvas text
+    const cleanHudText = (text: string): string => {
+      if (!text) return '';
+      return text
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/__/g, '')
+        .replace(/_/g, '')
+        .replace(/~~/g, '')
+        .replace(/`/g, '')
+        .replace(/<@!?[0-9]+>/g, '')
+        .replace(/\[/g, '')
+        .replace(/\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    if (state.lastHudAction) {
+      const act = state.lastHudAction;
+      categoryTitle = cleanHudText(act.category || 'COMBAT ACTION');
+      categoryColor = act.categoryColor || '#38bdf8';
+      categoryBg = `${categoryColor}33`;
+      headline = cleanHudText(act.headline || 'Battle Action');
+      headlineColor = '#ffffff';
+      bigStat = cleanHudText(act.bigStat || 'ACTION EXECUTED');
+      bigStatColor = act.bigStatColor || '#fde047';
+      subDetail = cleanHudText(act.subDetail || 'Select Command Cards to attack');
+      subDetailColor = act.subDetailColor || '#38bdf8';
+    } else if (state.lastEnemyPhase) {
+      const ep = state.lastEnemyPhase;
+      categoryTitle = 'ENEMY ACTION';
+      categoryColor = '#f87171';
+      categoryBg = 'rgba(239, 68, 68, 0.22)';
+
+      headline = cleanHudText(ep.skillName ? `${dynamicBossName} • ${ep.skillName}` : `${dynamicBossName} Strike`);
+      headlineColor = '#fca5a5';
+
+      if (ep.totalDamage && ep.totalDamage > 0) {
+        bigStat = `${ep.totalDamage.toLocaleString()} DMG DEALT`;
+        bigStatColor = '#ef4444';
+      } else {
+        bigStat = cleanHudText(ep.actionName || 'SKILL ACTIVATED');
+        bigStatColor = '#fbbf24';
+      }
+
+      if (ep.debuffsInflicted && ep.debuffsInflicted.length > 0) {
+        subDetail = cleanHudText(`Debuff: ${ep.debuffsInflicted.join(', ')}`);
+        subDetailColor = '#c084fc';
+      } else if (ep.specialEvents && ep.specialEvents.length > 0) {
+        subDetail = cleanHudText(ep.specialEvents[0]);
+        subDetailColor = '#38bdf8';
+      } else {
+        subDetail = 'Enemy Turn Phase Concluded';
+        subDetailColor = '#cbd5e1';
+      }
+    } else {
+      categoryTitle = 'RAID COMMENCED';
+      categoryColor = '#fbbf24';
+      categoryBg = 'rgba(251, 191, 36, 0.2)';
+      headline = cleanHudText(`Encounter: ${dynamicBossName}`);
+      headlineColor = '#ffffff';
+      bigStat = `PHASE ${state.currentPhase || 1} ENGAGED`;
+      bigStatColor = '#38bdf8';
+      subDetail = 'Break all 3 Gauges to defeat Calamity';
+      subDetailColor = '#94a3b8';
+    }
+
+    // Draw Category Pill (Top Left)
+    ctx.font = 'bold 12px sans-serif';
+    const catText = categoryTitle.toUpperCase();
+    const catPillW = ctx.measureText(catText).width + 16;
+    const catPillH = 22;
+    const catPillX = logBoxX + 14;
+    const catPillY = logBoxY + 10;
+    ctx.fillStyle = categoryBg;
+    ctx.strokeStyle = categoryColor;
+    ctx.lineWidth = 1.2;
+    drawRoundRect(ctx, catPillX, catPillY, catPillW, catPillH, 5, true, true);
+
+    ctx.fillStyle = categoryColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(catText, catPillX + catPillW / 2, catPillY + catPillH / 2);
+
+    // Draw Round Pill (Top Right)
+    const roundText = `ROUND ${state.round || 1}`;
+    ctx.font = 'bold 12px sans-serif';
+    const roundPillW = ctx.measureText(roundText).width + 16;
+    const roundPillH = 22;
+    const roundPillX = logBoxX + logBoxW - roundPillW - 14;
+    const roundPillY = logBoxY + 10;
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.15)';
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, roundPillX, roundPillY, roundPillW, roundPillH, 5, true, true);
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillText(roundText, roundPillX + roundPillW / 2, roundPillY + roundPillH / 2);
+
+    // Divider Line
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(logBoxX + 10, logBoxY + 38);
+    ctx.lineTo(logBoxX + logBoxW - 10, logBoxY + 38);
+    ctx.stroke();
+
+    // 1. Line 1: Character / Action Name (Dynamic text sizing so it NEVER cuts off)
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = headlineColor;
+    let headFontSize = 22;
+    ctx.font = `bold ${headFontSize}px sans-serif`;
+    while (ctx.measureText(headline).width > logBoxW - 32 && headFontSize > 14) {
+      headFontSize -= 1;
+      ctx.font = `bold ${headFontSize}px sans-serif`;
+    }
+    ctx.fillText(headline, logBoxX + 16, logBoxY + 74);
+
+    // 2. Line 2: Giant Stat / Damage / Skill (Dynamic text sizing so it NEVER cuts off)
+    ctx.fillStyle = bigStatColor;
+    let statFontSize = 34;
+    ctx.font = `bold ${statFontSize}px sans-serif`;
+    while (ctx.measureText(bigStat).width > logBoxW - 32 && statFontSize > 16) {
+      statFontSize -= 1;
+      ctx.font = `bold ${statFontSize}px sans-serif`;
+    }
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowBlur = 6;
+    ctx.fillText(bigStat, logBoxX + 16, logBoxY + 128);
+    ctx.shadowBlur = 0;
+
+    // 3. Line 3: Secondary Sub-Detail / Effect (Bigger ~24px bold)
+    ctx.fillStyle = subDetailColor;
+    let subFontSize = 24;
+    ctx.font = `bold ${subFontSize}px sans-serif`;
+    while (ctx.measureText(subDetail).width > logBoxW - 32 && subFontSize > 13) {
+      subFontSize -= 1;
+      ctx.font = `bold ${subFontSize}px sans-serif`;
+    }
+    ctx.fillText(subDetail, logBoxX + 16, logBoxY + 175);
   }
+
+  ctx.restore();
 
   // ==========================================
   // LAYER 4: Bottom Player HUD (Anchored Y: 210 to 720)
