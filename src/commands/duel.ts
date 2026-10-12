@@ -21,7 +21,7 @@ import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantas
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { calculateCombatantBuffSummary, buildTacticalDossierEmbed } from '../utils/combatBuffHelper';
-import { getServantChainDialogue, shouldTriggerDialogueCutIn, getServantSkillQuote } from '../engine/dialogue';
+import { getServantChainDialogue, shouldTriggerDialogueCutIn, getServantSkillQuote, getServantVictoryDialogue } from '../engine/dialogue';
 import { getServantMatchupDialogue } from '../data/servantMatchups';
 import { generateServantBattleReaction } from '../engine/talkService';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
@@ -7577,7 +7577,7 @@ async function finishDuel(
   if (targetMsg && typeof targetMsg.createMessageComponentCollector === 'function') {
     const fateCollector = targetMsg.createMessageComponentCollector({
       componentType: ComponentType.Button,
-      time: 120000
+      time: 60000
     });
 
     await new Promise<void>((resolve) => {
@@ -7735,7 +7735,8 @@ async function finishDuel(
   const { primaryBondLevelUp, primaryNewBondLevel, primaryUnlockedBondCe, enemyBeatenMultiplier } = rewardReport;
 
   // 6. Build Victory & Final Outcome Embeds
-  const victoryQuote = primaryWinner.servant.customQuotes?.victory || primaryWinner.servant.template?.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
+  const winType = primaryWinner.currentHp >= primaryWinner.maxHp ? 'flawless' : primaryWinner.currentHp <= primaryWinner.maxHp * 0.25 ? 'low_hp' : 'standard';
+  const victoryQuote = getServantVictoryDialogue(winnerName, winType, primaryWinner.servant.customQuotes);
 
   const victoryCardBuffer = await renderDialogueCard(
     winnerName,

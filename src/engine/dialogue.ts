@@ -23,6 +23,14 @@ export interface ServantDialogueProfile {
   heavyDamage?: string[];
   battleStart?: string[];
   attacks?: string[];
+  counterAttack?: string[];
+  critHit?: string[];
+  perfectVictory?: string[];
+  lowHpVictory?: string[];
+  closeMatchVictory?: string[];
+  bossDefeat?: string[];
+  execute?: string[];
+  spare?: string[];
 }
 
 export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = {
@@ -1341,6 +1349,127 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "I should have set aside my grudges...",
       "Oww! That's it, I'm going home..."
     ]
+  },
+  // Hassan-i-Sabbah (Azrael / Azrael the Pale) - Grand Assassin
+  hassan_i_sabbah_azrael: {
+    commandCard1: [
+      "Very well.",
+      "Acknowledged.",
+      "Processing..."
+    ],
+    commandCard2: [
+      "Very well.",
+      "Acknowledged.",
+      "Processing..."
+    ],
+    commandCard3: [
+      "Very well.",
+      "Acknowledged.",
+      "Processing..."
+    ],
+    attacks: [
+      "An audit of flesh.",
+      "Debt collected.",
+      "A cold balance."
+    ],
+    extraAttack: [
+      "The ledger closes. Your total is zero."
+    ],
+    npSelect: [
+      "Initiating final audit."
+    ],
+    noblePhantasm: [
+      "No bribes. No extensions. No appeals. The books are closed, and your balance is null. [ Zabaniyya: Audit of the Pale Angel ]!",
+      "Listen closely. The evening bell has tolled thy name. Surrender thy head to the blade of fate... Mal'ak al-Mawt!"
+    ],
+    skill1: [
+      "Evaluating assets...",
+      "The toll of the bell echoes across the boundary...",
+      "Bare thy neck to the blade of Alaya...",
+      "The Angel of Death draws near!"
+    ],
+    skill2: [
+      "Calculating liability...",
+      "Thirty souls converge as the flock of death.",
+      "Feathers of fate, sever all bonds of mortality!",
+      "Receive the shadow of the thirty birds!"
+    ],
+    skill3: [
+      "Feed upon the bitter fruit of hell, non-believer!",
+      "Roots of the Zaqqūm entwine thy soul...",
+      "Taste the torment of the netherworld!"
+    ],
+    skills: [
+      "Evaluating assets...",
+      "Calculating liability...",
+      "Feed upon the bitter fruit of hell, non-believer!"
+    ],
+    damage: [
+      "An expected loss...",
+      "Tolerable overhead."
+    ],
+    heavyDamage: [
+      "A structural deficit...!",
+      "Calculations disrupted...!"
+    ],
+    defeat: [
+      "The ledger... remains balanced...",
+      "Filing... bankruptcy..."
+    ],
+    victory: [
+      "Account settled. No outstanding balance remains.",
+      "A clean audit. Moving to the next file."
+    ],
+    buster: [
+      "Heavy expenditure. Ensure maximum return.",
+      "An audit of flesh.",
+      "Debt collected."
+    ],
+    arts: [
+      "Methodical distribution. Rebalancing reserves.",
+      "A cold balance.",
+      "Processing..."
+    ],
+    quick: [
+      "Rapid liquidation. Speed is efficiency.",
+      "Acknowledged.",
+      "An audit of flesh."
+    ],
+    mixed: [
+      "A complete audit cycle. Leaving nothing unaccounted for.",
+      "An audit of flesh.",
+      "Debt collected.",
+      "A cold balance."
+    ],
+    desperation: [
+      "An expected loss...",
+      "Calculations disrupted...",
+      "The ledger... remains balanced..."
+    ],
+    counterAttack: [
+      "Auditing your trajectory!"
+    ],
+    critHit: [
+      "Overdue interest applied!"
+    ],
+    perfectVictory: [
+      "Zero capital loss. An exemplary operational efficiency."
+    ],
+    lowHpVictory: [
+      "Near liquidation... but the remaining surplus guarantees survival."
+    ],
+    closeMatchVictory: [
+      "A tight margin, but the net profit belongs to us."
+    ],
+    bossDefeat: [
+      "The major asset has been liquidated. Target erased from the ledger."
+    ],
+    execute: [
+      "Case closed. Soul repossessed."
+    ],
+    spare: [
+      "Debt deferred. Do not default again."
+    ]
   }
 };
 
@@ -1458,6 +1587,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   }
   if (n.includes('tamamo') || n.includes('mikokon') || n.includes('fox wife') || n.includes('amaterasu')) {
     return SERVANT_COMBAT_DIALOGUES.tamamo_no_mae;
+  }
+  if (n.includes('azrael') || n.includes('hassan') || n.includes('pale angel') || n.includes('grand assassin') || n.includes('audit')) {
+    return SERVANT_COMBAT_DIALOGUES.hassan_i_sabbah_azrael;
   }
 
   return GENERIC_PROFILE;
@@ -1669,4 +1801,37 @@ export function getServantSkillQuote(
 
   // 4. Default clean fallback
   return skillObj?.name ? `Activating tactical skill: ${skillObj.name}!` : "My power answers the command!";
+}
+
+/**
+ * Resolves victory quote based on combat finish type (flawless, low_hp, close_match, boss_defeat, standard)
+ */
+export function getServantVictoryDialogue(
+  servantName: string,
+  winType: 'flawless' | 'low_hp' | 'close_match' | 'boss_defeat' | 'standard' = 'standard',
+  customQuotes?: { victory?: string }
+): string {
+  if (customQuotes?.victory) {
+    return customQuotes.victory;
+  }
+
+  const profile = getServantProfile(servantName);
+  if (winType === 'flawless' && profile.perfectVictory && profile.perfectVictory.length > 0) {
+    return profile.perfectVictory[Math.floor(Math.random() * profile.perfectVictory.length)];
+  }
+  if (winType === 'low_hp' && profile.lowHpVictory && profile.lowHpVictory.length > 0) {
+    return profile.lowHpVictory[Math.floor(Math.random() * profile.lowHpVictory.length)];
+  }
+  if (winType === 'close_match' && profile.closeMatchVictory && profile.closeMatchVictory.length > 0) {
+    return profile.closeMatchVictory[Math.floor(Math.random() * profile.closeMatchVictory.length)];
+  }
+  if (winType === 'boss_defeat' && profile.bossDefeat && profile.bossDefeat.length > 0) {
+    return profile.bossDefeat[Math.floor(Math.random() * profile.bossDefeat.length)];
+  }
+
+  if (profile.victory && profile.victory.length > 0) {
+    return profile.victory[Math.floor(Math.random() * profile.victory.length)];
+  }
+
+  return "A decisive triumph. The Holy Grail draws closer.";
 }

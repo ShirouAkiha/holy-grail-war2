@@ -926,7 +926,18 @@ Voice Directive:
 
   // Canonical fallback if API is offline or rate-limited
   if (!reply) {
-    if (role === 'victor') {
+    const isAzrael = /azrael|hassan_i_sabbah_azrael|grand assassin/i.test(sTemplate?.id || sTemplate?.name || servant?.nickname || '');
+    if (isAzrael) {
+      if (role === 'victor') {
+        reply = outcomeDecision === 'spare' ? "Debt deferred. Do not default again." : "Case closed. Soul repossessed.";
+      } else if (role === 'spared') {
+        reply = "Debt deferred... A strange accounting choice by the victor.";
+      } else if (role === 'evacuated') {
+        reply = "An unexpected credit extension. Our ledger remains open, Master.";
+      } else {
+        reply = "Account settled. No outstanding balance remains.";
+      }
+    } else if (role === 'victor') {
       if (outcomeDecision === 'spare') {
         reply = servant?.customQuotes?.victory || sTemplate?.victoryQuote || `A generous choice, Master. Let us hope their blade does not turn on us again.`;
       } else {
