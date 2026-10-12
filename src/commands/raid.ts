@@ -422,6 +422,9 @@ async function launchRaidLobby(
           const expBonus = (boss.drops.servantExp || 45_000) * 2;
           const progressionReports: string[] = [];
 
+          const today = new Date().toISOString().slice(0, 10);
+          let hostClaimsToday = 1;
+
           for (const p of lobbyParticipants) {
             const master = await getOrCreateMaster(p.userId, p.username);
             const record = getDarkSakuraRecord(master);
@@ -429,6 +432,14 @@ async function launchRaidLobby(
             record.mercyStreak += 1;
             record.lastOutcome = 'peaceful';
             record.lastEncounterTime = Date.now();
+            if (record.lastDailyPacifistDate !== today) {
+              record.dailyPacifistClaims = 0;
+              record.lastDailyPacifistDate = today;
+            }
+            record.dailyPacifistClaims = (record.dailyPacifistClaims || 0) + 1;
+            if (p.userId === lobbyParticipants[0].userId) {
+              hostClaimsToday = record.dailyPacifistClaims;
+            }
             master.saintQuartz = (master.saintQuartz || 0) + sqBonus;
 
             const s = master.servants?.find((sv: any) => sv.id === p.servant?.id) ||
@@ -486,12 +497,13 @@ async function launchRaidLobby(
               `• **+${sqBonus} Saint Quartz** (Guaranteed Double Drop) 💎\n` +
               `• **+${expBonus.toLocaleString()} Servant Battle EXP** ⚔️\n` +
               `• **+8 Universal EXP Embers** ✨ (4x ★5 SSR + 4x ★4 SR)\n` +
-              `• **The cavern falls into complete silence without bloodshed.** 🌸\n\n` +
+              `• **Daily Free Clears:** \`${hostClaimsToday} / 5\` used today *(30% trigger chance)* 🌸\n` +
+              `• **The cavern falls into complete silence without bloodshed.**\n\n` +
               `**Vanguard Spoils & Growth:**\n` +
               progressionReports.join('\n')
             )
             .setColor(0x831843)
-            .setFooter({ text: 'Fate/stay night Heaven’s Feel • Click button below to proceed' });
+            .setFooter({ text: `Fate/stay night Heaven’s Feel • Daily Peaceful Sanctuary: ${hostClaimsToday}/5 Claims Used Today` });
 
           if (vnAttachment) {
             pacifistEmbed.setImage('attachment://dark_sakura_pacifist_vn.png');
@@ -540,7 +552,8 @@ async function launchRaidLobby(
                 .setTitle(`🌸 PACIFIST MILESTONE RESOLVED`)
                 .setDescription(
                   `✨ **The peaceful resolution is complete.**\n` +
-                  `All rewards (Saint Quartz, Servant EXP, and Universal EXP Embers) have been saved to inventory.`
+                  `All rewards (Saint Quartz, Servant EXP, and Universal EXP Embers) have been saved to inventory.\n\n` +
+                  `🌸 **Daily Limit:** \`${hostClaimsToday} / 5\` peaceful resolutions used today *(30% chance on Tier 4 entry)*.`
                 )
                 .setColor(0x831843);
               await pacifistMsg.edit({

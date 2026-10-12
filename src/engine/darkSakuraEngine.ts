@@ -23,6 +23,8 @@ export interface DarkSakuraKarmaRecord {
   lastEncounterTime?: number;
   lastIntroCategory?: string;
   introCategoryStreak?: number;
+  dailyPacifistClaims?: number;
+  lastDailyPacifistDate?: string;
 }
 
 export const DARK_SAKURA_ASSETS = {
@@ -51,6 +53,15 @@ export function getDarkSakuraRecord(master: any): DarkSakuraKarmaRecord {
   r.mercyStreak = r.mercyStreak || 0;
   r.slayerStreak = r.slayerStreak || 0;
   r.betrayalCount = r.betrayalCount || 0;
+
+  // Track and reset daily pacifist claims (max 5/day, UTC)
+  const today = new Date().toISOString().slice(0, 10);
+  if (r.lastDailyPacifistDate !== today) {
+    r.dailyPacifistClaims = 0;
+    r.lastDailyPacifistDate = today;
+  }
+  r.dailyPacifistClaims = r.dailyPacifistClaims || 0;
+
   return r;
 }
 
@@ -870,6 +881,7 @@ export function checkPacifistMilestone(
   bannerQuote: string;
   title: string;
   reason: string;
+  claimsToday?: number;
 } {
   const host = participants[0];
   const hostRecord = getDarkSakuraRecord(host.master);
@@ -886,6 +898,39 @@ export function checkPacifistMilestone(
     };
   }
 
+  // Check daily limit (maximum 5 free peaceful resolutions per day)
+  const today = new Date().toISOString().slice(0, 10);
+  if (hostRecord.lastDailyPacifistDate !== today) {
+    hostRecord.dailyPacifistClaims = 0;
+    hostRecord.lastDailyPacifistDate = today;
+  }
+
+  const currentClaims = hostRecord.dailyPacifistClaims || 0;
+  if (currentClaims >= 5) {
+    return {
+      isEligible: false,
+      sceneText: '',
+      vnDialogue: '',
+      bannerQuote: '',
+      title: '',
+      reason: 'Daily peaceful resolution limit (5/5) reached for today. Dark Sakura demands battle!',
+      claimsToday: currentClaims
+    };
+  }
+
+  // 30% chance to grant free rewards without a fight (70% chance to proceed to combat)
+  if (Math.random() >= 0.30) {
+    return {
+      isEligible: false,
+      sceneText: '',
+      vnDialogue: '',
+      bannerQuote: '',
+      title: '',
+      reason: 'Peaceful resolution did not roll (30% chance). Dark Sakura prepares for battle!',
+      claimsToday: currentClaims
+    };
+  }
+
   // If in team, check if anyone has aggressive tier 1 karma
   if (participants.length > 1) {
     const hasSlayer = participants.some(p => getDarkSakuraTier(getDarkSakuraRecord(p.master)) === 1);
@@ -896,7 +941,8 @@ export function checkPacifistMilestone(
         vnDialogue: '',
         bannerQuote: '',
         title: '',
-        reason: 'Host is peaceful, but an ally is a notorious Slayer.'
+        reason: 'Host is peaceful, but an ally is a notorious Slayer.',
+        claimsToday: currentClaims
       };
     }
   }
