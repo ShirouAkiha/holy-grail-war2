@@ -2010,8 +2010,12 @@ function activateCombatantSkill(
     combatant.npGauge = Math.min(300, combatant.npGauge + 30);
     combatant.critStars = Math.min(50, combatant.critStars + 20);
     logText = `✨ **${sName}** activated **${skill.name}**! (+30% NP Gauge, +20 Critical Stars)${quoteLine}`;
-  } else if (skill.id === 'angels_body_a' || /angel's body|body of the angel/i.test(skill.name)) {
-    // Azrael S1: Angel's Body A (Option B Nerf)
+  } else if (
+    skill.id === 'angels_body_a' ||
+    /angel['’]?s body|body of the angel|angel.*body/i.test(skill.name) ||
+    ((combatant.servant.templateId === 'hassan_i_sabbah_azrael' || /azrael/i.test(combatant.servant.template?.name || '')) && skillIdx === 0)
+  ) {
+    // Azrael S1: Angel's Body A (Option B: +30% NP in Duels, +50% in Raids)
     combatant.activeBuffs = combatant.activeBuffs || [];
     combatant.activeBuffs.push({
       name: "Angel's Body A (ATK Up)",
@@ -2049,9 +2053,15 @@ function activateCombatantSkill(
       appliedRound: currentRound,
       appliedTurnUserId: combatant.userId
     });
-    combatant.npGauge = Math.min(300, (combatant.npGauge || 0) + 30);
-    logText = `🪶 **${sName}** activated **${skill.name}**! (+20% ATK [3T], Debuff Immunity [1T], Guts 2,500 HP [3T], Evade [1T], +30% NP Gauge)${quoteLine}`;
-  } else if (skill.id === 'thirty_birds_a' || /thirty birds/i.test(skill.name)) {
+    const isRaidOpp = Boolean(opponent && (opponent.maxHp > 100000 || /raid|boss/i.test(opponent.servant?.template?.name || '')));
+    const npChargeAmount = isRaidOpp ? 50 : 30;
+    combatant.npGauge = Math.min(300, (combatant.npGauge || 0) + npChargeAmount);
+    logText = `🪶 **${sName}** activated **${skill.name}**! (+20% ATK [3T], Debuff Immunity [1T], Guts 2,500 HP [3T], Evade [1T], +${npChargeAmount}% NP Gauge)${quoteLine}`;
+  } else if (
+    skill.id === 'thirty_birds_a' ||
+    /thirty birds/i.test(skill.name) ||
+    ((combatant.servant.templateId === 'hassan_i_sabbah_azrael' || /azrael/i.test(combatant.servant.template?.name || '')) && skillIdx === 1)
+  ) {
     // Azrael S2: Thirty Birds A (Option B Nerf)
     if (combatant.skillCooldowns) {
       for (const idxStr of Object.keys(combatant.skillCooldowns)) {
@@ -2081,7 +2091,11 @@ function activateCombatantSkill(
     combatant.npGauge = Math.min(300, (combatant.npGauge || 0) + 20);
     combatant.critStars = Math.min(50, (combatant.critStars || 0) + 15);
     logText = `🦅 **${sName}** activated **${skill.name}**! (Skill Cooldowns -1T, +20% Arts [3T], +30% Crit DMG [3T], +20% NP Gauge, +15 Critical Stars)${quoteLine}`;
-  } else if (skill.id === 'tree_of_zaqqum_ex' || /tree of zaqqum|tree of zaqqūm/i.test(skill.name)) {
+  } else if (
+    skill.id === 'tree_of_zaqqum_ex' ||
+    /tree of zaqqum|tree of zaqqūm|zaqqum/i.test(skill.name) ||
+    ((combatant.servant.templateId === 'hassan_i_sabbah_azrael' || /azrael/i.test(combatant.servant.template?.name || '')) && skillIdx === 2)
+  ) {
     // Azrael S3: Tree of Zaqqūm EX (Option B Nerf)
     const targetEnemies = (livingEnemies && livingEnemies.length > 0) ? livingEnemies.filter(e => e.currentHp > 0) : (opponent ? [opponent] : []);
     combatant.activeBuffs = combatant.activeBuffs || [];

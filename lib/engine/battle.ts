@@ -751,7 +751,11 @@ export function applyCombatantSkill(
   }
 
   // Handle Hassan-i-Sabbah (Azrael) personal skills (Option B Nerfs)
-  if (skill.id === 'angels_body_a' || /angel's body|body of the angel/i.test(skill.name)) {
+  if (
+    skill.id === 'angels_body_a' ||
+    /angel['’]?s body|body of the angel|angel.*body/i.test(skill.name) ||
+    ((actor.id === 'hassan_i_sabbah_azrael' || /azrael/i.test(actor.name || '')) && skillIndex === 0)
+  ) {
     actor.activeBuffs.push({
       name: "Angel's Body A (ATK Up)",
       type: 'buff_atk',
@@ -2289,7 +2293,11 @@ export function executeBattleTurn(
             remainingTurns: 3
           });
           actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
-        } else if (skill.id === 'angels_body_a' || /angel's body|body of the angel/i.test(skill.name)) {
+        } else if (
+          skill.id === 'angels_body_a' ||
+          /angel['’]?s body|body of the angel|angel.*body/i.test(skill.name) ||
+          ((actor.id === 'hassan_i_sabbah_azrael' || /azrael/i.test(actor.name || '')) && choice.useSkillIndex === 0)
+        ) {
           actor.activeBuffs.push({
             name: "Angel's Body A (ATK Up)",
             type: 'buff_atk',

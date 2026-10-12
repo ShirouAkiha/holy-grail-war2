@@ -2625,6 +2625,104 @@ async function runRaidBattle(
             active.npGauge = Math.min(300, (active.npGauge || 0) + 30);
             active.critStars = (active.critStars || 0) + 20;
             buffLog = `(✨ +30% NP Gauge Charge, ★ +20 Critical Stars!)`;
+          } else if (skillObj?.id === 'angels_body_a' || /angel['’]?s body|body of the angel|angel.*body/i.test(sName + ' ' + sDesc) || ((active.servant.templateId === 'hassan_i_sabbah_azrael' || /azrael/i.test(active.servant.template?.name || '')) && sIdx === 0)) {
+            // Azrael S1: Angel's Body A (Raid Mode: +50% NP)
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: "Angel's Body A (ATK Up)",
+              type: 'atk_up',
+              value: 20,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: "Angel's Body A (Debuff Immunity)",
+              type: 'debuff_immunity',
+              value: 100,
+              remainingTurns: 1
+            });
+            active.gutsCount = (active.gutsCount || 0) + 1;
+            active.activeBuffs.unshift({
+              name: "Angel's Body A (Guts 2,500 HP)",
+              type: 'guts',
+              value: 2500,
+              remainingTurns: 3,
+              remainingHits: 1,
+              isHitCount: true
+            } as any);
+            active.isEvading = true;
+            active.activeBuffs.push({
+              name: "Angel's Body A (Evade 1T)",
+              type: 'evade',
+              value: 100,
+              remainingTurns: 1
+            });
+            active.npGauge = Math.min(300, (active.npGauge || 0) + 50);
+            buffLog = `(🪶 +20% ATK [3T], Debuff Immunity [1T], Guts 2,500 HP [3T], Evade [1T], ⚡ +50% NP Gauge!)`;
+          } else if (skillObj?.id === 'thirty_birds_a' || /thirty birds/i.test(sName + ' ' + sDesc) || ((active.servant.templateId === 'hassan_i_sabbah_azrael' || /azrael/i.test(active.servant.template?.name || '')) && sIdx === 1)) {
+            // Azrael S2: Thirty Birds A
+            if (active.skillCooldowns) {
+              for (const idxStr of Object.keys(active.skillCooldowns)) {
+                const numIdx = parseInt(idxStr, 10);
+                if (numIdx !== sIdx && active.skillCooldowns[numIdx] > 0) {
+                  active.skillCooldowns[numIdx] = Math.max(0, active.skillCooldowns[numIdx] - 1);
+                }
+              }
+            }
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: 'Thirty Birds A (Arts Up)',
+              type: 'arts_up',
+              value: 20,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: 'Thirty Birds A (Crit DMG Up)',
+              type: 'crit_dmg',
+              value: 30,
+              remainingTurns: 3
+            });
+            active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
+            active.critStars = (active.critStars || 0) + 15;
+            buffLog = `(🦅 Skill CD -1T, +20% Arts [3T], +30% Crit DMG [3T], ⚡ +20% NP Gauge, ★ +15 Stars!)`;
+          } else if (skillObj?.id === 'tree_of_zaqqum_ex' || /tree of zaqqum|tree of zaqqūm|zaqqum/i.test(sName + ' ' + sDesc) || ((active.servant.templateId === 'hassan_i_sabbah_azrael' || /azrael/i.test(active.servant.template?.name || '')) && sIdx === 2)) {
+            // Azrael S3: Tree of Zaqqūm EX (Raid Mode: -30% Death Res, +30% Death Rate)
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: 'Tree of Zaqqūm EX (Attack Death Chance +30%)',
+              type: 'buff_death_rate',
+              value: 30,
+              remainingTurns: 3
+            });
+            battleState.bossBuffs = battleState.bossBuffs || [];
+            battleState.bossBuffs.push({
+              name: 'Tree of Zaqqūm EX (Death Res Down -30%)',
+              type: 'debuff_death_res',
+              value: 30,
+              remainingTurns: 3
+            });
+            battleState.bossBuffs.push({
+              name: 'Tree of Zaqqūm EX (DEF Down -20%)',
+              type: 'def_down',
+              value: 20,
+              remainingTurns: 3
+            });
+            battleState.bossBuffs.push({
+              name: 'Tree of Zaqqūm EX (Survival Penalty DEF Down -20%)',
+              type: 'def_down',
+              value: 20,
+              remainingTurns: 3
+            });
+            let didStun = false;
+            if (Math.random() < 0.50) {
+              didStun = true;
+              battleState.bossBuffs.push({
+                name: 'Tree of Zaqqūm EX (Stun 1T)',
+                type: 'stun',
+                value: 100,
+                remainingTurns: 1
+              });
+            }
+            buffLog = `(🌳 Boss Death Res -30% [3T], Death Rate +30% [3T], Boss DEF -40% [3T]${didStun ? ', ⚡ Boss Stunned [1T]!' : ''})`;
           } else if (skillObj?.id === 'scourge_of_god_a' || /scourge of god/i.test(sName)) {
             // Altera S1: Scourge of God A
             // Increases party's NP damage by 20% for 3 turns. Removes all enemies' Defensive Buffs.
