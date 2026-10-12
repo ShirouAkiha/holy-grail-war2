@@ -4334,8 +4334,16 @@ function applyDamageToRaidParticipant(
         const tier = getDarkSakuraTier(hostRecord);
         if (tier >= 3 && !(p as any).darkSakuraMercyUsed) {
           (p as any).darkSakuraMercyUsed = true;
-          p.currentHp = 1;
+          const reviveHp = Math.max(1000, Math.round(p.maxHp * 0.15));
+          p.currentHp = reviveHp;
           p.isDead = false;
+          p.gutsTriggeredThisTurn = true;
+
+          // Cleanse active curse debuffs so the stayed shadow doesn't burn them right away
+          if (p.activeBuffs) {
+            p.activeBuffs = p.activeBuffs.filter(b => b.type !== 'curse');
+          }
+
           const pityMsg = `🌸 **[SHADOW HESITATION]** Dark Sakura stayed her hand at the last moment! *“...Tch. Don't look at me with those dying eyes. Get back up!”*`;
           state.recentLogs.push(pityMsg);
           state.pendingBossVnCutIn = {
