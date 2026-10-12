@@ -27,6 +27,32 @@ export interface DarkSakuraKarmaRecord {
   lastDailyPacifistDate?: string;
 }
 
+export function numberToWord(n: number): string {
+  if (n <= 0) return 'zero';
+  const units = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine',
+    'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+  const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+  if (n < 20) return units[n];
+  if (n < 100) {
+    const tenPart = tens[Math.floor(n / 10)];
+    const unitPart = n % 10 !== 0 ? `-${units[n % 10]}` : '';
+    return `${tenPart}${unitPart}`;
+  }
+  if (n < 1000) {
+    const hundredPart = `${units[Math.floor(n / 100)]} hundred`;
+    const rest = n % 100;
+    if (rest === 0) return hundredPart;
+    return `${hundredPart} ${numberToWord(rest)}`;
+  }
+  return n.toLocaleString();
+}
+
+export function capitalizeWord(str: string): string {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 export const DARK_SAKURA_ASSETS = {
   battleSprite: 'https://ella.janitorai.com/media-approved/1_g6bqriIhxa4tLhBalDY.webp',
   caveBackground: 'https://ella.janitorai.com/media-approved/P7i39PiVJeiUHbbq3dSn1.webp',
@@ -710,21 +736,25 @@ export function generateDarkSakuraIntroDialogue(
 
     // 5b. Tier 4 Pacifist Devotion temperament reaction
     if (hostTier === 4) {
+      const hostSpares = hostRecord.spares || hostRecord.mercyStreak || 50;
+      const sparesWordCap = capitalizeWord(numberToWord(hostSpares));
+      const sparesWordLower = numberToWord(hostSpares);
+
       candidates.push({
         category: 'tier_pacifist',
         weight: 8,
         generate: () => ({
           dialogue: pickRandom([
-            `"Fifty times you have walked into this dark cavern, ${host.username}, and not once have you drawn a weapon to kill me... Why do you look at a monster like me with such gentle eyes?"`,
+            `"${sparesWordCap} times you have walked into this dark cavern, ${host.username}, and not once have you drawn a weapon to kill me... Why do you look at a monster like me with such gentle eyes?"`,
             `"The black mud is so cold, ${host.username}, but whenever you stand before me, the shivering stops... You really aren't going to abandon me, are you?"`,
             `"I used to think my existence was only meant to bring ruin, ${host.username}... but if a person like you exists in this world, then maybe... maybe I was allowed to be born after all."`,
             `"Even when the Grail's shadow screams at me to tear you apart, my heart refuses to move... I would rather break my own core than hurt a single hair on your head, ${host.username}."`,
             `"You've held out your hand to me so many times, ${host.username}... Please, hold me tight. Don't let the shadow pull me back into the abyss!"`,
             `"I was so afraid, ${host.username}... afraid that one day you'd realize how dirty I am and leave me in the dark. But you just keep coming back..."`,
             `"If this corrupt body is the price for receiving your warmth, ${host.username}, then I don't care about the Grail anymore... I only want to stay by your side."`,
-            `"Fifty battles, ${host.username}... Fifty times you chose mercy over execution. For the first time in my life, I feel like I'm allowed to breathe."`,
+            `"${sparesWordCap} battles, ${host.username}... ${sparesWordCap} times you chose mercy over execution. For the first time in my life, I feel like I'm allowed to breathe."`,
             `"Please, ${host.username}... don't look at me like I'm a tragic victim. Just call my name... Sakura. Hearing you say it makes the darkness melt away."`,
-            `"If the entire world demands my execution, will you still be my hero, ${host.username}? ...Ah, what a foolish question. You've already answered it fifty times over."`
+            `"If the entire world demands my execution, will you still be my hero, ${host.username}? ...Ah, what a foolish question. You've already answered it ${sparesWordLower} times over."`
           ]),
           bannerQuote: 'Why do you look at a monster like me with such gentle eyes?'
         })
@@ -1280,6 +1310,13 @@ export async function handleDarkSakuraClimax(
   const hasMercy = participantOutcomes.includes('spared_mercy');
   const hasBetrayed = participantOutcomes.includes('spared_betrayed');
 
+  const hostSpares = hostRecord?.spares || 1;
+  const hostKills = hostRecord?.kills || 1;
+  const sparesWordCap = capitalizeWord(numberToWord(hostSpares));
+  const sparesWordLower = numberToWord(hostSpares);
+  const killsWordCap = capitalizeWord(numberToWord(hostKills));
+  const killsWordLower = numberToWord(hostKills);
+
   let reactionTitle = 'THE SHADOW’S PARTING';
   let reactionDialogue = '';
   let reactionBanner = '';
@@ -1289,7 +1326,7 @@ export async function handleDarkSakuraClimax(
     if (hostTier === 4) {
       reactionTitle = '🌸 THE SHADOW REDEEMED: ABSOLUTE SANCTUARY';
       reactionDialogue = pickRandom([
-        "Fifty battles... fifty times you reached into the dark to save me without drawing a weapon. The black mud is completely quiet now. As long as you stay by my side, Master... I will never lose myself again.",
+        `${sparesWordCap} battles... ${sparesWordLower} times you reached into the dark to save me without drawing a weapon. The black mud is completely quiet now. As long as you stay by my side, Master... I will never lose myself again.`,
         "You gave me a true sanctuary when the entire world wanted me erased from existence. I am yours, body and soul... Thank you for saving Sakura Matou.",
         "The cavern is bathed in warm light... The voices of Angra Mainyu have fallen completely silent. Thank you for never giving up on me, even for a second."
       ]);
@@ -1311,7 +1348,7 @@ export async function handleDarkSakuraClimax(
     } else if (hostTier === 1) {
       reactionTitle = '🌸 THE SHADOW REDEEMED: UNEXPECTED CLEMENCY';
       reactionDialogue = pickRandom([
-        "You... stayed your hand? After cutting me down so many times without a second thought...? Is this another cruel trick, or... are you actually looking at me as human?",
+        `You... stayed your hand? After cutting me down ${killsWordLower} times without a second thought...? Is this another cruel trick, or... are you actually looking at me as human?`,
         "The Butcher chose to spare me...? I don't understand you at all. But for the first time since I sank into this mud... the cold feels a little lighter.",
         "You didn't execute me today... Why? Did you grow tired of slaying me, or did a tiny piece of your heart feel pity for a broken girl...?"
       ]);
@@ -1333,7 +1370,7 @@ export async function handleDarkSakuraClimax(
       reactionTitle = '🩸 THE SEVERED SHADOW: TRAGIC MERCY KILL';
       reactionDialogue = pickRandom([
         "Even after all your devotion... you had to end it? I know... the mud was growing too strong to contain. Please don't cry... You saved my soul long before you drew this blade.",
-        "Don't look at me with such sad eyes, Master. You gave me fifty peaceful memories in this dark place... That is more than enough for someone like me.",
+        `Don't look at me with such sad eyes, Master. You gave me ${sparesWordLower} peaceful memories in this dark place... That is more than enough for someone like me.`,
         "The shadow core shatters... It hurts, but I'm glad it was your hand that ended it. Goodbye... my true sanctuary..."
       ]);
       reactionBanner = 'The abyssal miasma gently fades away, leaving behind a single glowing cherry blossom.';
