@@ -2377,10 +2377,121 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       retort: "H-Hii! Washi no jinja is not bad anything, ja! Put that rainbow stick away or... or Amazakura will slice it to ribbons, ja nee!",
       tag: "SCOURGE VS SHRINE GUARDIAN"
     }
+  },
+
+  // =========================================================================
+  // 24. HASSAN-I-SABBAH (AZRAEL)
+  // =========================================================================
+  hassan_i_sabbah_azrael: {
+    artoria_pendragon: {
+      intro: "The sovereign who bankrupted her soul to purchase Camelot's preservation. An admirable ledger, King of Knights... but your account is well past due.",
+      retort: "A cold blade from the shadows. I have borne the weight of an entire nation's salvation—I will not yield my post to an auditor of death!",
+      tag: "AUDITOR OF DEATH VS KING OF KNIGHTS"
+    },
+    artoria_pendragon_alter: {
+      intro: "Consuming grievances to enforce tyranny is an inefficient method of governance. The deficit in human lives cannot be written off.",
+      retort: "Spare me the administrative moralizing, assassin. The only ledger that matters on this battlefield is the one tallying the corpses beneath my feet.",
+      tag: "LIQUIDATION OF TYRANNY"
+    },
+    artoria_caster: {
+      intro: "The child of prophecy. You ring sacred bells, yet every toll drags you closer to self-sacrifice. You are paying a debt that was never yours.",
+      retort: "U-Uwaah, what is with that chilling look?! Why does your appraisal sound so terrifyingly accurate?! Back off, mister—my staff packs a real punch!",
+      tag: "DEBT OF PROPHECY"
+    },
+    castoria: {
+      intro: "The child of prophecy. You ring sacred bells, yet every toll drags you closer to self-sacrifice. You are paying a debt that was never yours.",
+      retort: "U-Uwaah, what is with that chilling look?! Why does your appraisal sound so terrifyingly accurate?! Back off, mister—my staff packs a real punch!",
+      tag: "DEBT OF PROPHECY"
+    },
+    jeanne_alter: {
+      intro: "An apparition forged of spite and pyres. You burn intensely, but fuel without substance merely exhausts the furnace. A fruitless expenditure.",
+      retort: "Hah?! An accountant assassin trying to lecture *me* on budgeting?! Shut your mouth and let's see how much ash your precious ledger can carry!",
+      tag: "FRUITLESS EXPENDITURE"
+    },
+    gilgamesh_archer: {
+      intro: "The King of Uruk. The vault keeper who hoards humanity's foundation. Possessing endless assets means nothing if the executor cannot spend them in the grave.",
+      retort: "Insolent hound of Alamut! You dare inspect the boundless treasury of the King? A mere ledger-man presume to weigh gold with dust? Perish!",
+      tag: "AUDIT OF THE GOLDEN VAULT"
+    },
+    emiya_archer: {
+      intro: "A nameless cleaner of the Counter Force. Swapping one contract for eternity to balance mortal disasters... Tell me, maker of blades, has that balance sheet ever broken even?",
+      retort: "Not once in a thousand lifetimes. But hearing an assassin preach about clean ledgers makes my head ache. Draw your blade, Hassan.",
+      tag: "BALANCE SHEET OF THE COUNTER FORCE"
+    },
+    cu_chulainn_lancer: {
+      intro: "The Hound of Ulster. A life dictated by strict geasa and fatal contracts. You understand better than most what happens when obligations are called due.",
+      retort: "Yeah, and I also know how to pay my debts with a spear through the chest! Drop the stiff bookkeeping routine, kid—let's see what you've got!",
+      tag: "FATAL CONTRACTS DUE"
+    },
+    scathach_lancer: {
+      intro: "The ruler of the Dun Scaith. An immortal existence sitting upon a mountain of corpses, forever denied the line item marked 'rest.'",
+      retort: "Indeed. Many have claimed the title of death's envoy, yet none have closed the distance. Step forward, pale angel—let us test your severing edge.",
+      tag: "OUTSTANDING BILL OF DUN SCAITH"
+    },
+    heracles_berserker: {
+      intro: "Twelve recorded resurrections. An extraordinary grace period... but divine patronage merely defers payment. It does not cancel it.",
+      retort: "■■■■■■■■■ーーー!!",
+      tag: "DEFERRED PAYMENT OF LABORS"
+    },
+    van_gogh: {
+      intro: "A fusion of blooming petals, mortal despair, and alien abyssal ink. A discordant balance of lives that were never meant to share a vessel.",
+      retort: "Ehehe... a pale clerk come to collect the toll? No, no... the yellow paint hasn't dried yet! Don't look at my ledger, de-he-he!",
+      tag: "DISCORDANT LEDGER"
+    },
+    tamamo_no_mae: {
+      intro: "A nine-tailed calamity playing house. Dressing up divine malice in household robes makes for entertaining theater, but the tax remains unpaid.",
+      retort: "Hmph! Demanding back taxes from a hardworking maiden who just wants a quiet domestic life?! That is entirely uncalled for, you frosty bureaucrat!",
+      tag: "UNPAID TAXES OF THE DIVINE BEAST"
+    },
+    altera: {
+      intro: "The Scourge of God. You categorize all human order as 'bad civilization' fit only for razing. Such wanton demolition ignores the necessity of administrative structure.",
+      retort: "Structures create cities; cities breed kingdoms. They are walls built to defy ruin. Assassin of the mountain... you too are civilization to be felled.",
+      tag: "ADMINISTRATIVE CUT VS SCOURGE"
+    },
+    hassan_i_sabbah_azrael: {
+      intro: "A duplicate allocation in the registry. Alamut requires only one grand master to oversee the accounts and deliver the stroke.",
+      retort: "Agreed. Redundant personnel must be liquidated without sentiment. Let us determine whose ledger is genuine.",
+      tag: "REDUNDANT PERSONNEL LIQUIDATION"
+    },
+    luvria_greenharte: {
+      intro: "The Strongest Mage. Concept Nullification that erases space, impact, and even death itself. You operate entirely outside lawful causality, Hero.",
+      retort: "Laws are quite tedious when they keep good folk in chains, pale scholar! If thy grim little book demands my end... I shall simply nullify thine audit!",
+      tag: "AUDIT OF THE HERO"
+    },
+    luvria: {
+      intro: "The Strongest Mage. Concept Nullification that erases space, impact, and even death itself. You operate entirely outside lawful causality, Hero.",
+      retort: "Laws are quite tedious when they keep good folk in chains, pale scholar! If thy grim little book demands my end... I shall simply nullify thine audit!",
+      tag: "AUDIT OF THE HERO"
+    },
+    lucia_lyozes: {
+      intro: "A disciplined vanguard burdened by past calamitous failures. You calculate five seconds into the future, rationing your comrades' safety like dwindling grain.",
+      retort: "Command demands vigilance, not poetry. I know precisely when your blade plans to strike—and I will not allow you to dismantle my party.",
+      tag: "PRESCIENT RATION AUDIT"
+    },
+    lucia: {
+      intro: "A disciplined vanguard burdened by past calamitous failures. You calculate five seconds into the future, rationing your comrades' safety like dwindling grain.",
+      retort: "Command demands vigilance, not poetry. I know precisely when your blade plans to strike—and I will not allow you to dismantle my party.",
+      tag: "PRESCIENT RATION AUDIT"
+    },
+    adiosa_dragon_envoy: {
+      intro: "A primordial force treating mortal existence as an overgrown garden to be culled. There is no doctrine, no transaction... only raw natural eradication.",
+      retort: "*Krav'nok zul drazk'hlor. Vrak shak... ruk'thar.*",
+      tag: "TOLL OF THE PRIMORDIAL"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "An ancient shrine guardian sealing eight tails behind self-inflicted guilt. Lingering over a ghost town's debt for five centuries is poor management, fox.",
+      retort: "W-Washi is not managing poorly, ja! A deity honors her sanctuary until the very end! Keep your creepy executioner hands away from my shrine, ja nee!",
+      tag: "STAGNATED LEDGER OF THE SHRINE"
+    },
+    amamiya: {
+      intro: "An ancient shrine guardian sealing eight tails behind self-inflicted guilt. Lingering over a ghost town's debt for five centuries is poor management, fox.",
+      retort: "W-Washi is not managing poorly, ja! A deity honors her sanctuary until the very end! Keep your creepy executioner hands away from my shrine, ja nee!",
+      tag: "STAGNATED LEDGER OF THE SHRINE"
+    }
   }
 };
 
-// Also alias amamiya, lucia, luvria, edmond, castoria, typhon, van_gogh, tamamo, and altera in the database
+// Also alias amamiya, lucia, luvria, edmond, castoria, typhon, van_gogh, tamamo, altera, and azrael in the database
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['amamiya'] = SERVANT_MATCHUP_DATABASE.amamiya_no_chihaya_tenkohime;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['lucia'] = SERVANT_MATCHUP_DATABASE.lucia_lyozes;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['luvria'] = SERVANT_MATCHUP_DATABASE.luvria_greenharte;
@@ -2396,6 +2507,10 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['etzel'] = SERVANT_MATCHUP_DATABASE.altera;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['attila_the_hun'] = SERVANT_MATCHUP_DATABASE.altera;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['saber_altera'] = SERVANT_MATCHUP_DATABASE.altera;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['azrael'] = SERVANT_MATCHUP_DATABASE.hassan_i_sabbah_azrael;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['king_hassan'] = SERVANT_MATCHUP_DATABASE.hassan_i_sabbah_azrael;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['first_hassan'] = SERVANT_MATCHUP_DATABASE.hassan_i_sabbah_azrael;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['hassan_azrael'] = SERVANT_MATCHUP_DATABASE.hassan_i_sabbah_azrael;
 
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.
@@ -2492,6 +2607,8 @@ export function getServantMatchupDialogue(
     if (id === 'luvria_greenharte') return 'luvria';
     if (id === 'castoria') return 'artoria_caster';
     if (id === 'artoria_caster') return 'castoria';
+    if (id === 'azrael' || id === 'king_hassan' || id === 'first_hassan' || id === 'hassan_azrael') return 'hassan_i_sabbah_azrael';
+    if (id === 'hassan_i_sabbah_azrael') return 'azrael';
     return id;
   };
   const cAlt = getAltId(cId);

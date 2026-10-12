@@ -4374,10 +4374,334 @@ export const ALTERA_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const AZRAEL_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'azrael_bond_1',
+    servantTemplateId: 'hassan_i_sabbah_azrael',
+    requiredBondLevel: 1,
+    title: "Bond Interlude: The Ledger of Alamut",
+    subtitle: "Bond Level 1 Interlude",
+    description: "In the late hours of the night, Hassan-i-Sabbah (Azrael) evaluates your discipline, financial management, and commitment to the Holy Grail War.",
+    rewardBondExp: 300,
+    rewardSaintQuartz: 3,
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Azrael',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "You are still awake. It is past three in the morning. If you intend to survive this ritual, you ought to manage your resting hours better.",
+        choices: [
+          {
+            id: 'c1_a',
+            text: "Can't sleep, Azrael. I heard accountants never rest until the books balance, so I felt guilty.",
+            response: "A tasteless joke. Though managing this war’s supply consumption indeed keeps me occupied.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_b',
+            text: "If I die of sleep deprivation, does that save the enemy an assassination contract?",
+            response: "It would certainly simplify their arithmetic. Do not make their task trivial.",
+            bondExpGain: 125,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_c',
+            text: "Just wanted to see if an Angel of Death takes night shifts or works overtime.",
+            response: "Do not invoke that name so casually. I am an administrator, not a winged judgment.",
+            bondExpGain: 100,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Azrael',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "We are quartered in an unfamiliar territory on foreign soil. Japan’s ley lines are dense, yet you spend your mana inspecting grocery receipts.",
+        choices: [
+          {
+            id: 'c2_a',
+            text: "Hey, high-grade instant ramen is an essential alchemical catalyst.",
+            response: "Salt, dried dough, and cheap grease are hardly catalysts. You are poisoning your own vessel.",
+            bondExpGain: 125,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_b',
+            text: "If we go bankrupt before getting killed by Berserker, that’s just bad bookkeeping.",
+            response: "Bankruptcy is merely death disguised as numbers. On that singular point, you are correct.",
+            bondExpGain: 175,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_c',
+            text: "I thought an ancient sect leader would appreciate strict budget control.",
+            response: "I appreciate efficiency. I do not appreciate your purchase of novelty cat ears.",
+            bondExpGain: 150,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Azrael',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Regardless, our current perimeter holds. Still, you treat this conflict with an alarming absence of solemnity.",
+        choices: [
+          {
+            id: 'c3_a',
+            text: "If I take it seriously, my stomach ulcers will finish me before the Saber does.",
+            response: "Stress degrades focus. Yet flippancy invites fatal miscalculation. Find an equilibrium.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_b',
+            text: "Gallows humor keeps the mind sharp. Or at least distracts from the impending doom.",
+            response: "A coping mechanism common among conscripts. Just ensure your levity does not dull your edge.",
+            bondExpGain: 150,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_c',
+            text: "Well, you look serious enough for both of us, Gramps Lily.",
+            response: "Never utter that phrase again. I am neither decrepit nor a blooming flower.",
+            bondExpGain: 175,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Azrael',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "In my living days at Alamut, discipline was not an aesthetic choice. It was the sole currency that bought tomorrow.",
+        choices: [
+          {
+            id: 'c4_a',
+            text: "So you're saying I couldn't cut it as a hash-slinging mountain ninja?",
+            response: "You would have lasted three minutes before being discarded as dead weight.",
+            bondExpGain: 125,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_b',
+            text: "Sounds exhausting. No wonder you guys had rumors about drug gardens and secret paradises.",
+            response: "Do not bring up Marco Polo's ridiculous fabrications. He invented an amusement park out of whole cloth.",
+            bondExpGain: 175,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_c',
+            text: "Did you ever crack a single joke back then, or was smiling against the sect doctrine?",
+            response: "I had an empire's tithes to audit. Laughter yields very little grain.",
+            bondExpGain: 150,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Azrael',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Fables turn hard administration into poetry. The reality was ledger ink, cold stone, and strict spiritual meditation.",
+        choices: [
+          {
+            id: 'c5_a',
+            text: "Sufi meditation, right? Diminishing the ego so you can execute people guilt-free?",
+            response: "It was not about guilt. It was about becoming a hollow reed through which divine decree passes cleanly.",
+            bondExpGain: 175,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_b',
+            text: "You meditating sounds just like you staring blankly into space while judging everyone.",
+            response: "It was internal stillness, Master. Though some individuals certainly deserved silent critique.",
+            bondExpGain: 150,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_c',
+            text: "Honestly, cold stone and spreadsheets sound worse than facing a Noble Phantasm.",
+            response: "Spreadsheets are order manifested. You fear them only because they expose your flaws.",
+            bondExpGain: 175,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Azrael',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Even now, this form feels foreign. Calling upon martial techniques when I still think like a treasurer creates an odd friction.",
+        choices: [
+          {
+            id: 'c6_a',
+            text: "Hey, martial arts on the side, balance sheets in the front—versatility is hot.",
+            response: "Refrain from applying modern vulgarities to ascetic disciplines.",
+            bondExpGain: 125,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_b',
+            text: "Better than being an unthinking blade. Brains beat pure muscle in a Grail War.",
+            response: "A blade without calculation merely breaks against thicker armor. We agree there.",
+            bondExpGain: 175,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_c',
+            text: "Does that mean your Noble Phantasm is just hitting people with an unpaid bill?",
+            response: "It is the tally of a soul's misdeeds. Far heavier than any scrap of parchment.",
+            bondExpGain: 150,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Azrael',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "You lack the pedigree of a Magus from the Clock Tower, nor are you a soldier. You are painfully ordinary.",
+        choices: [
+          {
+            id: 'c7_a',
+            text: "Ouch. Right in the nonexistent pride. Should I go rent some plate armor?",
+            response: "Do not force yourself into the rigid mold of historical champions. It would look absurd.",
+            bondExpGain: 150,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'c7_b',
+            text: "Ordinary means unpredictable. The elite always trip over basic rocks.",
+            response: "Unpredictability without purpose is merely chaos. Do not mistake luck for skill.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'c7_c',
+            text: "That’s rich coming from the guy who claims he was just an office clerk.",
+            response: "I managed kingdoms through terror and arithmetic. We are not identical, Master.",
+            bondExpGain: 175,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_8'
+          }
+        ]
+      },
+      {
+        id: 'scene_8',
+        speakerName: 'Azrael',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "What matters is that you remain unbroken until the final reckoning. A shattered vessel cannot channel prana.",
+        choices: [
+          {
+            id: 'c8_a',
+            text: "I won't break. Mostly out of spite, but also because dying seems bad for my posture.",
+            response: "Spite is an enduring fuel. Many dynasties were preserved on far less.",
+            bondExpGain: 175,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 'c8_b',
+            text: "As long as you keep handling the death part, I'll handle staying alive. Deal?",
+            response: "A practical division of labor. I will accept that contract.",
+            bondExpGain: 175,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 'c8_c',
+            text: "So... does this mean you actually care if I live, or am I just your current project?",
+            response: "You are an asset under my administration. I do not permit waste in my tally.",
+            bondExpGain: 200,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_9'
+          }
+        ]
+      },
+      {
+        id: 'scene_9',
+        speakerName: 'Azrael',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Drink some water and sleep. Tomorrow we assess the ley line near the docks, and I expect punctual execution.",
+        choices: [
+          {
+            id: 'c9_a',
+            text: "Yes, sir, boss. Wake me up when the bell tolls, literally or otherwise.",
+            response: "If that bell tolls for you, sleep will be permanent. Do not test it.",
+            bondExpGain: 175,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_epilogue'
+          },
+          {
+            id: 'c9_b',
+            text: "Only if you promise not to execute me if I hit snooze once.",
+            response: "I make no such promises. Lateness carries severe penalties.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_epilogue'
+          },
+          {
+            id: 'c9_c',
+            text: "Goodnight, Azrael. Don't spend all night recalculating our grocery budget.",
+            response: "The budget requires correction. Rest now, Master. Tomorrow, the tally continues.",
+            bondExpGain: 225,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_epilogue'
+          }
+        ]
+      },
+      {
+        id: 'scene_epilogue',
+        speakerName: 'Azrael',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "The tally continues, as does our pact. Sleep well, Master. When tomorrow comes, the ledger of Alamut shall be balanced once more."
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
 export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
+  hassan_i_sabbah_azrael: AZRAEL_BOND_EVENTS,
+  azrael: AZRAEL_BOND_EVENTS,
+  king_hassan: AZRAEL_BOND_EVENTS,
+  first_hassan: AZRAEL_BOND_EVENTS,
+  hassan_azrael: AZRAEL_BOND_EVENTS,
   altera: ALTERA_BOND_EVENTS,
   attila: ALTERA_BOND_EVENTS,
   etzel: ALTERA_BOND_EVENTS,
