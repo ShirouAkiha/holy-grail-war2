@@ -1223,6 +1223,11 @@ export async function handleDarkSakuraClimax(
     await saveMaster(master);
   }
 
+  // Determine host's temperament tier to tailor post-raid climax reaction dialogue
+  const hostMaster = state.participants[0];
+  const hostRecord = hostMaster ? getDarkSakuraRecord(hostMaster.master) : null;
+  const hostTier = hostRecord ? getDarkSakuraTier(hostRecord) : 2;
+
   // Determine decisive ending reaction dialogue
   const hasKilled = participantOutcomes.includes('killed');
   const hasMercy = participantOutcomes.includes('spared_mercy');
@@ -1234,53 +1239,148 @@ export async function handleDarkSakuraClimax(
   let embedColor = 0xbe185d;
 
   if (hasMercy && !hasKilled && !hasBetrayed) {
-    reactionTitle = '🌸 THE SHADOW REDEEMED: A TREMBLING SMILE';
-    reactionDialogue = pickRandom([
-      "You really... stayed? Even when the black mud tried to pull you under? ...I'm so glad I waited for you in this dark cavern. Take this... my heart is finally at peace.",
-      "Your hand was warm... even as my shadow tried to tear into your skin. I thought no one would ever reach into the dark for me again... Thank you, Master.",
-      "The mud is receding... The screaming inside my head stopped. Is this what it feels like to be seen as human again...?"
-    ]);
-    reactionBanner = pickRandom([
-      'The abyssal miasma purifies into warm, radiant cherry blossom petals.',
-      'The black shadow dress dissolves into gentle, crimson light.',
-      'The dark cavern glows softly with purifying holy grail mana.'
-    ]);
-    embedColor = 0xdb2777;
+    if (hostTier === 4) {
+      reactionTitle = '🌸 THE SHADOW REDEEMED: ABSOLUTE SANCTUARY';
+      reactionDialogue = pickRandom([
+        "Fifty battles... fifty times you reached into the dark to save me without taking a single life. I never thought I would find someone who would protect my human heart so fiercely... Thank you, Master. My shadow is yours forever.",
+        "The All The World's Evil that swallowed me... was no match for the endless light of your compassion. I can breathe again... The mud is gone, and only warmth remains.",
+        "I tried so hard to push you away, to make you view me as a monster... but you refused to give up on me. Is this... what it feels like to be truly saved?"
+      ]);
+      reactionBanner = pickRandom([
+        'The abyssal miasma purifies entirely into a blooming garden of radiant cherry blossoms.',
+        'The black shadow dress dissolves into gentle, brilliant white and rose-gold light.',
+        'The dark cavern glows with absolute holy grail sanctuary mana.'
+      ]);
+      embedColor = 0xf472b6;
+    } else if (hostTier === 3) {
+      reactionTitle = '🌸 THE SHADOW REDEEMED: TOUCHED BY MERCY';
+      reactionDialogue = pickRandom([
+        "Thirty encounters... and each time, your mercy chipped away at the darkness surrounding my heart. I was so scared I would devour you... but your warmth gave me the strength to resist the Grail.",
+        "You stayed by my side even when the black mud threatened to swallow us both... Thank you for believing in me when I couldn't believe in myself, Master.",
+        "The screaming inside my head is fading... Because of your repeated mercy, I can finally hear my own voice again."
+      ]);
+      reactionBanner = pickRandom([
+        'The black mud recedes softly as crimson cherry blossom petals drift through the cavern.',
+        'A gentle aura of purified mana wraps around her trembling shadow.'
+      ]);
+      embedColor = 0xdb2777;
+    } else if (hostTier === 1) {
+      reactionTitle = '🌸 THE SHADOW SURPRISED: HESITANT MERCY';
+      reactionDialogue = pickRandom([
+        "Why... why did you stay your blade now? After spilling so much blood in this war... why extend a hand to a monster like me?",
+        "I was prepared for you to cut me down like you always do... To receive mercy from a ruthless warrior... it startles me. But... thank you.",
+        "You chose to spare me despite your bloodstained path... Perhaps even an executioner carries a shred of light."
+      ]);
+      reactionBanner = 'The shadow tendrils recoil in bewildered stillness at your unexpected mercy.';
+      embedColor = 0xa21caf;
+    } else {
+      reactionTitle = '🌸 THE SHADOW REDEEMED: A TREMBLING SMILE';
+      reactionDialogue = pickRandom([
+        "You really... spared me? Even after seeing what I'm capable of? ...I don't know if I can trust this feeling, but... thank you for not striking me down.",
+        "Your hand was warm... even as my shadow tried to tear into your skin. I thought every magus in this war only sought to eliminate me... Thank you, Master.",
+        "The mud is receding... Is this what it feels like to be seen as a human again instead of a broken vessel?"
+      ]);
+      reactionBanner = pickRandom([
+        'The abyssal miasma calms into a quiet, tentative twilight.',
+        'The dark cavern glows softly with purifying holy grail mana.'
+      ]);
+      embedColor = 0xbe185d;
+    }
   } else if (hasKilled && !hasMercy && !hasBetrayed) {
-    reactionTitle = '🩸 THE SEVERED SHADOW: COLD RELEASE';
-    reactionDialogue = pickRandom([
-      "...Ah. So in the end... you couldn't forgive me either. It's so cold... but at least the black mud won't hurt anyone anymore. Thank you... for waking me from this nightmare.",
-      "Severed cleanly... Ahaha. I knew it... in the end, every magus only sees a broken vessel that needs to be destroyed. Goodbye...",
-      "The shadow core shatters... It hurts so much, but... at least Zouken's worms can't touch me ever again."
-    ]);
-    reactionBanner = pickRandom([
-      'The corrupted shadow core shatters cleanly into silent crystal dust.',
-      'The abyssal cavern falls quiet as the shadow vessel dissipates into the leylines.',
-      'A cold crimson wind carries away the lingering shadow tendrils.'
-    ]);
-    embedColor = 0x9f1239;
+    if (hostTier === 4) {
+      reactionTitle = '🩸 TRAGIC MERCY KILL: SACRIFICE OF LOVING BONDS';
+      reactionDialogue = pickRandom([
+        "Even as your blade pierced my heart... I saw the tears in your eyes. You didn't do this out of cruelty... you did it to free me from the nightmare. Thank you for loving me enough to grant me peace...",
+        "You saved my heart long before you drew this sword... Do not weep, Master. I will wait for you under the cherry blossoms beyond this war...",
+        "A final act of mercy disguised as a strike... I understand. The black mud can never hurt me... or you... ever again."
+      ]);
+      reactionBanner = pickRandom([
+        'Tears of radiant white mana mingle with falling cherry blossoms as her vessel dissipates gently.',
+        'Her shadow dress shatters into brilliant, warm light as she smiles peacefully in your arms.'
+      ]);
+      embedColor = 0x9f1239;
+    } else if (hostTier === 3) {
+      reactionTitle = '🩸 THE SEVERED SHADOW: CRUSHED BELIEF';
+      reactionDialogue = pickRandom([
+        "After everything... after all the times you showed me kindness... you still chose to end me? Ah... I see. In the end, I was just too dangerous to be allowed to live...",
+        "Was my warmth... just an illusion to you? My heart hurts more than the sword in my chest... but at least the black mud is quiet now.",
+        "I wanted to believe we could walk out of this darkness together... Goodbye, Master."
+      ]);
+      reactionBanner = 'The fading crimson glow of her shadow vessel flickers like a dying candle in the dark.';
+      embedColor = 0x881337;
+    } else if (hostTier === 1) {
+      reactionTitle = '🩸 THE SEVERED SHADOW: EXECUTION OF THE MONSTER';
+      reactionDialogue = pickRandom([
+        "A swift, merciless strike... Exactly as I expected from a killer of your reputation. You never saw a human here... only a beast that needed to be put down.",
+        "No hesitation in your blow... Fufu. At least you didn't offer hypocritical pity before putting me out of my misery.",
+        "Crushed under the weight of your ruthless strength... The shadow falls, and the executioner claims their prize."
+      ]);
+      reactionBanner = 'The shadow vessel is severed brutally, collapsing into ragged, fading black smoke.';
+      embedColor = 0x4c0519;
+    } else {
+      reactionTitle = '🩸 THE SEVERED SHADOW: COLD RELEASE';
+      reactionDialogue = pickRandom([
+        " Ah... So in the end... you couldn't forgive me either. It's so cold... but at least the black mud won't hurt anyone anymore. Thank you... for waking me from this nightmare.",
+        "Severed cleanly... Ahaha. I knew it... in the end, every magus only sees a broken vessel that needs to be destroyed. Goodbye...",
+        "The shadow core shatters... It hurts so much, but... at least Zouken's worms can't touch me ever again."
+      ]);
+      reactionBanner = pickRandom([
+        'The corrupted shadow core shatters cleanly into silent crystal dust.',
+        'The abyssal cavern falls quiet as the shadow vessel dissipates into the leylines.',
+        'A cold crimson wind carries away the lingering shadow tendrils.'
+      ]);
+      embedColor = 0x9f1239;
+    }
   } else if (hasBetrayed && !hasMercy && !hasKilled) {
-    reactionTitle = '🌑 THE ABYSS CONSUMED: UNBRIDLED CORRUPTION';
-    reactionDialogue = pickRandom([
-      "Ah... ahh!! I'm sorry, I'm so sorry!! The mud... it's burning... I can't hold it back!! RUN AWAY BEFORE I DEVOUR YOU TOO...!!",
-      "No! Stop reaching out! The corruption inside me is hungry... it's pulling you down into the bottom of the world with me!!",
-      "I tried to stop it... but All The World's Evil doesn't let anyone go!! I'm sorry... I'm so sorry!!"
-    ]);
-    reactionBanner = pickRandom([
-      'The black mud flares wildly as the shadow vessel loses control.',
-      'Corrupted mana erupts from the cavern floor, devouring all light.',
-      'Shadow tendrils lash out recklessly, swallowing the surrounding space.'
-    ]);
-    embedColor = 0x4c0519;
+    if (hostTier === 4) {
+      reactionTitle = '🌑 DESPERATE RESISTANCE: SHADOW OVERFLOW';
+      reactionDialogue = pickRandom([
+        "NO! Master, stay back! The corruption inside me is overflowing—I won't let All The World's Evil drag you down with me! FLEE WHILE I STILL HOLD IT BACK!!",
+        "I tried so hard to keep the mud suppressed for you... Ahhh! Don't let it touch you! I'd rather tear myself apart than harm you!!"
+      ]);
+      reactionBanner = 'She desperately restrains her own shadow tendrils to allow you time to escape the cavern.';
+      embedColor = 0x701a75;
+    } else if (hostTier === 3) {
+      reactionTitle = '🌑 UNCONTROLLED DESPAIR: THE GRAIL OVERFLOWS';
+      reactionDialogue = pickRandom([
+        "Ah... ahh!! I'm sorry, I'm so sorry! The mud... it's burning! I don't want to swallow the person who showed me warmth!! Forgive me...!",
+        "I tried to hold it in... but the Grail's curse is too strong! Please... run before I lose my mind completely!"
+      ]);
+      reactionBanner = 'Corrupted mana erupts wildly as her tears turn to black mud on the cavern floor.';
+      embedColor = 0x4c0519;
+    } else {
+      reactionTitle = '🌑 THE ABYSS CONSUMED: UNBRIDLED CORRUPTION';
+      reactionDialogue = pickRandom([
+        "Ah... ahh!! I'm sorry, I'm so sorry!! The mud... it's burning... I can't hold it back!! RUN AWAY BEFORE I DEVOUR YOU TOO...!!",
+        "No! Stop reaching out! The corruption inside me is hungry... it's pulling you down into the bottom of the world with me!!",
+        "I tried to stop it... but All The World's Evil doesn't let anyone go!! I'm sorry... I'm so sorry!!"
+      ]);
+      reactionBanner = pickRandom([
+        'The black mud flares wildly as the shadow vessel loses control.',
+        'Corrupted mana erupts from the cavern floor, devouring all light.',
+        'Shadow tendrils lash out recklessly, swallowing the surrounding space.'
+      ]);
+      embedColor = 0x4c0519;
+    }
   } else if (hasMercy && hasKilled) {
-    reactionTitle = '⚖️ CONFLICTING BONDS: BITTERSWEET PASSING';
-    reactionDialogue = pickRandom([
-      "Some of you showed me kindness... while others saw the monster I had become. Both of you were right. Thank you... for giving me one last glimpse of light.",
-      "A hand offered in mercy, and a blade swung in judgment... Fufu. That is the true nature of this war, isn't it?",
-      "One tried to save me, one tried to cut me down... I don't hate either of you. Thank you for ending the nightmare."
-    ]);
-    reactionBanner = 'The cavern echoes with the fading whispers of the corrupted Grail vessel.';
-    embedColor = 0xbe185d;
+    if (hostTier >= 3) {
+      reactionTitle = '⚖️ DIVIDED BONDS: BITTERSWEET PASSING';
+      reactionDialogue = pickRandom([
+        "One reached out to save me, while another drew a blade to grant me release... I understand both choices. Thank you... for freeing me with both love and steel.",
+        "Mercy and judgment, side by side... In this cruel war, both were acts of kindness to a suffering girl. Farewell, my Masters."
+      ]);
+      reactionBanner = 'Fading sakura petals mingle with shattered shadow crystal fragments in the quiet cavern.';
+      embedColor = 0xbe185d;
+    } else {
+      reactionTitle = '⚖️ CONFLICTING BONDS: BITTERSWEET PASSING';
+      reactionDialogue = pickRandom([
+        "Some of you showed me kindness... while others saw the monster I had become. Both of you were right. Thank you... for giving me one last glimpse of light.",
+        "A hand offered in mercy, and a blade swung in judgment... Fufu. That is the true nature of this war, isn't it?",
+        "One tried to save me, one tried to cut me down... I don't hate either of you. Thank you for ending the nightmare."
+      ]);
+      reactionBanner = 'The cavern echoes with the fading whispers of the corrupted Grail vessel.';
+      embedColor = 0xbe185d;
+    }
   } else if (hasBetrayed) {
     reactionTitle = '🌑 CHAOS IN THE CAVERN: TRAGIC COLLAPSE';
     reactionDialogue = pickRandom([
