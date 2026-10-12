@@ -7577,7 +7577,7 @@ async function finishDuel(
   if (targetMsg && typeof targetMsg.createMessageComponentCollector === 'function') {
     const fateCollector = targetMsg.createMessageComponentCollector({
       componentType: ComponentType.Button,
-      time: 60000
+      time: 120000
     });
 
     await new Promise<void>((resolve) => {

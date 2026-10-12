@@ -1087,7 +1087,7 @@ export async function handleDarkSakuraClimax(
       .setDescription(
         `*Dark Sakura falls to her knees at the center of the cavern. The black mud around her writhes, yet her breathing is shallow and trembling.*\n\n` +
         `> *"Is it over...? Are you going to sever the core, or... reach out into the mud?"*\n\n` +
-        `**Every Master must choose their conviction (30 seconds):**\n\n` +
+        `**Every Master must choose their conviction (2 minutes):**\n\n` +
         `⚔️ **[SEVER THE RIBBON (Execute)]**\n` +
         `• Sever the shadow core cleanly and end the corruption.\n\n` +
         `🌸 **[REACH OUT (Spare)]**\n` +
@@ -1121,7 +1121,7 @@ export async function handleDarkSakuraClimax(
 
   const collector = promptMsg.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: 30_000
+    time: 120_000
   });
 
   collector.on('collect', async (btn: any) => {
@@ -1166,8 +1166,8 @@ export async function handleDarkSakuraClimax(
     const record = getDarkSakuraRecord(master);
     record.lastEncounterTime = Date.now();
 
-    // Default to execute if no choice was made in time
-    const choice = userChoices.get(p.userId) || 'execute';
+    // Default to spare if no choice was made in time
+    const choice = userChoices.get(p.userId) || 'spare';
 
     // Locate participant's servant (active servant or matched instance)
     const s = master.servants?.find((sv: any) => sv.id === p.servant?.id) ||
