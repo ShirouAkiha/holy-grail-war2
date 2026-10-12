@@ -3444,7 +3444,10 @@ function resolveStrike(
             const actorDeathBuffs = (attacker.activeBuffs || []).filter(b => b.type === 'buff_death_rate').reduce((s, b) => s + b.value, 0);
             const targetDeathDebuffs = (targetOpp.activeBuffs || []).filter(b => b.type === 'debuff_death_res').reduce((s, b) => s + b.value, 0);
             const baseChance = 0.15; // 15% in duels (Option B Nerf)
-            const deathChance = Math.min(0.50, baseChance + (actorDeathBuffs / 100) + (targetDeathDebuffs / 100));
+            const attackerPassives = attacker.passives || getUnlockedPassives(attacker.servant.template?.passives?.length ? attacker.servant.template.passives : attacker.servant.template?.servantClass, attacker.servant.bondLevel || 1);
+            const hasOrganizer = attackerPassives.some((p: any) => p.type === 'organizer' || /organizer/i.test(p.name || ''));
+            const organizerBonus = hasOrganizer ? 0.05 : 0;
+            const deathChance = Math.min(0.50, baseChance + organizerBonus + (actorDeathBuffs / 100) + (targetDeathDebuffs / 100));
 
             if (!isImmune && Math.random() < deathChance) {
               const hasGuts = (targetOpp.gutsCount && targetOpp.gutsCount > 0) || (targetOpp.activeBuffs || []).some(b => b.type === 'guts');
