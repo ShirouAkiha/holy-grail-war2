@@ -17,6 +17,22 @@ export const CLASS_ICON_URLS: Record<string, string> = {
   pretender: 'https://ella.janitorai.com/media-approved/2AgnJGGinmtCgDC7IvlpW.webp',
   beast: 'https://ella.janitorai.com/media-approved/0e2G0RijgX5dnEjjuZPBm.webp',
   'beast ii': 'https://ella.janitorai.com/media-approved/0e2G0RijgX5dnEjjuZPBm.webp',
+  'grand saber': 'https://ella.janitorai.com/media-approved/e_QsvwekeMEJDsVO4gxM0.webp',
+  grandsaber: 'https://ella.janitorai.com/media-approved/e_QsvwekeMEJDsVO4gxM0.webp',
+  'grand archer': 'https://ella.janitorai.com/media-approved/pjUTGZ-AcUKsbURcw250Z.webp',
+  grandarcher: 'https://ella.janitorai.com/media-approved/pjUTGZ-AcUKsbURcw250Z.webp',
+  'grand lancer': 'https://ella.janitorai.com/media-approved/hWSScQTtbBflETSQuxq12.webp',
+  grandlancer: 'https://ella.janitorai.com/media-approved/hWSScQTtbBflETSQuxq12.webp',
+  'grand rider': 'https://ella.janitorai.com/media-approved/33uygbj8A0d8n765p4vZU.webp',
+  grandrider: 'https://ella.janitorai.com/media-approved/33uygbj8A0d8n765p4vZU.webp',
+  'grand caster': 'https://ella.janitorai.com/media-approved/0uU09slio-a9gZv9mmnNO.webp',
+  grandcaster: 'https://ella.janitorai.com/media-approved/0uU09slio-a9gZv9mmnNO.webp',
+  'grand assassin': 'https://ella.janitorai.com/media-approved/CgYMv-2h0FhzG0CtFVqix.webp',
+  grandassassin: 'https://ella.janitorai.com/media-approved/CgYMv-2h0FhzG0CtFVqix.webp',
+  'grand berserker': 'https://ella.janitorai.com/media-approved/5VOnIyjC5J0QnMtLf4vI1.webp',
+  grandberserker: 'https://ella.janitorai.com/media-approved/5VOnIyjC5J0QnMtLf4vI1.webp',
+  'grand foreigner': 'https://ella.janitorai.com/media-approved/EB6ylzlMYLFD6Z_LeC2aV.webp',
+  grandforeigner: 'https://ella.janitorai.com/media-approved/EB6ylzlMYLFD6Z_LeC2aV.webp',
 };
 
 export function getClassIconUrl(servantClass?: string): string {

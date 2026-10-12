@@ -302,6 +302,18 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
       stage3: 'https://static.atlasacademy.io/NA/CharaFigure/5003002/5003002_merged.png',
       stage4: 'https://static.atlasacademy.io/NA/CharaFigure/5003002/5003002_merged.png'
     }
+  },
+  hassan_i_sabbah_azrael: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/602500/602500a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/602500/602500a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/602500/602500b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/602500/602500b@2.png',
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/6025000/6025000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/6025001/6025001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/6025002/6025002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/6025002/6025002_merged.png'
+    }
   }
 };
 
@@ -378,7 +390,12 @@ export function findCanonicalAscensionData(identifier?: any): { key: string; dat
     fox_wife: 'tamamo_no_mae',
     emiya_alter: 'emiya_alter',
     edgemiya: 'emiya_alter',
-    demiya: 'emiya_alter'
+    demiya: 'emiya_alter',
+    hassan_i_sabbah_azrael: 'hassan_i_sabbah_azrael',
+    azrael: 'hassan_i_sabbah_azrael',
+    hassan_azrael: 'hassan_i_sabbah_azrael',
+    first_hassan: 'hassan_i_sabbah_azrael',
+    king_hassan: 'hassan_i_sabbah_azrael'
   };
 
   if (ALIAS_MAP[raw] && CANONICAL_SERVANT_ASCENSIONS[ALIAS_MAP[raw]]) {

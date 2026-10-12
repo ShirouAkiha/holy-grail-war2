@@ -16,7 +16,15 @@ export type ServantClass =
   | 'Pretender'
   | 'Shitposter'
   | 'Shielder'
-  | 'Beast';
+  | 'Beast'
+  | 'Grand Saber'
+  | 'Grand Archer'
+  | 'Grand Lancer'
+  | 'Grand Rider'
+  | 'Grand Caster'
+  | 'Grand Assassin'
+  | 'Grand Berserker'
+  | 'Grand Foreigner';
 
 export type Rarity = 1 | 2 | 3 | 4 | 5;
 

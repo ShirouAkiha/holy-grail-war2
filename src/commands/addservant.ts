@@ -63,6 +63,14 @@ export const data = new SlashCommandBuilder()
             { name: '💀 Avenger', value: 'Avenger' },
             { name: '🌌 Foreigner', value: 'Foreigner' },
             { name: '🌙 MoonCancer', value: 'MoonCancer' },
+            { name: '👑 Grand Saber', value: 'Grand Saber' },
+            { name: '👑 Grand Archer', value: 'Grand Archer' },
+            { name: '👑 Grand Lancer', value: 'Grand Lancer' },
+            { name: '👑 Grand Rider', value: 'Grand Rider' },
+            { name: '👑 Grand Caster', value: 'Grand Caster' },
+            { name: '👑 Grand Assassin', value: 'Grand Assassin' },
+            { name: '👑 Grand Berserker', value: 'Grand Berserker' },
+            { name: '👑 Grand Foreigner', value: 'Grand Foreigner' },
             { name: '🤡 Shitposter', value: 'Shitposter' }
           )
       )
@@ -186,6 +194,14 @@ export const data = new SlashCommandBuilder()
             { name: '💀 Avenger', value: 'Avenger' },
             { name: '🌌 Foreigner', value: 'Foreigner' },
             { name: '🌙 MoonCancer', value: 'MoonCancer' },
+            { name: '👑 Grand Saber', value: 'Grand Saber' },
+            { name: '👑 Grand Archer', value: 'Grand Archer' },
+            { name: '👑 Grand Lancer', value: 'Grand Lancer' },
+            { name: '👑 Grand Rider', value: 'Grand Rider' },
+            { name: '👑 Grand Caster', value: 'Grand Caster' },
+            { name: '👑 Grand Assassin', value: 'Grand Assassin' },
+            { name: '👑 Grand Berserker', value: 'Grand Berserker' },
+            { name: '👑 Grand Foreigner', value: 'Grand Foreigner' },
             { name: '🤡 Shitposter', value: 'Shitposter' }
           )
       )

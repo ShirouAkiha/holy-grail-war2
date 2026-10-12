@@ -3,7 +3,8 @@ import { resolveAscensionArtwork, resolveAscensionSprite } from './servantAscens
 export { resolveAscensionArtwork, resolveAscensionSprite };
 
 export function getDefaultClassPassives(servantClass: ServantClass): PassiveSkill[] {
-  switch (servantClass) {
+  const normClass = servantClass.startsWith('Grand ') ? (servantClass.replace('Grand ', '') as ServantClass) : servantClass;
+  switch (normClass) {
     case 'Saber':
       return [
         {
@@ -304,6 +305,7 @@ export function getServantAvatarAndCardArt(
     if (clean.includes('banaaizq4gi91.gif') || clean.includes('cu_chulain_np')) return true;
     if (clean.includes('zutp5pqlu7fmkvyin9h-f') || clean.includes('super_aoko') || clean.includes('gr8x0bmk-phc95lo5mhal')) return true;
     if (clean.includes('llgwffdhold') || clean.includes('4lkcjmsj')) return true;
+    if (clean.includes('/faces/f_')) return true;
     return false;
   };
 
@@ -388,9 +390,115 @@ export function getServantSprite(
 }
 
 export const SERVANT_DATABASE: ServantTemplate[] = [
-  // Heroic Spirits - Equalized & Balanced for Competitive Grail War
-  // All Servants share an equalized total power budget (STR+END+AGI+MNA+LCK = 76 points).
-  // Zero star-rating penalties: 3-star and 4-star tier caps have been completely eliminated.
+  /*
+  ========================================================================================
+  📌 STANDARD RPG SERVANT TEMPLATE FORMAT (REFERENCE SPECIFICATION)
+  ========================================================================================
+  Every Heroic Spirit in the RPG must strictly conform to this schema:
+  - id: lowercase_snake_case (e.g. 'hassan_i_sabbah_azrael')
+  - servantClass: ServantClass ('Saber', 'Archer', 'Grand Assassin', etc.)
+  - rarity: 5
+  - baseHp / baseAtk: ~28,000 - 30,000 HP / ~10,800 - 11,800 ATK (Equalized Parity)
+  - baseStats: { strength, endurance, agility, mana, luck } -> MUST SUM TO EXACTLY 76 POINTS
+  - commandDeck: Array of 5 cards [CardType, CardType, CardType, CardType, CardType]
+  - skills: EXACTLY 3 Active Skills (Maxed level by default, no upgrading grinding required)
+      { id, name, cooldown (5-6), description, effectType, value, duration, icon, quotes }
+  - passives: MAXIMUM 2 Passive Skills (Passive 1 at Bond Lv.1, Passive 2 at Bond Lv.5)
+  - noblePhantasm: { name, cardType, chant, description, target ('single'|'aoe'|'support'), multiplier, overchargeEffect }
+  - lore, summonQuote, battleStartQuote, victoryQuote, defeatQuote
+  - avatarUrl (Full High-Res Card Art Stage 1), cardArtUrl (Full High-Res Final Ascension Stage 4), spriteUrl (Full Cutout Character Figure) — DO NOT use cropped Faces/ pngs!
+  ========================================================================================
+  */
+  {
+    id: 'hassan_i_sabbah_azrael',
+    name: 'Hassan-i-Sabbah (Azrael)',
+    title: 'Angel of the Evening Bell',
+    servantClass: 'Grand Assassin',
+    rarity: 5,
+    baseHp: 29500,
+    baseAtk: 11800,
+    baseStats: { strength: 18, endurance: 16, agility: 17, mana: 13, luck: 12 },
+    commandDeck: ['Arts', 'Arts', 'Buster', 'Buster', 'Quick'],
+    skills: [
+      {
+        id: 'body_of_the_angel_a',
+        name: 'Angel\'s Flesh A',
+        cooldown: 5,
+        description: 'Increases own ATK by 35% for 3 turns, grants Debuff Immunity (1 time, 3 turns), Evade (2 hits, 3 turns), and charges NP gauge by 30%.',
+        effectType: 'np_charge',
+        value: 30,
+        duration: 3,
+        icon: '🪶',
+        quotes: [
+          "The flesh of the celestial angel rejects all decay.",
+          "Behold the mantle of the Angel of Death."
+        ]
+      },
+      {
+        id: 'thirty_birds_a',
+        name: 'Thirty Birds A',
+        cooldown: 5,
+        description: 'Increases Arts Card performance by 30% for 3 turns, increases Critical Damage by 40% for 3 turns, gains 25 Critical Stars, and reduces skill cooldowns by 2 turns.',
+        effectType: 'arts_up',
+        value: 30,
+        duration: 3,
+        icon: '🦅',
+        quotes: [
+          "Thirty birds converge as one Simurgh.",
+          "The shadow of thirty wings covers the sky."
+        ]
+      },
+      {
+        id: 'tree_of_zaqqum_ex',
+        name: 'Tree of Zaqqum EX',
+        cooldown: 5,
+        description: 'Inflicts [Thirst of Death] on all enemies (reduces DEF by 30% for 3 turns and inflicts terror/stun), and reduces enemy Instant Death Resistance.',
+        effectType: 'debuff',
+        value: 30,
+        duration: 3,
+        icon: '🌳',
+        quotes: [
+          "Eat of the Zaqqum tree and taste eternal thirst.",
+          "The bell toll grows ever nearer."
+        ]
+      }
+    ],
+    passives: [
+      {
+        name: 'Organizer A',
+        type: 'presence_concealment',
+        value: 20,
+        rank: 'A',
+        description: 'Grants 100% Instant Death Immunity, charm resistance, and increases Critical Star drop rate by 20%.'
+      },
+      {
+        name: 'Protection of the Faith A',
+        type: 'magic_resistance',
+        value: 20,
+        rank: 'A',
+        description: 'Increases debuff resistance by 20% and recovers 500 HP every turn.'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Azrael: Angel of the Evening Bell',
+      cardType: 'Arts',
+      chant: 'Dost thou hear the evening bell? It tolls thy true name. Die... Azrael!',
+      description: 'Deals massive Arts single-target damage with high instant death rate and 20% NP refund.',
+      target: 'single',
+      multiplier: 1200,
+      overchargeEffect: 'Increases Arts NP Damage by 30% for 3 turns'
+    },
+    lore: 'The original founder of the Order of Assassins and the true Grand Assassin. Bearing the title of Hassan-i-Sabbah and wielding the sword of the Evening Bell Azrael, he brings swift and absolute death to those whose time has come.',
+    summonQuote: 'I am Hassan-i-Sabbah. Dost thou call upon the Angel of Death? Let us see if thy cause warrants the tolling of the bell.',
+    battleStartQuote: 'The evening bell hath rung. Prepare thy soul.',
+    victoryQuote: 'The shadow passes. Return to the dust whence thou came.',
+    defeatQuote: 'Even the bell... must eventually fall silent...',
+    avatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+    cardArtUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300b@2.png',
+    spriteUrl: 'https://static.atlasacademy.io/JP/CharaFigure/6053002/6053002_merged.png',
+    traits: ['Humanoid', 'Male', 'Servant', 'Grand Servant', 'Hominidae Servant', 'Brynhildr\'s Beloved'],
+    aliases: ['hassan_i_sabbah_azrael', 'azrael', 'hassan azrael', 'grand assassin', 'hassan-i-sabbah']
+  },
   {
     id: 'artoria_pendragon',
     name: 'Artoria Pendragon',
@@ -2398,5 +2506,123 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     cardArtUrl: 'https://static.atlasacademy.io/NA/CharaGraph/500300/500300a@1.png',
     spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/5003000/5003000_merged.png',
     isCustomOrMeme: false
+  },
+  {
+    id: 'hassan_i_sabbah_azrael',
+    name: 'Hassan-i-Sabbah (Azrael)',
+    title: 'Grand Old Man of the Mountain / Angel of Death',
+    servantClass: 'Grand Assassin',
+    rarity: 5,
+    baseHp: 31500,
+    baseAtk: 12100,
+    baseStats: { strength: 22, endurance: 20, agility: 18, mana: 16, luck: 12 },
+    commandDeck: ['Arts', 'Arts', 'Quick', 'Buster', 'Buster'],
+    traits: [
+      'Humanoid',
+      'Servant',
+      'Hassan',
+      'Grand Servant',
+      'Heaven or Earth Servant',
+      'Weak to Enuma Elish'
+    ],
+    skills: [
+      {
+        id: 'angels_body_a',
+        name: "Angel's Body A",
+        cooldown: 8,
+        description: 'Increases own attack by +30% for 3 turns. Grants self Debuff Immunity for 3 turns. Grants Guts status (revives with 5,000 HP) for 3 turns. Grants Evasion for 3 turns. Charges own NP gauge by 80%.',
+        effectType: 'buff_atk',
+        value: 30,
+        duration: 3,
+        target: 'self',
+        icon: '🪶',
+        quote: '"The toll of the bell echoes across the boundary..."',
+        quotes: [
+          '"The toll of the bell echoes across the boundary..."',
+          '"Bare thy neck to the blade of Alaya..."',
+          '"The Angel of Death draws near!"'
+        ]
+      },
+      {
+        id: 'thirty_birds_a',
+        name: 'Thirty Birds A',
+        cooldown: 7,
+        description: 'Select an ally or self: reduces skill cooldowns by 2 turns, increases Arts effectiveness by +30% for 3 turns, increases Critical Damage by +50% for 3 turns, charges NP gauge by +30%, grants Guts status (revives with 5,000 HP) for 3 turns, and gains 25 Critical Stars.',
+        effectType: 'arts_up',
+        value: 30,
+        duration: 3,
+        target: 'ally',
+        icon: '🦅',
+        quote: '"Thirty souls converge as the flock of death."',
+        quotes: [
+          '"Thirty souls converge as the flock of death."',
+          '"Feathers of fate, sever all bonds of mortality!"',
+          '"Receive the shadow of the thirty birds!"'
+        ]
+      },
+      {
+        id: 'tree_of_zaqqum_ex',
+        name: 'Tree of Zaqqūm EX',
+        cooldown: 6,
+        description: "Lowers Death Resistance for all enemies by -10% in PvP/duels and -50% in raids for 3 turns, and increases self attack death chance by +10% in PvP/duels and +50% in raids for 3 turns. Lowers enemy defense by -30% for 3 turns. If instant death does not trigger, lowers enemy defense by -50% for 5 turns. 50% chance to inflict Stun on enemies for 3 turns.",
+        effectType: 'debuff',
+        value: 10,
+        duration: 3,
+        target: 'all_enemies',
+        icon: '🌳',
+        quote: '"Feed upon the bitter fruit of hell, non-believer!"',
+        quotes: [
+          '"Feed upon the bitter fruit of hell, non-believer!"',
+          '"Roots of the Zaqqūm entwine thy soul..."',
+          '"Taste the torment of the netherworld!"'
+        ]
+      }
+    ],
+    passives: [
+      {
+        name: 'Protection of Faith A',
+        type: 'protection_of_faith',
+        value: 10,
+        rank: 'A',
+        description: 'Increases own attack by +10%, recovers 500 HP every turn, increases defense by +10%, and increases debuff resistance by +30%.'
+      },
+      {
+        name: 'Organizer A',
+        type: 'organizer',
+        value: 100,
+        rank: 'A',
+        description: 'Grants +100% Charm resistance, Instant Kill Immunity, inflicts -3% Death Resistance debuff to enemy on attack with Arts cards (per card), and increases Instant Death rate for all cards by +5% in PvP and +10% in raids.'
+      }
+    ],
+    noblePhantasm: {
+      name: "Mal'ak al-Mawt: Angel of the Evening Bell",
+      cardType: 'Arts',
+      chant: 'Listen closely. The evening bell has tolled thy name. Surrender thy head to the blade of fate... Mal\'ak al-Mawt!',
+      description: 'Increases own NP damage by +30% for 3 turns (activates first). Deals 1,500% damage to one enemy (deals 150% extra damage if target has lowered Defence, Increased Death Chance, or Thirst for Death status). 30% chance of Instant Death infliction on enemy (does not ignore Guts). If instant kill succeeds, charges own NP gauge by +50%.',
+      target: 'single_enemy',
+      multiplier: 1500,
+      overchargeEffect: 'Increases own NP damage by +30% for 3 turns (activates first, scales with Overcharge)',
+      gifUrl: 'https://ella.janitorai.com/media-approved/kVayE4r7ymceqPcg_My_g.gif'
+    },
+    lore: `Hassan-i-Sabbah (Azrael) (ハサン・サッバーハ), Class Name Grand Assassin (グランドアサシン), is a 5★ SSR Grand Assassin Servant.\n\nThe legendary founder of the Hashashin and the First Old Man of the Mountain, manifesting in his ultimate form as the embodiment of Azrael, the Angel of Death. Sitting atop the boundary between life and mortality, his blade enforces the inevitable decree of fate upon all beings.\n\nPersonality & Demeanor:\n• Solemn & Absolute: He speaks with the weight of divine judgment, cutting through deception with absolute clarity.\n• Unforgiving to Evil: He shows no mercy to non-believers, tyrants, or those who defy the natural order of mortality.\n• Steadfast Protector: To his Master, he serves as an unshakeable shield against the abyss.`,
+    summonQuote: '"The evening bell tolls for thee... Servant Grand Assassin, Hassan-i-Sabbah. Has thy destiny summoned the blade of death?"',
+    battleStartQuote: '"Listen closely. The evening bell has tolled thy name..."',
+    victoryQuote: '"Thy head belongs to fate. Rest in eternal peace."',
+    defeatQuote: '"Even the evening bell... must eventually grow silent..."',
+    avatarUrl: 'https://static.atlasacademy.io/NA/CharaGraph/6025000.png',
+    cardArtUrl: 'https://static.atlasacademy.io/NA/CharaGraph/6025000.png',
+    spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/6025000/6025000_merged.png',
+    isCustomOrMeme: false
   }
 ];
+
+/**
+ * STANDARD SERVANT DATA FORMAT TEMPLATE (For reference across the codebase)
+ *
+ * All Servants in the RPG follow this format:
+ * - Passives: Maximum 2 passives (Passive 2 unlocks at Bond Level 5). No skill upgrades needed (pre-maxed).
+ * - Image Assets: ALWAYS use full Card Art / CharaGraph (`https://static.atlasacademy.io/NA/CharaGraph/...png`) and full sprite (`CharaFigure/..._merged.png`). DO NOT use face icon PNGs (`f_...png`).
+ */
+export const SERVANT_FORMAT_TEMPLATE = {
+  note: 'Standard Servant Format Definition for FGO RPG'
+};

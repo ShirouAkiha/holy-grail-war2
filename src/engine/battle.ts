@@ -24,49 +24,55 @@ export const PVP_DAMAGE_MODIFIER = 0.35;
 // - Ruler / Avenger / Foreigner special affinities.
 export function calculateClassMultiplier(attackerClass: ServantClass, defenderClass: ServantClass): number {
   if (attackerClass === defenderClass) return 1.0;
+
+  // Normalize Grand classes to their base class for standard balanced class affinity
+  const normAttacker = (attackerClass.startsWith('Grand ') ? attackerClass.replace('Grand ', '') : attackerClass) as ServantClass;
+  const normDefender = (defenderClass.startsWith('Grand ') ? defenderClass.replace('Grand ', '') : defenderClass) as ServantClass;
+
+  if (normAttacker === normDefender) return 1.0;
   // Shielder is completely neutral to all classes
-  if (attackerClass === 'Shielder' || defenderClass === 'Shielder') return 1.0;
+  if (normAttacker === 'Shielder' || normDefender === 'Shielder') return 1.0;
 
   // Knight Triangle: Saber > Lancer > Archer > Saber
-  if (attackerClass === 'Saber' && defenderClass === 'Lancer') return 1.35;
-  if (attackerClass === 'Lancer' && defenderClass === 'Archer') return 1.35;
-  if (attackerClass === 'Archer' && defenderClass === 'Saber') return 1.35;
-  if (attackerClass === 'Saber' && defenderClass === 'Archer') return 0.75;
-  if (attackerClass === 'Lancer' && defenderClass === 'Saber') return 0.75;
-  if (attackerClass === 'Archer' && defenderClass === 'Lancer') return 0.75;
+  if (normAttacker === 'Saber' && normDefender === 'Lancer') return 1.35;
+  if (normAttacker === 'Lancer' && normDefender === 'Archer') return 1.35;
+  if (normAttacker === 'Archer' && normDefender === 'Saber') return 1.35;
+  if (normAttacker === 'Saber' && normDefender === 'Archer') return 0.75;
+  if (normAttacker === 'Lancer' && normDefender === 'Saber') return 0.75;
+  if (normAttacker === 'Archer' && normDefender === 'Lancer') return 0.75;
 
   // Cavalry Triangle: Rider > Caster > Assassin > Rider
-  if (attackerClass === 'Rider' && defenderClass === 'Caster') return 1.35;
-  if (attackerClass === 'Caster' && defenderClass === 'Assassin') return 1.35;
-  if (attackerClass === 'Assassin' && defenderClass === 'Rider') return 1.35;
-  if (attackerClass === 'Rider' && defenderClass === 'Assassin') return 0.75;
-  if (attackerClass === 'Caster' && defenderClass === 'Rider') return 0.75;
-  if (attackerClass === 'Assassin' && defenderClass === 'Caster') return 0.75;
+  if (normAttacker === 'Rider' && normDefender === 'Caster') return 1.35;
+  if (normAttacker === 'Caster' && normDefender === 'Assassin') return 1.35;
+  if (normAttacker === 'Assassin' && normDefender === 'Rider') return 1.35;
+  if (normAttacker === 'Rider' && normDefender === 'Assassin') return 0.75;
+  if (normAttacker === 'Caster' && normDefender === 'Rider') return 0.75;
+  if (normAttacker === 'Assassin' && normDefender === 'Rider') return 0.75;
 
   // Berserker: Glass Cannon (Deals 1.35x to all, Takes 1.35x from all)
-  if (attackerClass === 'Berserker') return 1.35;
-  if (defenderClass === 'Berserker') return 1.35;
+  if (normAttacker === 'Berserker') return 1.35;
+  if (normDefender === 'Berserker') return 1.35;
 
   // Ruler: Resists standard 6 classes
-  if (defenderClass === 'Ruler' && ['Saber', 'Archer', 'Lancer', 'Rider', 'Caster', 'Assassin'].includes(attackerClass)) {
+  if (normDefender === 'Ruler' && ['Saber', 'Archer', 'Lancer', 'Rider', 'Caster', 'Assassin'].includes(normAttacker)) {
     return 0.75;
   }
-  if (attackerClass === 'Avenger' && defenderClass === 'Ruler') return 1.5;
+  if (normAttacker === 'Avenger' && normDefender === 'Ruler') return 1.5;
 
   // Pretender Class: Effective against Knights (Saber, Archer, Lancer) and AlterEgo, weak to Cavalry (Rider, Caster, Assassin) and Foreigner
-  if (attackerClass === 'Pretender' && ['Saber', 'Archer', 'Lancer', 'AlterEgo'].includes(defenderClass)) return 1.35;
-  if (attackerClass === 'Pretender' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(defenderClass)) return 0.75;
-  if (defenderClass === 'Pretender' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(attackerClass)) return 1.35;
-  if (defenderClass === 'Pretender' && ['Saber', 'Archer', 'Lancer', 'AlterEgo'].includes(attackerClass)) return 0.75;
+  if (normAttacker === 'Pretender' && ['Saber', 'Archer', 'Lancer', 'AlterEgo'].includes(normDefender)) return 1.35;
+  if (normAttacker === 'Pretender' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(normDefender)) return 0.75;
+  if (normDefender === 'Pretender' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(normAttacker)) return 1.35;
+  if (normDefender === 'Pretender' && ['Saber', 'Archer', 'Lancer', 'AlterEgo'].includes(normAttacker)) return 0.75;
 
   // AlterEgo Class: Effective against Cavalry (Rider, Caster, Assassin) and Foreigner, weak to Knights (Saber, Archer, Lancer) and Pretender
-  if (attackerClass === 'AlterEgo' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(defenderClass)) return 1.35;
-  if (attackerClass === 'AlterEgo' && ['Saber', 'Archer', 'Lancer', 'Pretender'].includes(defenderClass)) return 0.75;
-  if (defenderClass === 'AlterEgo' && ['Saber', 'Archer', 'Lancer', 'Pretender'].includes(attackerClass)) return 1.35;
-  if (defenderClass === 'AlterEgo' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(attackerClass)) return 0.75;
+  if (normAttacker === 'AlterEgo' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(normDefender)) return 1.35;
+  if (normAttacker === 'AlterEgo' && ['Saber', 'Archer', 'Lancer', 'Pretender'].includes(normDefender)) return 0.75;
+  if (normDefender === 'AlterEgo' && ['Saber', 'Archer', 'Lancer', 'Pretender'].includes(normAttacker)) return 1.35;
+  if (normDefender === 'AlterEgo' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(normAttacker)) return 0.75;
 
   // Meme class: Shitposter deals chaotic 1.2x
-  if (attackerClass === 'Shitposter') return 1.2;
+  if (normAttacker === 'Shitposter') return 1.2;
 
   return 1.0;
 }

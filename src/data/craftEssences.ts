@@ -793,6 +793,24 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     isBondCe: true,
     bondServantId: 'tamamo_no_mae',
     bondServantName: 'Tamamo no Mae'
+  },
+  hassan_i_sabbah_azrael: {
+    id: 'ce_bond_hassan_i_sabbah_azrael',
+    name: "Setting Sun at the Eagle's Nest",
+    rarity: 4,
+    description: "When equipped on Hassan-i-Sabbah (Azrael): Increases Noble Phantasm damage by +30%. Inflicts debuff to enemies on attack: Lowers Death Resistance by -3% per turn, and lowers Death Resistance by -3% on Critical Strikes.",
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: "When equipped to Hassan-i-Sabbah (Azrael): Increases NP damage by +30%. On attack: Inflicts -3% Death Resistance per turn and -3% Death Resistance on Critical Strikes.",
+    passiveType: 'np_damage',
+    passiveValue: 30,
+    artworkUrl: 'https://static.atlasacademy.io/NA/CharaGraph/9302684/9302684a.png',
+    isBondCe: true,
+    bondServantId: 'hassan_i_sabbah_azrael',
+    bondServantName: 'Hassan-i-Sabbah (Azrael)'
   }
 };
 
@@ -858,7 +876,13 @@ const CANONICAL_SERVANT_TO_BOND_KEY: Record<string, string> = {
   tamamo: 'tamamo_no_mae',
   caster_tamamo: 'tamamo_no_mae',
   mikokon: 'tamamo_no_mae',
-  fox_wife: 'tamamo_no_mae'
+  fox_wife: 'tamamo_no_mae',
+  hassan_i_sabbah_azrael: 'hassan_i_sabbah_azrael',
+  azrael: 'hassan_i_sabbah_azrael',
+  hassan_azrael: 'hassan_i_sabbah_azrael',
+  'hassan-i-sabbah (azrael)': 'hassan_i_sabbah_azrael',
+  king_hassan_azrael: 'hassan_i_sabbah_azrael',
+  grand_assassin_azrael: 'hassan_i_sabbah_azrael'
 };
 
 /**
