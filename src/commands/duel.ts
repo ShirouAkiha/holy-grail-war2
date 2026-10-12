@@ -2010,6 +2010,138 @@ function activateCombatantSkill(
     combatant.npGauge = Math.min(300, combatant.npGauge + 30);
     combatant.critStars = Math.min(50, combatant.critStars + 20);
     logText = `✨ **${sName}** activated **${skill.name}**! (+30% NP Gauge, +20 Critical Stars)${quoteLine}`;
+  } else if (skill.id === 'angels_body_a' || /angel's body|body of the angel/i.test(skill.name)) {
+    // Azrael S1: Angel's Body A (Option B Nerf)
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: "Angel's Body A (ATK Up)",
+      type: 'buff_atk',
+      value: 20,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: "Angel's Body A (Debuff Immunity)",
+      type: 'debuff_immunity',
+      value: 100,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.gutsCount = (combatant.gutsCount || 0) + 1;
+    combatant.activeBuffs.unshift({
+      name: "Angel's Body A (Guts 2,500 HP)",
+      type: 'guts',
+      value: 2500,
+      remainingTurns: 3,
+      remainingHits: 1,
+      isHitCount: true,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.isEvading = true;
+    combatant.activeBuffs.push({
+      name: "Angel's Body A (Evade 1T)",
+      type: 'evade',
+      value: 100,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.npGauge = Math.min(300, (combatant.npGauge || 0) + 30);
+    logText = `🪶 **${sName}** activated **${skill.name}**! (+20% ATK [3T], Debuff Immunity [1T], Guts 2,500 HP [3T], Evade [1T], +30% NP Gauge)${quoteLine}`;
+  } else if (skill.id === 'thirty_birds_a' || /thirty birds/i.test(skill.name)) {
+    // Azrael S2: Thirty Birds A (Option B Nerf)
+    if (combatant.skillCooldowns) {
+      for (const idxStr of Object.keys(combatant.skillCooldowns)) {
+        const sIdx = parseInt(idxStr, 10);
+        if (combatant.skillCooldowns[sIdx] > 0) {
+          combatant.skillCooldowns[sIdx] = Math.max(0, combatant.skillCooldowns[sIdx] - 1);
+        }
+      }
+    }
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: 'Thirty Birds A (Arts Up)',
+      type: 'arts_up',
+      value: 20,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: 'Thirty Birds A (Crit DMG Up)',
+      type: 'crit_dmg',
+      value: 30,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.npGauge = Math.min(300, (combatant.npGauge || 0) + 20);
+    combatant.critStars = Math.min(50, (combatant.critStars || 0) + 15);
+    logText = `🦅 **${sName}** activated **${skill.name}**! (Skill Cooldowns -1T, +20% Arts [3T], +30% Crit DMG [3T], +20% NP Gauge, +15 Critical Stars)${quoteLine}`;
+  } else if (skill.id === 'tree_of_zaqqum_ex' || /tree of zaqqum|tree of zaqqūm/i.test(skill.name)) {
+    // Azrael S3: Tree of Zaqqūm EX (Option B Nerf)
+    const targetEnemies = (livingEnemies && livingEnemies.length > 0) ? livingEnemies.filter(e => e.currentHp > 0) : (opponent ? [opponent] : []);
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: 'Tree of Zaqqūm EX (Attack Death Chance +10%)',
+      type: 'buff_death_rate',
+      value: 10,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    let anyStunned = false;
+    targetEnemies.forEach(opp => {
+      opp.activeBuffs = opp.activeBuffs || [];
+      opp.activeBuffs.push({
+        name: 'Tree of Zaqqūm EX (Death Res Down -10%)',
+        type: 'debuff_death_res',
+        value: 10,
+        remainingTurns: 3,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+      opp.activeBuffs.push({
+        name: 'Tree of Zaqqūm EX (DEF Down -20%)',
+        type: 'debuff_def',
+        value: 20,
+        remainingTurns: 3,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+      opp.activeBuffs.push({
+        name: 'Tree of Zaqqūm EX (Thirst for Death)',
+        type: 'thirst_for_death',
+        value: 30,
+        remainingTurns: 3,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+      opp.activeBuffs.push({
+        name: 'Tree of Zaqqūm EX (Survival Penalty DEF Down -20%)',
+        type: 'debuff_def',
+        value: 20,
+        remainingTurns: 3,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+      if (Math.random() < 0.50) {
+        opp.isStunned = true;
+        anyStunned = true;
+        opp.activeBuffs.push({
+          name: 'Tree of Zaqqūm EX (Stun 1T)',
+          type: 'stun',
+          value: 100,
+          remainingTurns: 1,
+          appliedRound: currentRound,
+          appliedTurnUserId: combatant.userId
+        });
+      }
+    });
+    logText = `🌳 **${sName}** activated **${skill.name}**! (-10% Enemy Death Res, +10% Death Rate, -20% DEF Down & -20% Survival Penalty [3T]${anyStunned ? ', 1T Stun inflicted' : ''})${quoteLine}`;
   } else if (skill.id === 'scourge_of_god_a' || /scourge of god/i.test(skill.name)) {
     // Altera S1: Scourge of God A
     combatant.activeBuffs.push({
@@ -3210,6 +3342,29 @@ function resolveStrike(
         }
 
         // Offense Noble Phantasms: ST hits locked defender, AoE hits EXCLUSIVELY living opponents (NEVER allies)
+        const isAzraelNp = attacker.servant.templateId === 'hassan_i_sabbah_azrael' || /mal'ak al-mawt|angel of the evening bell/i.test(npTemplate.name || '');
+        if (isAzraelNp) {
+          if (!attacker.activeBuffs.some(b => b.name?.includes("Mal'ak al-Mawt (NP DMG Up)"))) {
+            attacker.activeBuffs.push({
+              name: "Mal'ak al-Mawt (NP DMG Up +20%)",
+              type: 'np_dmg',
+              value: 20,
+              remainingTurns: 1,
+              appliedRound: attacker.activeBuffs[0]?.appliedRound,
+              appliedTurnUserId: attacker.userId
+            });
+            const artsBonus = 20 + (overchargeLevel - 1) * 10;
+            attacker.activeBuffs.push({
+              name: "Mal'ak al-Mawt (Arts Up)",
+              type: 'arts_up',
+              value: artsBonus,
+              remainingTurns: 3,
+              appliedRound: attacker.activeBuffs[0]?.appliedRound,
+              appliedTurnUserId: attacker.userId
+            });
+          }
+        }
+
         const targetEnemies = (npScope === 'aoe')
           ? ((livingOpponents && livingOpponents.length > 0) ? livingOpponents.filter(o => o.currentHp > 0) : [defender])
           : [defender];
@@ -3256,7 +3411,17 @@ function resolveStrike(
             });
           }
 
-          const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * typhonDebuffScale * targetClassMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
+          let azraelSpecialScale = 1.0;
+          if (isAzraelNp) {
+            const oppBuffs = targetOpp.activeBuffs || [];
+            const hasDefDown = oppBuffs.some(b => b.type === 'debuff_def' || (b.type === 'buff_def' && b.value < 0));
+            const hasDeathBoost = oppBuffs.some(b => b.type === 'debuff_death_res' || b.type === 'buff_death_rate' || b.type === 'thirst_for_death');
+            if (hasDefDown || hasDeathBoost) {
+              azraelSpecialScale = 1.50; // +50% special damage vs vulnerable target (Option B Nerf)
+            }
+          }
+
+          const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * typhonDebuffScale * azraelSpecialScale * targetClassMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
           let oppDmg = Math.round(Math.max(600, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
           const hitProt = processTargetHitProtection(targetOpp);
@@ -3271,8 +3436,31 @@ function resolveStrike(
             oppDmg = Math.max(0, oppDmg - targetCut);
           }
 
-          // Directly apply AoE NP damage to this enemy
-          targetOpp.currentHp = Math.max(0, targetOpp.currentHp - oppDmg);
+          // Directly apply AoE/ST NP damage to this enemy
+          let azraelInstantKilled = false;
+          if (isAzraelNp && oppDmg > 0 && !wasProtected) {
+            const oppPassives = targetOpp.passives || getUnlockedPassives(targetOpp.servant.template?.passives?.length ? targetOpp.servant.template.passives : targetOpp.servant.template?.servantClass, targetOpp.servant.bondLevel || 1);
+            const isImmune = oppPassives.some((p: any) => p.type === 'instant_kill_immunity' || /instant kill immunity|instant death immunity/i.test(p.name || ''));
+            const actorDeathBuffs = (attacker.activeBuffs || []).filter(b => b.type === 'buff_death_rate').reduce((s, b) => s + b.value, 0);
+            const targetDeathDebuffs = (targetOpp.activeBuffs || []).filter(b => b.type === 'debuff_death_res').reduce((s, b) => s + b.value, 0);
+            const baseChance = 0.15; // 15% in duels (Option B Nerf)
+            const deathChance = Math.min(0.50, baseChance + (actorDeathBuffs / 100) + (targetDeathDebuffs / 100));
+
+            if (!isImmune && Math.random() < deathChance) {
+              const hasGuts = (targetOpp.gutsCount && targetOpp.gutsCount > 0) || (targetOpp.activeBuffs || []).some(b => b.type === 'guts');
+              if (!hasGuts) {
+                azraelInstantKilled = true;
+                oppDmg = targetOpp.currentHp;
+                targetOpp.currentHp = 0;
+                attacker.npGauge = Math.min(300, (attacker.npGauge || 0) + 20); // +20% NP refund (Option B Nerf)
+                npRefund += 20;
+              }
+            }
+          }
+
+          if (!azraelInstantKilled) {
+            targetOpp.currentHp = Math.max(0, targetOpp.currentHp - oppDmg);
+          }
 
           const oppName = targetOpp.servant.nickname || targetOpp.servant.template?.name || 'Enemy';
           damageDetails.push(`${oppName} (took ${oppDmg.toLocaleString()} DMG)`);
@@ -3340,7 +3528,7 @@ function resolveStrike(
               statuses.push('EVADED');
             }
           } else if (targetOpp.currentHp <= 0) {
-            statuses.push('DEFEATED');
+            statuses.push(azraelInstantKilled ? 'INSTANT DEATH' : 'DEFEATED');
           } else {
             if (isStunnedThisTurn) statuses.push('STUNNED');
             if (isDenyTheVictory && isOvercharged) statuses.push('OVERCHARGE: DEF DOWN', 'NP GAUGE -20%');

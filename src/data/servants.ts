@@ -2439,10 +2439,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       {
         id: 'angels_body_a',
         name: "Angel's Body A",
-        cooldown: 8,
-        description: 'Increases own attack by +30% for 3 turns. Grants self Debuff Immunity for 3 turns. Grants Guts status (revives with 5,000 HP) for 3 turns. Grants Evasion for 3 turns. Charges own NP gauge by 80%.',
+        cooldown: 7,
+        description: 'Increases own attack by +20% for 3 turns. Grants self Debuff Immunity for 1 turn. Grants Guts status (revives with 2,500 HP, 1 time) for 3 turns. Grants Evasion for 1 turn. Charges own NP gauge by +30% (50% in Raids). [Option B Nerf]',
         effectType: 'buff_atk',
-        value: 30,
+        value: 20,
         duration: 3,
         target: 'self',
         icon: '🪶',
@@ -2457,9 +2457,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'thirty_birds_a',
         name: 'Thirty Birds A',
         cooldown: 7,
-        description: 'Select an ally or self: reduces skill cooldowns by 2 turns, increases Arts effectiveness by +30% for 3 turns, increases Critical Damage by +50% for 3 turns, charges NP gauge by +30%, grants Guts status (revives with 5,000 HP) for 3 turns, and gains 25 Critical Stars.',
+        description: 'Reduces own skill cooldowns by 1 turn. Increases Arts performance by +20% for 3 turns. Increases Critical Damage by +30% for 3 turns. Charges own NP gauge by +20%. Gains 15 Critical Stars. [Option B Nerf]',
         effectType: 'arts_up',
-        value: 30,
+        value: 20,
         duration: 3,
         target: 'ally',
         icon: '🦅',
@@ -2473,8 +2473,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       {
         id: 'tree_of_zaqqum_ex',
         name: 'Tree of Zaqqūm EX',
-        cooldown: 6,
-        description: "Lowers Death Resistance for all enemies by -10% in PvP/duels and -50% in raids for 3 turns, and increases self attack death chance by +10% in PvP/duels and +50% in raids for 3 turns. Lowers enemy defense by -30% for 3 turns. If instant death does not trigger, lowers enemy defense by -50% for 5 turns. 50% chance to inflict Stun on enemies for 3 turns.",
+        cooldown: 7,
+        description: 'Lowers Death Resistance for all enemies by -10% in PvP/duels (-30% in Raids) for 3 turns, and increases self attack Death Chance by +10% in PvP/duels (+30% in Raids) for 3 turns. Lowers enemy defense by -20% for 3 turns. If instant death does not trigger, inflicts Survival Penalty lowering enemy defense by -20% for 3 turns. 50% chance to inflict Stun on enemies for 1 turn. [Option B Nerf]',
         effectType: 'debuff',
         value: 10,
         duration: 3,
@@ -2494,24 +2494,24 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         type: 'protection_of_faith',
         value: 10,
         rank: 'A',
-        description: 'Increases own attack by +10%, recovers 500 HP every turn, increases defense by +10%, and increases debuff resistance by +30%.'
+        description: 'Increases own attack by +10%, recovers 500 HP every turn, increases defense by +10%, and increases debuff resistance by +20%.'
       },
       {
         name: 'Organizer A',
         type: 'organizer',
         value: 100,
         rank: 'A',
-        description: 'Grants +100% Charm resistance, Instant Kill Immunity, inflicts -3% Death Resistance debuff to enemy on attack with Arts cards (per card), and increases Instant Death rate for all cards by +5% in PvP and +10% in raids.'
+        description: 'Grants +100% Charm resistance, Instant Kill Immunity, inflicts -2% Death Resistance debuff to enemy on attack with Arts cards (per card), and increases Instant Death rate for all cards by +5% in PvP and +10% in raids.'
       }
     ],
     noblePhantasm: {
       name: "Mal'ak al-Mawt: Angel of the Evening Bell",
       cardType: 'Arts',
       chant: 'Listen closely. The evening bell has tolled thy name. Surrender thy head to the blade of fate... Mal\'ak al-Mawt!',
-      description: 'Increases own NP damage by +30% for 3 turns (activates first). Deals 1,500% damage to one enemy (deals 150% extra damage if target has lowered Defence, Increased Death Chance, or Thirst for Death status). 30% chance of Instant Death infliction on enemy (does not ignore Guts). If instant kill succeeds, charges own NP gauge by +50%.',
+      description: 'Increases own NP damage by +20% for 1 turn (activates first). Deals 900% damage to one enemy (deals +50% extra damage if target has lowered Defense, Increased Death Chance, or Thirst for Death status). 15% chance of Instant Death in PvP (30% in Raids; does not bypass Guts). If instant kill succeeds, charges own NP gauge by +20%. [Overcharge] Increases own Arts performance by +20% for 3 turns.',
       target: 'single_enemy',
-      multiplier: 1500,
-      overchargeEffect: 'Increases own NP damage by +30% for 3 turns (activates first, scales with Overcharge)',
+      multiplier: 900,
+      overchargeEffect: 'Increases own Arts performance by +20% for 3 turns (activates first, scales with Overcharge)',
       gifUrl: 'https://ella.janitorai.com/media-approved/kVayE4r7ymceqPcg_My_g.gif'
     },
     lore: `Hassan-i-Sabbah (Azrael) (ハサン・サッバーハ), Class Name Grand Assassin (グランドアサシン), is a 5★ SSR Grand Assassin Servant.\n\nThe legendary founder of the Hashashin and the First Old Man of the Mountain, manifesting in his ultimate form as the embodiment of Azrael, the Angel of Death. Sitting atop the boundary between life and mortality, his blade enforces the inevitable decree of fate upon all beings.\n\nPersonality & Demeanor:\n• Solemn & Absolute: He speaks with the weight of divine judgment, cutting through deception with absolute clarity.\n• Unforgiving to Evil: He shows no mercy to non-believers, tyrants, or those who defy the natural order of mortality.\n• Steadfast Protector: To his Master, he serves as an unshakeable shield against the abyss.`,

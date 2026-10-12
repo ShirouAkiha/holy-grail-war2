@@ -878,6 +878,129 @@ export function applyCombatantSkill(
     };
   }
 
+  // Handle Hassan-i-Sabbah (Azrael) personal skills (Option B Nerfs)
+  if (skill.id === 'angels_body_a' || /angel's body|body of the angel/i.test(skill.name)) {
+    actor.activeBuffs.push({
+      name: "Angel's Body A (ATK Up)",
+      type: 'buff_atk',
+      value: 20,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: "Angel's Body A (Debuff Immunity)",
+      type: 'debuff_immunity',
+      value: 100,
+      remainingTurns: 1
+    });
+    actor.gutsCount = (actor.gutsCount || 0) + 1;
+    actor.activeBuffs.unshift({
+      name: "Angel's Body A (Guts 2,500 HP)",
+      type: 'guts',
+      value: 2500,
+      remainingTurns: 3,
+      remainingHits: 1,
+      isHitCount: true
+    });
+    actor.isEvading = true;
+    actor.activeBuffs.push({
+      name: "Angel's Body A (Evade 1T)",
+      type: 'evade',
+      value: 100,
+      remainingTurns: 1
+    });
+    const isRaid = (target && target.maxHp > 100000) || false;
+    const npChargeAmount = isRaid ? 50 : 30;
+    actor.npGauge = Math.min(300, (actor.npGauge || 0) + npChargeAmount);
+    return {
+      success: true,
+      log: `🪶 **${actor.name}** activated **${skill.name}**! Granted +20% ATK (3T), Debuff Immunity (1T), Guts (2,500 HP/3T), Evasion (1T), and charged NP by +${npChargeAmount}%!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  if (skill.id === 'thirty_birds_a' || /thirty birds/i.test(skill.name)) {
+    actor.skills.forEach((sk, idx) => {
+      if (idx !== skillIndex && sk.currentCooldown > 0) {
+        sk.currentCooldown = Math.max(0, sk.currentCooldown - 1);
+      }
+    });
+    actor.activeBuffs.push({
+      name: 'Thirty Birds A (Arts Up)',
+      type: 'arts_up',
+      value: 20,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: 'Thirty Birds A (Crit DMG Up)',
+      type: 'crit_dmg',
+      value: 30,
+      remainingTurns: 3
+    });
+    actor.npGauge = Math.min(300, (actor.npGauge || 0) + 20);
+    actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+    return {
+      success: true,
+      log: `🦅 **${actor.name}** activated **${skill.name}**! Reduced other skill cooldowns by 1T, granted +20% Arts (3T), +30% Crit DMG (3T), charged NP by +20%, and gained +15 Critical Stars!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  if (skill.id === 'tree_of_zaqqum_ex' || /tree of zaqqum|tree of zaqqūm/i.test(skill.name)) {
+    const isRaid = (target && target.maxHp > 100000) || /raid|boss/i.test(target?.name || '');
+    const deathResVal = isRaid ? 30 : 10;
+    const deathRateVal = isRaid ? 30 : 10;
+
+    target.activeBuffs.push({
+      name: `Tree of Zaqqūm EX (Death Res Down -${deathResVal}%)`,
+      type: 'debuff_death_res',
+      value: deathResVal,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: `Tree of Zaqqūm EX (Attack Death Chance +${deathRateVal}%)`,
+      type: 'buff_death_rate',
+      value: deathRateVal,
+      remainingTurns: 3
+    });
+    target.activeBuffs.push({
+      name: 'Tree of Zaqqūm EX (DEF Down -20%)',
+      type: 'debuff_def',
+      value: 20,
+      remainingTurns: 3
+    });
+    target.activeBuffs.push({
+      name: 'Tree of Zaqqūm EX (Thirst for Death)',
+      type: 'thirst_for_death',
+      value: 30,
+      remainingTurns: 3
+    });
+    target.activeBuffs.push({
+      name: 'Tree of Zaqqūm EX (Survival Penalty DEF Down -20%)',
+      type: 'debuff_def',
+      value: 20,
+      remainingTurns: 3
+    });
+    let stunned = false;
+    if (Math.random() < 0.50) {
+      target.isStunned = true;
+      stunned = true;
+      target.activeBuffs.push({
+        name: 'Tree of Zaqqūm EX (Stun 1T)',
+        type: 'stun',
+        value: 100,
+        remainingTurns: 1
+      });
+    }
+    return {
+      success: true,
+      log: `🌳 **${actor.name}** activated **${skill.name}**! Reduced enemy Death Res by -${deathResVal}% (3T), increased Death Rate by +${deathRateVal}% (3T), reduced enemy DEF by -20% (3T) with -20% Survival Penalty (3T)${stunned ? ', and inflicted Stun for 1 turn' : ''}!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
   switch (skill.effectType) {
     case 'buff_atk': {
       const descLower = (skill.description || '').toLowerCase();
@@ -1646,9 +1769,18 @@ export function executeNoblePhantasmLogic(
     if (isAzraelNp) {
       actor.activeBuffs = actor.activeBuffs || [];
       actor.activeBuffs.push({
-        name: "Mal'ak al-Mawt (NP DMG Up +30%)",
+        name: "Mal'ak al-Mawt (NP DMG Up +20%)",
         type: 'np_dmg',
-        value: 30,
+        value: 20,
+        remainingTurns: 1
+      });
+      // Overcharge: Arts Up +20% (3T)
+      const ocLevel = actor.npGauge >= 300 ? 3 : actor.npGauge >= 200 ? 2 : 1;
+      const artsBonus = 20 + (ocLevel - 1) * 10;
+      actor.activeBuffs.push({
+        name: "Mal'ak al-Mawt (Arts Up)",
+        type: 'arts_up',
+        value: artsBonus,
         remainingTurns: 3
       });
     }
@@ -1930,10 +2062,12 @@ export function executeNoblePhantasmLogic(
 
         actionSummary = `🌌 **${actor.name}** unleashed Anti-World Noble Phantasm **[${np.name}]**! *Anti-World Authority:* pierced enemy defense for **${damageDealt.toLocaleString()} DMG**, drained **-20% NP Gauge**, inflicted **-30% DEF & -20% Crit (3T)**${stunRoll ? ', and stunned the target for 1 turn' : ''}! (Arts Refund: +${npCharged}% NP)`;
       } else if (isAzraelNp) {
+        const isRaid = target.maxHp > 100000 || /raid|boss/i.test(target.name);
         const isImmune = (target.passives || []).some((p: any) => p.type === 'instant_kill_immunity' || /instant kill immunity|instant death immunity/i.test(p.name || ''));
         const actorDeathBuffs = (actor.activeBuffs || []).filter(b => b.type === 'buff_death_rate').reduce((s, b) => s + b.value, 0);
         const targetDeathDebuffs = (target.activeBuffs || []).filter(b => b.type === 'debuff_death_res').reduce((s, b) => s + b.value, 0);
-        const deathChance = Math.min(0.95, 0.30 + (actorDeathBuffs / 100) + (targetDeathDebuffs / 100));
+        const baseChance = isRaid ? 0.30 : 0.15;
+        const deathChance = Math.min(0.50, baseChance + (actorDeathBuffs / 100) + (targetDeathDebuffs / 100));
         let instantKillSucceeded = false;
 
         if (!isImmune && Math.random() < deathChance) {
@@ -1941,11 +2075,11 @@ export function executeNoblePhantasmLogic(
           if (!hasGuts) {
             instantKillSucceeded = true;
             target.currentHp = 0;
-            npCharged += 50; // Refund +50% NP gauge if instant kill succeeds
+            npCharged += 20; // Refund +20% NP gauge if instant kill succeeds (Option B Nerf)
           }
         }
 
-        actionSummary = `🔔 **${actor.name}** unleashed **[${np.name}]**! *Evening Bell:* struck for **${damageDealt.toLocaleString()} DMG** (150% Extra Damage on vulnerable targets)${instantKillSucceeded ? ' and inflicted **INSTANT DEATH** (+50% NP Refunded)!' : `! (Arts Refund: +${npCharged}% NP)`}`;
+        actionSummary = `🔔 **${actor.name}** unleashed **[${np.name}]**! *Evening Bell:* struck for **${damageDealt.toLocaleString()} DMG** (+50% Special Damage on vulnerable targets)${instantKillSucceeded ? ' and inflicted **INSTANT DEATH** (+20% NP Refunded)!' : `! (Arts Refund: +${npCharged}% NP)`}`;
       } else {
         actionSummary = isInvincible
           ? `🔵 **${actor.name}** unleashed Arts Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** was shielded by Invincibility! (Arts Refund: +${npCharged}% NP)`
@@ -2285,65 +2419,58 @@ export function executeBattleTurn(
           actor.activeBuffs.push({
             name: "Angel's Body A (ATK Up)",
             type: 'buff_atk',
-            value: 30,
+            value: 20,
             remainingTurns: 3
           });
           actor.activeBuffs.push({
             name: "Angel's Body A (Debuff Immunity)",
             type: 'debuff_immunity',
             value: 100,
-            remainingTurns: 3
+            remainingTurns: 1
           });
           actor.gutsCount = (actor.gutsCount || 0) + 1;
           actor.activeBuffs.unshift({
-            name: "Angel's Body A (Guts 5,000 HP)",
+            name: "Angel's Body A (Guts 2,500 HP)",
             type: 'guts',
-            value: 5000,
+            value: 2500,
             remainingTurns: 3,
             remainingHits: 1,
             isHitCount: true
           });
           actor.isEvading = true;
           actor.activeBuffs.push({
-            name: "Angel's Body A (Evade)",
+            name: "Angel's Body A (Evade 1T)",
             type: 'evade',
             value: 100,
-            remainingTurns: 3
+            remainingTurns: 1
           });
-          actor.npGauge = Math.min(300, (actor.npGauge || 0) + 80);
+          const isRaid = target.maxHp > 100000 || /raid|boss/i.test(target.name);
+          const npChargeAmount = isRaid ? 50 : 30;
+          actor.npGauge = Math.min(300, (actor.npGauge || 0) + npChargeAmount);
         } else if (skill.id === 'thirty_birds_a' || /thirty birds/i.test(skill.name)) {
           actor.skills.forEach((sk, idx) => {
             if (idx !== choice.useSkillIndex && sk.currentCooldown > 0) {
-              sk.currentCooldown = Math.max(0, sk.currentCooldown - 2);
+              sk.currentCooldown = Math.max(0, sk.currentCooldown - 1);
             }
           });
           actor.activeBuffs.push({
             name: 'Thirty Birds A (Arts Up)',
             type: 'arts_up',
-            value: 30,
+            value: 20,
             remainingTurns: 3
           });
           actor.activeBuffs.push({
             name: 'Thirty Birds A (Crit DMG Up)',
             type: 'crit_dmg',
-            value: 50,
+            value: 30,
             remainingTurns: 3
           });
-          actor.npGauge = Math.min(300, (actor.npGauge || 0) + 30);
-          actor.gutsCount = (actor.gutsCount || 0) + 1;
-          actor.activeBuffs.unshift({
-            name: 'Thirty Birds A (Guts 5,000 HP)',
-            type: 'guts',
-            value: 5000,
-            remainingTurns: 3,
-            remainingHits: 1,
-            isHitCount: true
-          });
-          actor.critStars = Math.min(50, (actor.critStars || 0) + 25);
+          actor.npGauge = Math.min(300, (actor.npGauge || 0) + 20);
+          actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
         } else if (skill.id === 'tree_of_zaqqum_ex' || /tree of zaqqum|tree of zaqqūm/i.test(skill.name)) {
           const isRaid = target.maxHp > 100000 || /raid|boss/i.test(target.name);
-          const deathResVal = isRaid ? 50 : 10;
-          const deathRateVal = isRaid ? 50 : 10;
+          const deathResVal = isRaid ? 30 : 10;
+          const deathRateVal = isRaid ? 30 : 10;
 
           target.activeBuffs.push({
             name: `Tree of Zaqqūm EX (Death Res Down -${deathResVal}%)`,
@@ -2358,30 +2485,30 @@ export function executeBattleTurn(
             remainingTurns: 3
           });
           target.activeBuffs.push({
-            name: 'Tree of Zaqqūm EX (DEF Down -30%)',
+            name: 'Tree of Zaqqūm EX (DEF Down -20%)',
             type: 'debuff_def',
-            value: 30,
+            value: 20,
             remainingTurns: 3
           });
           target.activeBuffs.push({
             name: 'Tree of Zaqqūm EX (Thirst for Death)',
             type: 'thirst_for_death',
-            value: 50,
+            value: 30,
             remainingTurns: 3
           });
           target.activeBuffs.push({
-            name: 'Tree of Zaqqūm EX (Survival Penalty DEF Down -50%)',
+            name: 'Tree of Zaqqūm EX (Survival Penalty DEF Down -20%)',
             type: 'debuff_def',
-            value: 50,
-            remainingTurns: 5
+            value: 20,
+            remainingTurns: 3
           });
-          if (Math.random() < 0.5) {
+          if (Math.random() < 0.50) {
             target.isStunned = true;
             target.activeBuffs.push({
-              name: 'Tree of Zaqqūm EX (Stun)',
+              name: 'Tree of Zaqqūm EX (Stun 1T)',
               type: 'stun',
               value: 100,
-              remainingTurns: 3
+              remainingTurns: 1
             });
           }
         } else {

@@ -150,6 +150,16 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     gifUrl: 'https://ella.janitorai.com/media-approved/_ePWNS7EhfZ058rS15mCK.gif',
     fallbackGif: 'https://ella.janitorai.com/media-approved/_ePWNS7EhfZ058rS15mCK.gif',
     chant: 'Eightfold Blessings of Amaterasu on the Weight Stone under the Sunlit Watery Heavens... Suiten Nikkō Amaterasu Yano Shizu-Ishi!'
+  },
+  'Hassan-i-Sabbah (Azrael)': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/kVayE4r7ymceqPcg_My_g.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/kVayE4r7ymceqPcg_My_g.gif',
+    chant: "Listen closely. The evening bell has tolled thy name. Surrender thy head to the blade of fate... Mal'ak al-Mawt!"
+  },
+  'Azrael': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/kVayE4r7ymceqPcg_My_g.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/kVayE4r7ymceqPcg_My_g.gif',
+    chant: "Listen closely. The evening bell has tolled thy name. Surrender thy head to the blade of fate... Mal'ak al-Mawt!"
   }
 };
 
