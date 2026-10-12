@@ -410,96 +410,6 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
   ========================================================================================
   */
   {
-    id: 'hassan_i_sabbah_azrael',
-    name: 'Hassan-i-Sabbah (Azrael)',
-    title: 'Angel of the Evening Bell',
-    servantClass: 'Grand Assassin',
-    rarity: 5,
-    baseHp: 29500,
-    baseAtk: 11800,
-    baseStats: { strength: 18, endurance: 16, agility: 17, mana: 13, luck: 12 },
-    commandDeck: ['Arts', 'Arts', 'Buster', 'Buster', 'Quick'],
-    skills: [
-      {
-        id: 'body_of_the_angel_a',
-        name: 'Angel\'s Flesh A',
-        cooldown: 5,
-        description: 'Increases own ATK by 35% for 3 turns, grants Debuff Immunity (1 time, 3 turns), Evade (2 hits, 3 turns), and charges NP gauge by 30%.',
-        effectType: 'np_charge',
-        value: 30,
-        duration: 3,
-        icon: '🪶',
-        quotes: [
-          "The flesh of the celestial angel rejects all decay.",
-          "Behold the mantle of the Angel of Death."
-        ]
-      },
-      {
-        id: 'thirty_birds_a',
-        name: 'Thirty Birds A',
-        cooldown: 5,
-        description: 'Increases Arts Card performance by 30% for 3 turns, increases Critical Damage by 40% for 3 turns, gains 25 Critical Stars, and reduces skill cooldowns by 2 turns.',
-        effectType: 'arts_up',
-        value: 30,
-        duration: 3,
-        icon: '🦅',
-        quotes: [
-          "Thirty birds converge as one Simurgh.",
-          "The shadow of thirty wings covers the sky."
-        ]
-      },
-      {
-        id: 'tree_of_zaqqum_ex',
-        name: 'Tree of Zaqqum EX',
-        cooldown: 5,
-        description: 'Inflicts [Thirst of Death] on all enemies (reduces DEF by 30% for 3 turns and inflicts terror/stun), and reduces enemy Instant Death Resistance.',
-        effectType: 'debuff',
-        value: 30,
-        duration: 3,
-        icon: '🌳',
-        quotes: [
-          "Eat of the Zaqqum tree and taste eternal thirst.",
-          "The bell toll grows ever nearer."
-        ]
-      }
-    ],
-    passives: [
-      {
-        name: 'Organizer A',
-        type: 'presence_concealment',
-        value: 20,
-        rank: 'A',
-        description: 'Grants 100% Instant Death Immunity, charm resistance, and increases Critical Star drop rate by 20%.'
-      },
-      {
-        name: 'Protection of the Faith A',
-        type: 'magic_resistance',
-        value: 20,
-        rank: 'A',
-        description: 'Increases debuff resistance by 20% and recovers 500 HP every turn.'
-      }
-    ],
-    noblePhantasm: {
-      name: 'Azrael: Angel of the Evening Bell',
-      cardType: 'Arts',
-      chant: 'Dost thou hear the evening bell? It tolls thy true name. Die... Azrael!',
-      description: 'Deals massive Arts single-target damage with high instant death rate and 20% NP refund.',
-      target: 'single',
-      multiplier: 1200,
-      overchargeEffect: 'Increases Arts NP Damage by 30% for 3 turns'
-    },
-    lore: 'The original founder of the Order of Assassins and the true Grand Assassin. Bearing the title of Hassan-i-Sabbah and wielding the sword of the Evening Bell Azrael, he brings swift and absolute death to those whose time has come.',
-    summonQuote: 'I am Hassan-i-Sabbah. Dost thou call upon the Angel of Death? Let us see if thy cause warrants the tolling of the bell.',
-    battleStartQuote: 'The evening bell hath rung. Prepare thy soul.',
-    victoryQuote: 'The shadow passes. Return to the dust whence thou came.',
-    defeatQuote: 'Even the bell... must eventually fall silent...',
-    avatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
-    cardArtUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300b@2.png',
-    spriteUrl: 'https://static.atlasacademy.io/JP/CharaFigure/6053002/6053002_merged.png',
-    traits: ['Humanoid', 'Male', 'Servant', 'Grand Servant', 'Hominidae Servant', 'Brynhildr\'s Beloved'],
-    aliases: ['hassan_i_sabbah_azrael', 'azrael', 'hassan azrael', 'grand assassin', 'hassan-i-sabbah']
-  },
-  {
     id: 'artoria_pendragon',
     name: 'Artoria Pendragon',
     title: 'King of Knights',
@@ -2609,9 +2519,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: '"Listen closely. The evening bell has tolled thy name..."',
     victoryQuote: '"Thy head belongs to fate. Rest in eternal peace."',
     defeatQuote: '"Even the evening bell... must eventually grow silent..."',
-    avatarUrl: 'https://static.atlasacademy.io/NA/CharaGraph/6025000.png',
-    cardArtUrl: 'https://static.atlasacademy.io/NA/CharaGraph/6025000.png',
-    spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/6025000/6025000_merged.png',
+    avatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300a@1.png',
+    cardArtUrl: 'https://static.atlasacademy.io/JP/CharaGraph/605300/605300b@2.png',
+    spriteUrl: 'https://static.atlasacademy.io/JP/CharaFigure/6053000/6053000_merged.png',
     isCustomOrMeme: false
   }
 ];

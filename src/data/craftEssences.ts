@@ -807,7 +807,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: "When equipped to Hassan-i-Sabbah (Azrael): Increases NP damage by +30%. On attack: Inflicts -3% Death Resistance per turn and -3% Death Resistance on Critical Strikes.",
     passiveType: 'np_damage',
     passiveValue: 30,
-    artworkUrl: 'https://static.atlasacademy.io/NA/CharaGraph/9302684/9302684a.png',
+    artworkUrl: 'https://static.atlasacademy.io/JP/CharaGraph/9311880/9311880a.png',
     isBondCe: true,
     bondServantId: 'hassan_i_sabbah_azrael',
     bondServantName: 'Hassan-i-Sabbah (Azrael)'
