@@ -1333,7 +1333,7 @@ export async function handleDarkSakuraClimax(
       reactionBanner = 'The dark cavern glows softly with purifying holy grail mana as the shadow dissolves into light.';
       embedColor = 0xf472b6;
     } else if (hostTier === 3) {
-      reactionTitle = '🌸 THE SHADOW REDEEMED: A TREMBLING SMILE';
+      reactionTitle = '🌸 THE SHADOW REDEEMED: PURIFIED HEART';
       reactionDialogue = pickRandom([
         "You really... stayed? Even when the black mud tried to pull you under? ...I'm so glad I waited for you in this dark cavern. Take this... my heart is finally at peace.",
         "Your hand was warm... even as my shadow tried to tear into your skin. I thought no one would ever reach into the dark for me again... Thank you, Master.",
@@ -1352,7 +1352,7 @@ export async function handleDarkSakuraClimax(
         "The Butcher chose to spare me...? I don't understand you at all. But for the first time since I sank into this mud... the cold feels a little lighter.",
         "You didn't execute me today... Why? Did you grow tired of slaying me, or did a tiny piece of your heart feel pity for a broken girl...?"
       ]);
-      reactionBanner = 'The cold blood-soaked cavern fills with a faint, trembling light as the shadow stays its blade.';
+      reactionBanner = 'The cold blood-soaked cavern fills with a faint, gentle light as the shadow stays its blade.';
       embedColor = 0xe11d48;
     } else {
       // Tier 2 Default / Skeptic Magus
