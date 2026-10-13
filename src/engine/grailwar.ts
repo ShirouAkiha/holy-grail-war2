@@ -10,6 +10,7 @@ import {
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 import { clearServantWarMemories } from './servantMemoryService';
+import { getParameterRankMultiplier } from './statSystem';
 import fs from 'fs';
 import path from 'path';
 
@@ -865,12 +866,17 @@ export function calculateServantMaxHp(servantInstance: any): number {
     : { ...(canonical || sAny.template || sAny) };
 
   const base = canonical?.baseStats || sTemplate?.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
-  const totalEnd = (base.endurance || 10) + (sAny?.allocatedStats?.endurance || 0);
+  const baseEnd = base.endurance || 10;
+  const allocEnd = sAny?.allocatedStats?.endurance || 0;
+  const endMult = getParameterRankMultiplier(baseEnd);
+  const totalEnd = baseEnd + Math.round(allocEnd * endMult);
   const ce = sAny?.equippedCe;
   const ceHp = ce ? (ce.hpBonus || 0) : 0;
   const lvl = sAny?.level || 1;
   const baseHp = canonical?.baseHp || sTemplate?.baseHp || 28000;
-  return Math.round(baseHp + totalEnd * 150 + ceHp);
+  const rawHp = baseHp + totalEnd * 300 + ceHp;
+  const resilienceBonus = (totalEnd / 1000) * 0.25;
+  return Math.round(rawHp * (1 + resilienceBonus));
 }
 
 /**

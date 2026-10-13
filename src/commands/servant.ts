@@ -22,7 +22,7 @@ import {
 import { getServantProfile } from '../engine/dialogue';
 import { getOrInitWarSession, exposeMasterInWar, getHealingStatus } from '../engine/grailwar';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
-import { allocateStatPoints, calculateServantMaxHp, calculateServantMaxAtk } from '../engine/statSystem';
+import { allocateStatPoints, calculateServantMaxHp, calculateServantMaxAtk, getParameterRankFromBase, getParameterRankMultiplier, getEnduranceDamageReductionPercent } from '../engine/statSystem';
 import { 
   equipCraftEssence, 
   feedCraftEssences, 
@@ -290,20 +290,24 @@ export async function buildServantHub(
   const alloc = targetServant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
   const base = canonical?.baseStats || t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
 
-  const strTotal = (base.strength || 10) + (alloc.strength || 0);
-  const endTotal = (base.endurance || 10) + (alloc.endurance || 0);
-  const agiTotal = (base.agility || 10) + (alloc.agility || 0);
-  const mnaTotal = (base.mana || 10) + (alloc.mana || 0);
-  const lckTotal = (base.luck || 10) + (alloc.luck || 0);
+  const strRankMult = getParameterRankMultiplier(base.strength || 10);
+  const endRankMult = getParameterRankMultiplier(base.endurance || 10);
+  const agiRankMult = getParameterRankMultiplier(base.agility || 10);
+  const mnaRankMult = getParameterRankMultiplier(base.mana || 10);
+  const lckRankMult = getParameterRankMultiplier(base.luck || 10);
+
+  const strTotal = (base.strength || 10) + Math.round((alloc.strength || 0) * strRankMult);
+  const endTotal = (base.endurance || 10) + Math.round((alloc.endurance || 0) * endRankMult);
+  const agiTotal = (base.agility || 10) + Math.round((alloc.agility || 0) * agiRankMult);
+  const mnaTotal = (base.mana || 10) + Math.round((alloc.mana || 0) * mnaRankMult);
+  const lckTotal = (base.luck || 10) + Math.round((alloc.luck || 0) * lckRankMult);
 
   const ceBonusAtk = targetServant.equippedCe?.atkBonus || 0;
   const ceBonusHp = targetServant.equippedCe?.hpBonus || 0;
   const lvl = targetServant.level || 1;
 
-  const baseHp = canonical?.baseHp || t.baseHp || 28000;
-  const baseAtk = canonical?.baseAtk || t.baseAtk || 10000;
-  const totalHp = Math.round(baseHp + endTotal * 150 + ceBonusHp);
-  const totalAtk = Math.round(baseAtk + strTotal * 80 + ceBonusAtk);
+  const totalHp = calculateServantMaxHp(targetServant);
+  const totalAtk = calculateServantMaxAtk(targetServant);
   const bondLevel = targetServant.bondLevel || 1;
   const sName = targetServant.nickname || t.name;
 
@@ -334,6 +338,14 @@ export async function buildServantHub(
     if (score >= 10) return 'C';
     if (score >= 5) return 'D';
     return 'E';
+  };
+
+  const getAptitudeBadge = (baseVal: number) => {
+    const rank = getParameterRankFromBase(baseVal);
+    const mult = getParameterRankMultiplier(rank);
+    const bonus = Math.round((mult - 1) * 100);
+    const sign = bonus >= 0 ? `+${bonus}%` : `${bonus}%`;
+    return `Rank ${rank} [Aptitude: ${sign} Growth]`;
   };
 
   if (category === 'profile') {
@@ -415,8 +427,8 @@ export async function buildServantHub(
         `❤️ **HP:** \`${currentHp.toLocaleString()} / ${totalHp.toLocaleString()}\` (${hpPercent}%) | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${targetServant.availableStatPoints || 0} pts**\n\n` +
         `📜 **Historical Legend & Lore:**\n> *${t.lore || 'A legendary heroic soul recorded in the Throne of Heroes, bound to fight in the Holy Grail War.'}*\n\n` +
         `📊 **Battle Parameters:**\n` +
-        `• **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] | **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**]\n` +
-        `• **Agility (AGI):** \`${agiTotal}\` [**${getRank(agiTotal)}**] | **Mana (MNA):** \`${mnaTotal}\` [**${getRank(mnaTotal)}**] | **Luck (LCK):** \`${lckTotal}\` [**${getRank(lckTotal)}**]\n\n` +
+        `• **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] • *(${getAptitudeBadge(base.strength || 10)})* | **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**] • *(${getAptitudeBadge(base.endurance || 10)})*\n` +
+        `• **Agility (AGI):** \`${agiTotal}\` [**${getRank(agiTotal)}**] • *(${getAptitudeBadge(base.agility || 10)})* | **Mana (MNA):** \`${mnaTotal}\` [**${getRank(mnaTotal)}**] • *(${getAptitudeBadge(base.mana || 10)})* | **Luck (LCK):** \`${lckTotal}\` [**${getRank(lckTotal)}**] • *(${getAptitudeBadge(base.luck || 10)})*\n\n` +
         `🃏 **Command Deck:** ${deckStr}`
       )
       .addFields(
@@ -455,11 +467,11 @@ export async function buildServantHub(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** \`Lv.${expStatus.level}/500\` *(${expNeeded.toLocaleString()} XP to Lv.${Math.min(500, expStatus.level + 1)})\*\n` +
         `📊 **Total Allocated:** \`${totalAllocated.toLocaleString()} pts\` | 📈 **Unspent Stat Points:** \`${availPoints.toLocaleString()} pts\`\n\n` +
-        `💪 **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] — *Increases base attack damage (+${alloc.strength || 0} allocated, max 1000)*\n` +
-        `🛡️ **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**] — *Increases maximum health pool (+${alloc.endurance || 0} allocated, max 1000)*\n` +
-        `⚡ **Agility (AGI):** \`${agiTotal}\` [**${getRank(agiTotal)}**] — *Boosts crit generation & dodge (+${alloc.agility || 0} allocated, max 1000)*\n` +
-        `🔮 **Mana (MNA):** \`${mnaTotal}\` [**${getRank(mnaTotal)}**] — *Accelerates NP gauge gain (+${alloc.mana || 0} allocated, max 1000)*\n` +
-        `🍀 **Luck (LCK):** \`${lckTotal}\` [**${getRank(lckTotal)}**] — *Enhances status & crit resistance (+${alloc.luck || 0} allocated, max 1000)*\n\n` +
+        `💪 **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] • *${getAptitudeBadge(base.strength || 10)}* — *Increases base attack damage (+${alloc.strength || 0} allocated, max 1000)*\n` +
+        `🛡️ **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**] • *${getAptitudeBadge(base.endurance || 10)}* — *Increases max HP (+300 HP/pt) & up to 50% native damage reduction (+${alloc.endurance || 0} allocated, max 1000)*\n` +
+        `⚡ **Agility (AGI):** \`${agiTotal}\` [**${getRank(agiTotal)}**] • *${getAptitudeBadge(base.agility || 10)}* — *Boosts crit generation & dodge (+${alloc.agility || 0} allocated, max 1000)*\n` +
+        `🔮 **Mana (MNA):** \`${mnaTotal}\` [**${getRank(mnaTotal)}**] • *${getAptitudeBadge(base.mana || 10)}* — *Accelerates NP gauge gain (+${alloc.mana || 0} allocated, max 1000)*\n` +
+        `🍀 **Luck (LCK):** \`${lckTotal}\` [**${getRank(lckTotal)}**] • *${getAptitudeBadge(base.luck || 10)}* — *Enhances status & crit resistance (+${alloc.luck || 0} allocated, max 1000)*\n\n` +
         `💡 **ALLOCATION & OMNIPOTENCE CONTROLS:**\n` +
         `• **Cap:** 1,000 max points for each attribute (Complete Omnipotence at 1000 in all 5 parameters!).\n` +
         `• **Step Multipliers:** Click \`1x\`, \`10x\`, or \`100x/MAX\` to change increment size, then click parameter buttons.\n` +

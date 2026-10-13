@@ -16,6 +16,7 @@ import { getDefaultClassPassives } from '../data/servants';
 import { ServantTemplate, MasterServantInstance, ServantClass } from '../types';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
+import { getParameterRankFromBase } from '../engine/statSystem';
 
 export const CLASS_CYCLE: Array<'all' | ServantClass> = [
   'all', 'Saber', 'Archer', 'Lancer', 'Rider', 'Caster', 'Assassin', 'Berserker', 'Ruler', 'Avenger', 'Shielder'
@@ -281,8 +282,8 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
     `Class: **${servant.servantClass}** | Origin: **${servant.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}** | Status: **⚖️ Balanced Parity**\n\n` +
     `📜 **Historical Legend & Lore:**\n> ${servant.lore || 'A legendary soul recorded in the Throne of Heroes.'}\n\n` +
     `📊 **Base Parameters:**\n` +
-    `• **STR:** ${servant.baseStats.strength} | **END:** ${servant.baseStats.endurance} | **AGI:** ${servant.baseStats.agility}\n` +
-    `• **MAN:** ${servant.baseStats.mana} | **LCK:** ${servant.baseStats.luck}\n` +
+    `• **STR:** \`${servant.baseStats.strength}\` [Rank ${getParameterRankFromBase(servant.baseStats.strength)}] | **END:** \`${servant.baseStats.endurance}\` [Rank ${getParameterRankFromBase(servant.baseStats.endurance)}] | **AGI:** \`${servant.baseStats.agility}\` [Rank ${getParameterRankFromBase(servant.baseStats.agility)}]\n` +
+    `• **MAN:** \`${servant.baseStats.mana}\` [Rank ${getParameterRankFromBase(servant.baseStats.mana)}] | **LCK:** \`${servant.baseStats.luck}\` [Rank ${getParameterRankFromBase(servant.baseStats.luck)}]\n` +
     `• **Base HP:** \`${servant.baseHp.toLocaleString()}\` | **Base ATK:** \`${servant.baseAtk.toLocaleString()}\`\n\n` +
     `🃏 **Command Deck:** ${deck}\n\n` +
     `⚡ **Active Personal Skills:**\n${activeSkillsText}\n\n` +

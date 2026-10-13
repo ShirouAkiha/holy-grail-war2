@@ -80,9 +80,14 @@ export function allocateStatPoints(
 
   const t = servant.template || {};
   const baseStats = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
-  const totalEnd = (baseStats.endurance || 10) + (updatedAllocated.endurance || 0);
+  const baseEnd = baseStats.endurance || 10;
+  const allocEnd = updatedAllocated.endurance || 0;
+  const endMult = baseEnd >= 20 ? 1.45 : baseEnd >= 18 ? 1.30 : baseEnd >= 16 ? 1.15 : baseEnd >= 14 ? 1.00 : baseEnd >= 12 ? 0.85 : 0.75;
+  const totalEnd = baseEnd + Math.round(allocEnd * endMult);
   const ceHp = servant.equippedCe?.hpBonus || 0;
-  const newMaxHp = Math.round((t.baseHp || 28000) + totalEnd * 150 + ceHp);
+  const rawHp = (t.baseHp || 28000) + totalEnd * 300 + ceHp;
+  const resilienceBonus = (totalEnd / 1000) * 0.25;
+  const newMaxHp = Math.round(rawHp * (1 + resilienceBonus));
 
   return {
     ...servant,

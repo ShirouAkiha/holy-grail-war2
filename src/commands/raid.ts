@@ -16,7 +16,7 @@ import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantas
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
 import { addServantBattleExp, createExpEmberCraftEssence } from '../engine/customization';
-import { calculateServantMaxHp } from '../engine/statSystem';
+import { calculateServantMaxHp, getParameterRankMultiplier, getEnduranceDamageReductionPercent } from '../engine/statSystem';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
 import {
@@ -1426,7 +1426,8 @@ async function runRaidBattle(
       const tAtk = sAtk.template || {};
       const allocAtk = sAtk.allocatedStats || {};
       const baseStatsAtk = tAtk.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
-      const totalStr = (baseStatsAtk.strength || 10) + (allocAtk.strength || 0);
+      const strMult = getParameterRankMultiplier(baseStatsAtk.strength || 10);
+      const totalStr = (baseStatsAtk.strength || 10) + Math.round((allocAtk.strength || 0) * strMult);
       const ceAtk = sAtk.equippedCe?.atkBonus || 0;
       const baseAtk = Math.round((tAtk.baseAtk || 10000) + totalStr * 80 + ceAtk);
       const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up' || b.type === 'buff_atk').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
@@ -4475,7 +4476,15 @@ function applyDamageToRaidParticipant(
   damage: number,
   state: RaidBattleState
 ): { wasFatal: boolean; gutsTriggered: boolean; gutsLog?: string } {
-  p.currentHp = p.currentHp - damage;
+  const s = p.servant;
+  const t = s.template || {};
+  const baseEnd = t.baseStats?.endurance || 10;
+  const allocEnd = s.allocatedStats?.endurance || 0;
+  const endMult = getParameterRankMultiplier(baseEnd);
+  const effEnd = baseEnd + Math.round(allocEnd * endMult);
+  const endMitigation = 1.0 - (getEnduranceDamageReductionPercent(effEnd) / 100);
+  const finalDamage = Math.round(damage * endMitigation);
+  p.currentHp = p.currentHp - finalDamage;
   if (p.currentHp <= 0) {
     const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
     const gutsIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'guts') : -1;

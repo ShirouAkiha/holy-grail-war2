@@ -571,6 +571,8 @@ export interface RaidParticipantState {
   totalDamageDealt?: number;
   totalDamageTaken?: number;
   gutsTriggeredThisTurn?: boolean;
+  gutsCount?: number;
+  isEvading?: boolean;
   bondLevel?: number;
 }
 

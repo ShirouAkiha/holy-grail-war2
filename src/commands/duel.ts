@@ -29,6 +29,7 @@ import { addServantBattleExp } from '../engine/customization';
 import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
 import { getRandomBackgroundUrl } from '../data/backgrounds';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
+import { getParameterRankMultiplier, getEnduranceDamageReductionPercent } from '../engine/statSystem';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -106,6 +107,8 @@ export interface DuelCombatant {
   atk: number;
   baseDef: number;
   def: number;
+  enduranceDamageReduction?: number;
+  effectiveEndurance?: number;
   npGauge: number;
   critStars: number;
   isStunned?: boolean;
@@ -250,16 +253,22 @@ function createCombatant(
   const t = { ...canonical, ...(servant.template?.isCustomOrMeme ? servant.template : {}) };
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
   const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
-  const totalStr = (base.strength || 10) + (alloc.strength || 0);
-  const totalEnd = (base.endurance || 10) + (alloc.endurance || 0);
-  const totalAgi = (base.agility || 10) + (alloc.agility || 0);
+  const strRankMult = getParameterRankMultiplier(base.strength || 10);
+  const endRankMult = getParameterRankMultiplier(base.endurance || 10);
+  const agiRankMult = getParameterRankMultiplier(base.agility || 10);
+
+  const totalStr = (base.strength || 10) + Math.round((alloc.strength || 0) * strRankMult);
+  const totalEnd = (base.endurance || 10) + Math.round((alloc.endurance || 0) * endRankMult);
+  const totalAgi = (base.agility || 10) + Math.round((alloc.agility || 0) * agiRankMult);
 
   const ceAtk = servant.equippedCe?.atkBonus || 0;
   const ceHp = servant.equippedCe?.hpBonus || 0;
   const lvl = servant.level || 1;
 
-  // Unified Formula: Base Stat + (Total Parameter * factor) + Craft Essence Equipment
-  const maxHp = Math.round((t.baseHp || 28000) + totalEnd * 150 + ceHp);
+  // Unified Upgraded Formula: Base Stat + (Total Parameter * 300) + Craft Essence Equipment + Endurance Resilience Bonus
+  const rawHp = (t.baseHp || 28000) + totalEnd * 300 + ceHp;
+  const hpResilienceBonus = (totalEnd / 1000) * 0.25;
+  const maxHp = Math.round(rawHp * (1 + hpResilienceBonus));
   let baseAtk = Math.round((t.baseAtk || 10000) + totalStr * 80 + ceAtk);
 
   // Curse of Heresy for Rogue Heretics (10+ civilian kills): -10% ATK suppression by Church Wards
@@ -268,6 +277,7 @@ function createCombatant(
   }
 
   const baseDef = 10 + totalEnd * 2;
+  const enduranceDamageReduction = getEnduranceDamageReductionPercent(totalEnd);
 
   // Check if equipped CE grants starting NP (e.g. Kaleidoscope grants 80% starting NP)
   let initialNp = 0;
@@ -335,6 +345,8 @@ function createCombatant(
     atk: baseAtk,
     baseDef,
     def: baseDef,
+    enduranceDamageReduction,
+    effectiveEndurance: totalEnd,
     npGauge: initialNp,
     critStars: initialStars,
     passives,
@@ -3512,7 +3524,8 @@ function resolveStrike(
           }
 
           const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * typhonDebuffScale * azraelSpecialScale * targetClassMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
-          let oppDmg = Math.round(Math.max(600, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
+          const oppEndMitigation = 1.0 - ((targetOpp.enduranceDamageReduction || 0) / 100);
+          let oppDmg = Math.round(Math.max(600, rawNpDmg * oppEndMitigation) * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
           const hitProt = processTargetHitProtection(targetOpp);
           const wasProtected = hitProt.isProtected;
@@ -3727,7 +3740,8 @@ function resolveStrike(
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2) + busterChainBonusDmg;
-      let hitDmg = Math.round(Math.max(350, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
+      const defEndMitigation = 1.0 - ((defender.enduranceDamageReduction || 0) / 100);
+      let hitDmg = Math.round(Math.max(350, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER * defEndMitigation) + flatDivinity;
 
       if (attackerCe?.id === 'ce_origin_bullet' && (defender.servant.template.servantClass === 'Caster' || (defender.servant.template.baseStats?.mana || 0) >= 12)) {
         hitDmg = Math.round(hitDmg * 1.35);
@@ -3779,7 +3793,8 @@ function resolveStrike(
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
-      let hitDmg = Math.round(Math.max(280, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
+      const defEndMitigation = 1.0 - ((defender.enduranceDamageReduction || 0) / 100);
+      let hitDmg = Math.round(Math.max(280, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER * defEndMitigation) + flatDivinity;
 
       if (attackerCe?.id === 'ce_origin_bullet' && (defender.servant.template.servantClass === 'Caster' || (defender.servant.template.baseStats?.mana || 0) >= 12)) {
         hitDmg = Math.round(hitDmg * 1.35);
@@ -3830,7 +3845,8 @@ function resolveStrike(
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
-      let hitDmg = Math.round(Math.max(220, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
+      const defEndMitigation = 1.0 - ((defender.enduranceDamageReduction || 0) / 100);
+      let hitDmg = Math.round(Math.max(220, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER * defEndMitigation) + flatDivinity;
 
       if (attackerCe?.id === 'ce_origin_bullet' && (defender.servant.template.servantClass === 'Caster' || (defender.servant.template.baseStats?.mana || 0) >= 12)) {
         hitDmg = Math.round(hitDmg * 1.35);
@@ -3883,7 +3899,8 @@ function resolveStrike(
   if (is3Cards) {
     chainTags.push('⚔️ BRAVE CHAIN (Extra Attack)');
     const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
-    let extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10) * PVP_DAMAGE_MODIFIER)) + flatDivinity;
+    const defEndMitigation = 1.0 - ((defender.enduranceDamageReduction || 0) / 100);
+    let extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10) * PVP_DAMAGE_MODIFIER * defEndMitigation)) + flatDivinity;
     const extraProt = processHitProtection();
     if (extraProt.isProtected) {
       if (extraProt.type === 'anti_purge_defense') turnBlockedByAntiPurge = true;

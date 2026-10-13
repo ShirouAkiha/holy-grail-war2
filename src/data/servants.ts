@@ -2509,7 +2509,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       cardType: 'Arts',
       chant: 'Listen closely. The evening bell has tolled thy name. Surrender thy head to the blade of fate... Mal\'ak al-Mawt!',
       description: 'Increases own NP damage by 20% for 1 turn (activates first). Deals 900% damage to a single enemy (+50% bonus damage if target has lowered DEF, increased Death Chance, or Thirst for Death). 15% chance of Instant Death in PvP (30% in Raids; does not bypass Guts). If Instant Death succeeds, refunds 20% NP gauge.',
-      target: 'single_enemy',
+      target: 'single',
       multiplier: 900,
       overchargeEffect: 'Increases own Arts performance by 20% for 3 turns (activates first, scales with Overcharge)',
       gifUrl: 'https://ella.janitorai.com/media-approved/kVayE4r7ymceqPcg_My_g.gif'
@@ -2710,7 +2710,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       cardType: 'Quick',
       chant: 'One step, fleeting shadow. Two steps, peerless edge. Three steps, absolute thrust... Mumyō Sandan-Zuki!',
       description: 'Deals damage (1200% multiplier) that ignores defense buffs to one enemy. Reduces target DEF by 50% for 3 turns, Quick resistance by 30% for 3 turns, and Critical Damage resistance by 30% for 3 turns.',
-      target: 'single_enemy',
+      target: 'single',
       multiplier: 1200,
       overchargeEffect: 'Reduces enemy DEF by 50% (3 turns), Quick resistance by 30% (3 turns), and Critical Damage resistance by 30% (3 turns).',
       gifUrl: 'https://ella.janitorai.com/media-approved/HQmlf5uAXpkxz6B93nmbS.gif'
