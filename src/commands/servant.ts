@@ -448,17 +448,39 @@ export async function buildServantHub(
     const expStatus = calculateLevelFromExp(currentTotalExp);
     const expNeeded = expStatus.level >= 500 ? 0 : Math.max(0, expStatus.nextLevelExp - expStatus.currentLevelExp);
 
+    const formatStatDetailLine = (
+      emoji: string,
+      name: string,
+      code: string,
+      baseVal: number,
+      allocVal: number,
+      rank: string,
+      effectText: string
+    ) => {
+      const mult = getParameterRankMultiplier(rank);
+      const bonus = Math.round((mult - 1) * 100);
+      const growthSign = bonus >= 0 ? `+${bonus}%` : `${bonus}%`;
+      const effectiveAdded = Math.round(allocVal * mult);
+      const effectiveTotal = baseVal + effectiveAdded;
+      
+      if (allocVal > 0) {
+        return `${emoji} **${name} (${code}):** \`${effectiveTotal.toLocaleString()}\` [**Rank ${rank}**] • *(Base ${baseVal} + ${allocVal.toLocaleString()} Alloc × ${mult}x Aptitude = +${effectiveAdded.toLocaleString()} Eff)* — *${effectText} (+${allocVal.toLocaleString()}/1,000 pts)*\n`;
+      } else {
+        return `${emoji} **${name} (${code}):** \`${baseVal.toLocaleString()}\` [**Rank ${rank}**] • *(Growth Aptitude: ${growthSign})* — *${effectText} (+0/1,000 pts)*\n`;
+      }
+    };
+
     const embed = new EmbedBuilder()
       .setTitle(`⭐ Parameter Point Allocation: ${sName}`)
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** \`Lv.${expStatus.level}/500\` *(${expNeeded.toLocaleString()} XP to Lv.${Math.min(500, expStatus.level + 1)})\*\n` +
         `📊 **Total Allocated:** \`${totalAllocated.toLocaleString()} pts\` | 📈 **Unspent Stat Points:** \`${availPoints.toLocaleString()} pts\`\n\n` +
-        `💪 **Strength (STR):** \`${strTotal}\` [**Rank ${strRank}**] • *(Growth Aptitude: ${getGrowthAptitudeText(strRank)})* — *Increases base attack damage (+${alloc.strength || 0} allocated, max 1000)*\n` +
-        `🛡️ **Endurance (END):** \`${endTotal}\` [**Rank ${endRank}**] • *(Growth Aptitude: ${getGrowthAptitudeText(endRank)})* — *Increases max HP (+300 HP/pt) & up to 50% native damage reduction (+${alloc.endurance || 0} allocated, max 1000)*\n` +
-        `⚡ **Agility (AGI):** \`${agiTotal}\` [**Rank ${agiRank}**] • *(Growth Aptitude: ${getGrowthAptitudeText(agiRank)})* — *Boosts crit generation & dodge (+${alloc.agility || 0} allocated, max 1000)*\n` +
-        `🔮 **Mana (MNA):** \`${mnaTotal}\` [**Rank ${mnaRank}**] • *(Growth Aptitude: ${getGrowthAptitudeText(mnaRank)})* — *Accelerates NP gauge gain (+${alloc.mana || 0} allocated, max 1000)*\n` +
-        `🍀 **Luck (LCK):** \`${lckTotal}\` [**Rank ${lckRank}**] • *(Growth Aptitude: ${getGrowthAptitudeText(lckRank)})* — *Enhances status & crit resistance (+${alloc.luck || 0} allocated, max 1000)*\n\n` +
+        formatStatDetailLine('💪', 'Strength', 'STR', base.strength || 10, alloc.strength || 0, strRank, 'Increases base attack damage') +
+        formatStatDetailLine('🛡️', 'Endurance', 'END', base.endurance || 10, alloc.endurance || 0, endRank, 'Increases max HP (+300 HP/pt) & up to 50% native damage reduction') +
+        formatStatDetailLine('⚡', 'Agility', 'AGI', base.agility || 10, alloc.agility || 0, agiRank, 'Boosts crit generation & dodge') +
+        formatStatDetailLine('🔮', 'Mana', 'MNA', base.mana || 10, alloc.mana || 0, mnaRank, 'Accelerates NP gauge gain') +
+        formatStatDetailLine('🍀', 'Luck', 'LCK', base.luck || 10, alloc.luck || 0, lckRank, 'Enhances status & crit resistance') + '\n' +
         `💡 **ALLOCATION & OMNIPOTENCE CONTROLS:**\n` +
         `• **Cap:** 1,000 max points for each attribute (Complete Omnipotence at 1000 in all 5 parameters!).\n` +
         `• **Step Multipliers:** Click \`1x\`, \`10x\`, or \`100x/MAX\` to change increment size, then click parameter buttons.\n` +
