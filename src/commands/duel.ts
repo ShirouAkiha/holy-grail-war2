@@ -2156,6 +2156,80 @@ function activateCombatantSkill(
       }
     });
     logText = `🌳 **${sName}** activated **${skill.name}**! (-10% Enemy Death Res, +10% Death Rate, -20% DEF Down & -20% Survival Penalty [3T]${anyStunned ? ', 1T Stun inflicted' : ''})${quoteLine}`;
+  } else if (
+    skill.id === 'shukuchi_b_plus' ||
+    /shukuchi/i.test(skill.name) ||
+    ((combatant.servant.templateId === 'okita_souji' || /okita/i.test(combatant.servant.template?.name || '')) && skillIdx === 0)
+  ) {
+    // Okita Souji S1: Shukuchi B+
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Quick Up)`,
+      type: 'quick_up',
+      value: 50,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Buff-On-Attack ATK Up)`,
+      type: 'buff_atk',
+      value: 20,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    logText = `⚡ **${sName}** activated **${skill.name}**! (+50% Quick Performance [1T], +20% ATK Buff-On-Attack [1T])${quoteLine}`;
+  } else if (
+    skill.id === 'peerless_blade_a' ||
+    /peerless blade|mumyou no yaiba|mumyō no yaiba/i.test(skill.name) ||
+    ((combatant.servant.templateId === 'okita_souji' || /okita/i.test(combatant.servant.template?.name || '')) && skillIdx === 1)
+  ) {
+    // Okita Souji S2: Peerless Blade A
+    combatant.npGauge = Math.min(300, (combatant.npGauge || 0) + 30);
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Star Absorb)`,
+      type: 'star_absorb',
+      value: 1000,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Crit DMG Up)`,
+      type: 'crit_dmg',
+      value: 50,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    logText = `🗡️ **${sName}** activated **${skill.name}**! (+30% NP Gauge, +1,000% Star Absorb [1T], +50% Crit DMG [1T])${quoteLine}`;
+  } else if (
+    skill.id === 'eye_of_the_mind_false_a' ||
+    /eye of the mind \(false\)|mind's eye \(false\)/i.test(skill.name) ||
+    ((combatant.servant.templateId === 'okita_souji' || /okita/i.test(combatant.servant.template?.name || '')) && skillIdx === 2)
+  ) {
+    // Okita Souji S3: Eye of the Mind (False) A
+    combatant.isEvading = true;
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Evade)`,
+      type: 'evade',
+      value: 100,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Crit DMG Up)`,
+      type: 'crit_dmg',
+      value: 50,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    logText = `👁️ **${sName}** activated **${skill.name}**! (Evade [1T], +50% Crit DMG [3T])${quoteLine}`;
   } else if (skill.id === 'scourge_of_god_a' || /scourge of god/i.test(skill.name)) {
     // Altera S1: Scourge of God A
     combatant.activeBuffs.push({
@@ -3396,6 +3470,8 @@ function resolveStrike(
           const isIgnoreDef = attacker.activeBuffs.some(b => b.type === 'ignore_defense') ||
             attacker.servant.templateId === 'emiya_archer' ||
             attacker.servant.template?.id === 'emiya_archer' ||
+            attacker.servant.templateId === 'okita_souji' ||
+            attacker.servant.template?.id === 'okita_souji' ||
             /ignore.*def|defense-ignoring|ignores defense/i.test((npTemplate.description || '') + ' ' + (npTemplate.effect || '') + ' ' + (npTemplate.overchargeEffect || ''));
 
           let oppDefBuff = 1.0;
@@ -3526,6 +3602,31 @@ function resolveStrike(
               name: `${attacker.servant.template.noblePhantasm?.name || 'Photon Ray'} (DEF Down)`,
               type: 'debuff_def',
               value: defVal,
+              remainingTurns: 3
+            });
+          }
+
+          const isMumyoSandanZuki = attacker.servant.templateId === 'okita_souji' ||
+            attacker.servant.template?.id === 'okita_souji' ||
+            /mumyō sandan-zuki|mumyo sandan-zuki|avidyā three-stage thrust/i.test(npTemplate.name || '');
+          if (isMumyoSandanZuki) {
+            targetOpp.activeBuffs = targetOpp.activeBuffs || [];
+            targetOpp.activeBuffs.push({
+              name: 'Mumyō Sandan-Zuki (DEF Down)',
+              type: 'debuff_def',
+              value: 50,
+              remainingTurns: 3
+            });
+            targetOpp.activeBuffs.push({
+              name: 'Mumyō Sandan-Zuki (Quick Res Down)',
+              type: 'debuff_quick_res',
+              value: 30,
+              remainingTurns: 3
+            });
+            targetOpp.activeBuffs.push({
+              name: 'Mumyō Sandan-Zuki (Crit Res Down)',
+              type: 'debuff_crit_res',
+              value: 30,
               remainingTurns: 3
             });
           }

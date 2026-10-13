@@ -811,6 +811,24 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     isBondCe: true,
     bondServantId: 'hassan_i_sabbah_azrael',
     bondServantName: 'Hassan-i-Sabbah (Azrael)'
+  },
+  okita_souji: {
+    id: 'ce_bond_okita_souji',
+    name: 'Headband of Resolve',
+    rarity: 4,
+    description: "When equipped on Okita Souji: Increases party's critical damage by 25% while self is on the field.",
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: "When equipped to Okita Souji: Increases party's Critical Damage by 25% while self is on the field.",
+    passiveType: 'crit_damage',
+    passiveValue: 25,
+    artworkUrl: 'https://static.atlasacademy.io/JP/CharaGraph/9300420/9300420a.png',
+    isBondCe: true,
+    bondServantId: 'okita_souji',
+    bondServantName: 'Okita Souji'
   }
 };
 
@@ -882,7 +900,12 @@ const CANONICAL_SERVANT_TO_BOND_KEY: Record<string, string> = {
   hassan_azrael: 'hassan_i_sabbah_azrael',
   'hassan-i-sabbah (azrael)': 'hassan_i_sabbah_azrael',
   king_hassan_azrael: 'hassan_i_sabbah_azrael',
-  grand_assassin_azrael: 'hassan_i_sabbah_azrael'
+  grand_assassin_azrael: 'hassan_i_sabbah_azrael',
+  okita_souji: 'okita_souji',
+  okita: 'okita_souji',
+  souji_okita: 'okita_souji',
+  saber_okita: 'okita_souji',
+  okita_saber: 'okita_souji'
 };
 
 /**

@@ -2608,6 +2608,172 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         intro: "An ancient shrine guardian sealing eight tails behind self-inflicted guilt. Lingering over a ghost town's debt for five centuries is poor management, fox.",
         retort: "W-Washi is not managing poorly, ja! A deity honors her sanctuary until the very end! Keep your creepy executioner hands away from my shrine, ja nee!",
         tag: "STAGNATED LEDGER OF THE SHRINE"
+      },
+      okita_souji: {
+        intro: "The prodigy of the Mibu Wolves. A brilliant life cut short by consuming disease. Your ledger closed far too early, young swordsman.",
+        retort: "Cough... An auditor of death? Don't count me among the deceased just yet, old man! My blade still has plenty of fights left in it!",
+        tag: "SHINSENGUMI WOLVES VS AUDITOR OF DEATH"
+      }
+    }
+  },
+  {
+    id: 'okita_souji',
+    name: 'Okita Souji',
+    title: 'First Unit Captain of the Shinsengumi',
+    servantClass: 'Saber',
+    rarity: 5,
+    baseHp: 31200,
+    baseAtk: 12064,
+    baseStats: { strength: 18, endurance: 14, agility: 24, mana: 14, luck: 16 },
+    commandDeck: ['Quick', 'Quick', 'Arts', 'Arts', 'Buster'],
+    traits: [
+      'Humanoid',
+      'Servant',
+      'Saberface',
+      'Female',
+      'Riding',
+      'Japanese',
+      'Shinsengumi',
+      'Weak to Enuma Elish'
+    ],
+    skills: [
+      {
+        id: 'shukuchi_b_plus',
+        name: 'Shukuchi B+',
+        cooldown: 7,
+        description: 'Increases own Quick performance by 50% for 1 turn. Grants self Buff-On-Attack buff for 1 turn (Increases own ATK by 20% for 1 turn when normal attacking; activates first).',
+        effectType: 'quick_up',
+        value: 50,
+        duration: 1,
+        target: 'self',
+        icon: '⚡',
+        quote: '"I\'m cutting in!"',
+        quotes: [
+          '"I\'m cutting in!"',
+          '"Shukuchi!"',
+          '"Light upon my feet!"'
+        ]
+      },
+      {
+        id: 'peerless_blade_a',
+        name: 'Peerless Blade A',
+        cooldown: 7,
+        description: 'Charges own NP gauge by 30%. Increases own Critical Star Absorption by 1,000% (1 turn). Increases own Critical Damage by 50% (1 turn).',
+        effectType: 'np_charge',
+        value: 30,
+        duration: 1,
+        target: 'self',
+        icon: '🗡️',
+        quote: '"This is the sword of the Shinsengumi!"',
+        quotes: [
+          '"This is the sword of the Shinsengumi!"',
+          '"Blade, take flight!"',
+          '"A flash of pure edge!"'
+        ]
+      },
+      {
+        id: 'eye_of_the_mind_false_a',
+        name: 'Eye of the Mind (False) A',
+        cooldown: 8,
+        description: 'Grants self Evasion for 1 turn. Increases own Critical Damage by 50% for 3 turns.',
+        effectType: 'evasion',
+        value: 50,
+        duration: 1,
+        target: 'self',
+        icon: '👁️',
+        quote: '"I can see your blade clearly."',
+        quotes: [
+          '"I can see your blade clearly."',
+          '"A calm heart, like still water."',
+          '"Not yet... I cannot fall here!"'
+        ]
+      }
+    ],
+    passives: [
+      {
+        name: 'Magic Resistance E',
+        type: 'magic_resistance',
+        value: 10,
+        rank: 'E',
+        description: 'Increases own debuff resistance by 10%.'
+      },
+      {
+        name: 'Riding E',
+        type: 'riding',
+        value: 2,
+        rank: 'E',
+        description: 'Increases own Quick performance by 2%.'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Mumyō Sandan-Zuki: Avidyā Three-Stage Thrust',
+      cardType: 'Quick',
+      chant: 'One step, fleeting shadow. Two steps, peerless edge. Three steps, absolute thrust... Mumyō Sandan-Zuki!',
+      description: 'Deals damage (1200% multiplier) that ignores defense buffs to one enemy. Reduces target DEF by 50% for 3 turns, Quick resistance by 30% for 3 turns, and Critical Damage resistance by 30% for 3 turns.',
+      target: 'single_enemy',
+      multiplier: 1200,
+      overchargeEffect: 'Reduces enemy DEF by 50% (3 turns), Quick resistance by 30% (3 turns), and Critical Damage resistance by 30% (3 turns).',
+      gifUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700b@2.png'
+    },
+    lore: `Okita Souji (沖田総司), Class Name Saber (セイバー), is a 5★ SSR Saber Servant.\n\nThe captain of the first unit of the Shinsengumi, the legendary public peace policing force active in Kyoto during the Bakumatsu period. Widely feared as a genius swordsman of unparalleled talent, yet renowned among friends and children for her gentle, cheerful disposition.\n\nHer signature technique, Mumyō Sandan-Zuki (Avidyā Three-Stage Thrust), is a peerless secret sword that unleashes a First Thrust, Second Thrust, and Third Thrust almost instantaneously from the flat hilt stance, defying causality and spatial defense.`,
+    summonQuote: '"Servant Saber, Okita Souji, has answered your summon! ...Eh, the haori? Ah, I must have misplaced it somewhere... Well, no matter! Master, let us fight together with everything we have!"',
+    battleStartQuote: '"Shinsengumi First Unit Captain, Okita Souji, moving out!"',
+    victoryQuote: '"Victory! Heheh, my sword is in tip-top shape today as well, Master!"',
+    defeatQuote: '"Cough...! Ah, not at a time like this... I am sorry, Master..."',
+    avatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700a@1.png',
+    cardArtUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700b@2.png',
+    spriteUrl: 'https://static.atlasacademy.io/JP/CharaFigure/1027002/1027002_merged.png',
+    isCustomOrMeme: false,
+    matchupDialogues: {
+      artoria_pendragon: {
+        intro: "Eh?! That face, that golden hair... A-Are you perhaps related to me?! Wait, why are you glaring at my haori?!",
+        retort: "I am the King of Britain, not your relative! Though... why does your face resemble mine so uncanny?! Draw your blade!",
+        tag: "SABERFACE ENCOUNTER: CAPTAIN VS KING"
+      },
+      artoria_pendragon_alter: {
+        intro: "The Shinsengumi cuts down tyrants. Even wrapped in pitch-black armor, a king who loses her way must be struck down!",
+        retort: "A sickly samurai daring to lecture me on kingship? I will shatter that delicate sword alongside your fragile ideals.",
+        tag: "HAORI OF SINCERITY VS BLACK TYRANT"
+      },
+      scathach_lancer: {
+        intro: "The legendary Queen of Shadows... what incredible reach! But my three-stage thrust leaves no opening between spear tips!",
+        retort: "Remarkable footwork, girl of Mibu. Show me if your flesh can outrun death itself before my Gáe Bolg claims your heart.",
+        tag: "THREE-STAGE THRUST VS DUN SCAITH SPEAR"
+      },
+      cu_chulainn_lancer: {
+        intro: "A spear that never misses its heart? Then I just have to pierce three times before your spear even takes aim!",
+        retort: "Hah! You've got some nerve, kiddo! Let's see whose thrust reaches first in this close-quarters brawl!",
+        tag: "CELTIC BEAST VS MIBU WOLF"
+      },
+      gilgamesh_archer: {
+        intro: "Throwing treasures from afar is not true swordsmanship, King of Heroes! Step down and face the Mumyō Sandan-Zuki!",
+        retort: "Insolent mongrel! To compare the boundless treasures of Uruk to crude mortal blade-play... know your place in the dirt!",
+        tag: "PEERLESS SWORD VS BABYLON'S TREASURY"
+      },
+      emiya_archer: {
+        intro: "Master of dual blades... your form is strange, but every strike carries the weight of a seasoned warrior!",
+        retort: "Don't push yourself too hard, Captain. That cough of yours sounds far worse than the wounds I'm aiming for.",
+        tag: "KANSHEU & BAKUYA VS KIKU-ICHIMONJI"
+      },
+      hassan_i_sabbah_azrael: {
+        intro: "An auditor of death? I have stared death in the face and coughed blood upon its doorstep many times—my soul isn't ready to be logged just yet!",
+        retort: "A tenacious spirit. The ledger awaits, but if you still wish to brandish that blade, let us test its resolve.",
+        tag: "WOLF OF SINCERITY VS AUDITOR OF DEATH"
+      },
+      tamamo_no_mae: {
+        intro: "A shrine maiden with fox ears... How cute! Wait, why are you aiming curses at my head?!",
+        retort: "Kyaah! A hyperactive samurai girl looking to steal Master's attention?! Polygamist castration fist, ready for deployment!",
+        tag: "SHINSENGUMI CAPTAIN VS FOX SHRINE MAIDEN"
+      },
+      heracles_berserker: {
+        intro: "Twelve lives?! Then I shall strike thirty-six times without blinking! Shinsengumi, advance!",
+        retort: "■■■■■■■■■ーーー!!",
+        tag: "THIRTY-SIX THRUSTS OF HERCULEAN TRIAL"
+      },
+      jeanne_alter: {
+        intro: "Flames and curses? The Kyoto night fires were terrifying, but the Shinsengumi never backs down from a conflagration!",
+        retort: "Another self-righteous goody two-shoes! I'll turn that cheerful haori into cinders before you can even take a step!",
+        tag: "BLUE SINCERITY VS ROARING FLAMES"
       }
     }
   }

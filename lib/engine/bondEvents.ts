@@ -4693,10 +4693,291 @@ export const AZRAEL_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const OKITA_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'okita_bond_1',
+    servantTemplateId: 'okita_souji',
+    requiredBondLevel: 1,
+    title: "Bond Interlude: The Sword of Sincerity",
+    subtitle: "Bond Level 1 Interlude",
+    description: "On a chilly midnight rooftop overlooking modern Kyoto, Okita Souji reflects on her past in the Shinsengumi, her Weak Constitution, and her unyielding resolve.",
+    rewardBondExp: 500,
+    rewardSaintQuartz: 3,
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Okita Souji',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700a@1.png',
+        backgroundTheme: 'kyoto_night',
+        dialogueText: "Master, staying on this rooftop at midnight is terrible for my lungs. If an enemy Servant attacks right now, I might cough on them instead of using Mumyou Sandan-tsuki.",
+        choices: [
+          {
+            id: 'c1_a',
+            text: "At least biological warfare isn't against the Holy Grail War rules.",
+            response: "Biological warfare?! That is completely devoid of bushido! Though... winning by default does sound strangely practical.",
+            bondExpGain: 150,
+            reactionEmotion: 'playful',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_b',
+            text: "If you need a lozenge, just ask. You don’t have to be dramatic about it.",
+            response: "A lozenge cannot cure the Weak Constitution skill, Master! But... what flavor is it? If it's sweet, I might take one.",
+            bondExpGain: 150,
+            reactionEmotion: 'cute',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_c',
+            text: "Keep your guard up anyway; an ambush won't wait for your coughing fit.",
+            response: "Ugh, so strict. A captain of the Shinsengumi is always ready to strike, even if my chest feels like crushed gravel!",
+            bondExpGain: 125,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Okita Souji',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700a@1.png',
+        backgroundTheme: 'kyoto_night',
+        dialogueText: "Still, looking down at modern Kyoto like this feels strange. The lanterns are gone, replaced by endless buzzing glass, but the air still carries that tense pre-skirmish smell.",
+        choices: [
+          {
+            id: 'c2_a',
+            text: "That’s not pre-skirmish tension, that’s just cheap diesel exhaust.",
+            response: "You truly have no romantic soul, do you? Turning a warrior's melancholic observation into vehicle emissions.",
+            bondExpGain: 125,
+            reactionEmotion: 'pout',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_b',
+            text: "Does it feel nostalgic, or does it just make you feel out of place?",
+            response: "Both, honestly. The streets bear the same names, but none of the footsteps belong to people I bled with.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_c',
+            text: "Don't get sentimental. The modern world is just another battlefield to clear.",
+            response: "Spoken like a ruthless tactician. Hijikata-san would probably approve of your cold pragmatism, Master.",
+            bondExpGain: 150,
+            reactionEmotion: 'focused',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Okita Souji',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700a@1.png',
+        backgroundTheme: 'kyoto_night',
+        dialogueText: "You know, most Masters summon a Saber expecting a radiant knight with an invincible holy sword, not a sickly hitman dressed in pale blue.",
+        choices: [
+          {
+            id: 'c3_a',
+            text: "Hey, I ordered a legendary sword saint and got a coughing gag character. No refunds, I guess.",
+            response: "Gag character?! I'll have you know my sword has ended dozens of skilled samurai in literal heartbeats!",
+            bondExpGain: 125,
+            reactionEmotion: 'indignant',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_b',
+            text: "A sword that cuts three planes at once beats a flashy glowstick any day.",
+            response: "Heh, finally some proper praise! Keep talking like that and I might actually protect you when an Archer snipes us.",
+            bondExpGain: 150,
+            reactionEmotion: 'proud',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_c',
+            text: "The class doesn't matter; your kill count during the Bakumatsu speaks for itself.",
+            response: "...Kill count. Right. You modern magi always reduce our lives down to cold operational metrics.",
+            bondExpGain: 100,
+            reactionEmotion: 'somber',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Okita Souji',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700a@1.png',
+        backgroundTheme: 'kyoto_night',
+        dialogueText: "It’s true, though. We weren't noble protectors guarding peace. We were an execution squad drenched in blood, patrolling muddy alleys until everything ended.",
+        choices: [
+          {
+            id: 'c4_a',
+            text: "Sounds like modern riot police, just with sharper blades and worse dental care.",
+            response: "Did you really have to bring up teeth? Though, you're not entirely wrong about the riot police part.",
+            bondExpGain: 125,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_b',
+            text: "You were doing what had to be done to keep order in a falling era.",
+            response: "Order... That was the justification, yes. But blood is blood, no matter what noble banner you wrap around it.",
+            bondExpGain: 150,
+            reactionEmotion: 'serious',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_c',
+            text: "Do you regret picking up the sword back then?",
+            response: "Never. I swung my blade because I chose to stand beside Kondo-san and Hijikata-san, not out of regret.",
+            bondExpGain: 150,
+            reactionEmotion: 'resolute',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Okita Souji',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700a@1.png',
+        backgroundTheme: 'kyoto_night',
+        dialogueText: "What ate at me wasn't the killing. It was lying in that shed while everyone else fought and died, watching the flag of 'Sincerity' fall without me.",
+        choices: [
+          {
+            id: 'c5_a',
+            text: "Dying in bed surrounded by dust bunnies does sound pretty uncool for a swordsman.",
+            response: "'Uncool' is putting it mildly! It was humiliating, frustrating, and suffocating. Yet here you are making light of it.",
+            bondExpGain: 125,
+            reactionEmotion: 'pout',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_b',
+            text: "You survived long enough to bear their memory into the Throne of Heroes.",
+            response: "Memories fade, Master. Even Heroic Spirits are just recorded shadows, not the actual people who bled on those mats.",
+            bondExpGain: 150,
+            reactionEmotion: 'melancholic',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_c',
+            text: "That's why you answered the Grail's call, isn't it? To rewrite how you went out?",
+            response: "No. The past happened. I don't want a rewrite; I just wanted one clean fight until the very end.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Okita Souji',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700a@1.png',
+        backgroundTheme: 'kyoto_night',
+        dialogueText: "That's why this Grail War matters to me. Not for some wish-granting cup, but to cross blades with absolute devotion until my spirit origin shatters.",
+        choices: [
+          {
+            id: 'c6_a',
+            text: "Great, my Servant is an adrenaline junkie with terminal asthma.",
+            response: "Say that again and I'll test my sword's balance against your jacket hem! But... adrenaline junkie isn't entirely inaccurate.",
+            bondExpGain: 125,
+            reactionEmotion: 'playful',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_b',
+            text: "Then let's make sure our opponents bring everything they have.",
+            response: "Yes! That’s the spirit. A proper duel without regrets, where every strike carries everything we are.",
+            bondExpGain: 150,
+            reactionEmotion: 'excited',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_c',
+            text: "If you die reckless, make sure it's after securing my Command Seals.",
+            response: "Practical right to the edge of death, aren't you? Fine, I won't let your investment go to waste prematurely.",
+            bondExpGain: 125,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Okita Souji',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700a@1.png',
+        backgroundTheme: 'kyoto_night',
+        dialogueText: "Tell me the truth, Master. In a war where other Servants have divine blood and ancient curses... do you actually trust my blade to bring you through this alive?",
+        choices: [
+          {
+            id: 'c7_a',
+            text: "Statistically? We're doomed. Personally? I haven't bought life insurance yet, so you better win.",
+            response: "Hahaha! What kind of reasoning is that?! Fine, if your wallet is on the line, I suppose I have to deliver!",
+            bondExpGain: 150,
+            reactionEmotion: 'laughing',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'c7_b',
+            text: "Your blade is the only weapon I need in this war.",
+            response: "...You say embarrassing things with such a straight face. Don't look at me like that; it throws off my focus.",
+            bondExpGain: 150,
+            reactionEmotion: 'blushing',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'c7_c',
+            text: "Trust doesn't win wars, but right now you're the only card in my hand.",
+            response: "A card, huh? Fair enough. But make sure you play me well, Master. I don't intend to fold early.",
+            bondExpGain: 125,
+            reactionEmotion: 'confident',
+            nextSceneId: 'scene_8'
+          }
+        ]
+      },
+      {
+        id: 'scene_8',
+        speakerName: 'Okita Souji',
+        speakerAvatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700a@1.png',
+        backgroundTheme: 'kyoto_night',
+        dialogueText: "The wind is picking up, and I can sense a boundary field shifting toward the commercial district. Time to stop chatting and move.",
+        choices: [
+          {
+            id: 'c8_a',
+            text: "Race you there. Winner gets the loser's share of convenience store dumplings.",
+            response: "You're on! But don't blame me if my Shukuchi leaves you stranded at the first traffic light!",
+            bondExpGain: 150,
+            reactionEmotion: 'cheerful'
+          },
+          {
+            id: 'c8_b',
+            text: "Ready your haori, Okita. Let's see what this city has to throw at us.",
+            response: "Understood, Master. The Shinsengumi's first division captain, Okita Souji—moving out!",
+            bondExpGain: 150,
+            reactionEmotion: 'heroic'
+          },
+          {
+            id: 'c8_c',
+            text: "Just remember: cough after you decapitate them, not during the windup.",
+            response: "Ha! No promises, Master! If my lungs cooperate, consider the enemy already cut down!",
+            bondExpGain: 125,
+            reactionEmotion: 'smirking'
+          }
+        ]
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
 export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
+  okita_souji: OKITA_BOND_EVENTS,
+  okita: OKITA_BOND_EVENTS,
+  souji_okita: OKITA_BOND_EVENTS,
+  saber_okita: OKITA_BOND_EVENTS,
+  okita_saber: OKITA_BOND_EVENTS,
   hassan_i_sabbah_azrael: AZRAEL_BOND_EVENTS,
   azrael: AZRAEL_BOND_EVENTS,
   king_hassan: AZRAEL_BOND_EVENTS,

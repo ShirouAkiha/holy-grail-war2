@@ -2487,11 +2487,68 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "An ancient shrine guardian sealing eight tails behind self-inflicted guilt. Lingering over a ghost town's debt for five centuries is poor management, fox.",
       retort: "W-Washi is not managing poorly, ja! A deity honors her sanctuary until the very end! Keep your creepy executioner hands away from my shrine, ja nee!",
       tag: "STAGNATED LEDGER OF THE SHRINE"
+    },
+    okita_souji: {
+      intro: "The prodigy of the Mibu Wolves. A brilliant life cut short by consuming disease. Your ledger closed far too early, young swordsman.",
+      retort: "Cough... An auditor of death? Don't count me among the deceased just yet, old man! My blade still has plenty of fights left in it!",
+      tag: "SHINSENGUMI WOLVES VS AUDITOR OF DEATH"
+    }
+  },
+  okita_souji: {
+    artoria_pendragon: {
+      intro: "Eh?! That face, that golden hair... A-Are you perhaps related to me?! Wait, why are you glaring at my haori?!",
+      retort: "I am the King of Britain, not your relative! Though... why does your face resemble mine so uncannily?! Draw your blade!",
+      tag: "SABERFACE ENCOUNTER: CAPTAIN VS KING"
+    },
+    artoria_pendragon_alter: {
+      intro: "The Shinsengumi cuts down tyrants. Even wrapped in pitch-black armor, a king who loses her way must be struck down!",
+      retort: "A sickly samurai daring to lecture me on kingship? I will shatter that delicate sword alongside your fragile ideals.",
+      tag: "HAORI OF SINCERITY VS BLACK TYRANT"
+    },
+    scathach_lancer: {
+      intro: "The legendary Queen of Shadows... what incredible reach! But my three-stage thrust leaves no opening between spear tips!",
+      retort: "Remarkable footwork, girl of Mibu. Show me if your flesh can outrun death itself before my Gáe Bolg claims your heart.",
+      tag: "THREE-STAGE THRUST VS DUN SCAITH SPEAR"
+    },
+    cu_chulainn_lancer: {
+      intro: "A spear that never misses its heart? Then I just have to pierce three times before your spear even takes aim!",
+      retort: "Hah! You've got some nerve, kiddo! Let's see whose thrust reaches first in this close-quarters brawl!",
+      tag: "CELTIC BEAST VS MIBU WOLF"
+    },
+    gilgamesh_archer: {
+      intro: "Throwing treasures from afar is not true swordsmanship, King of Heroes! Step down and face the Mumyō Sandan-Zuki!",
+      retort: "Insolent mongrel! To compare the boundless treasures of Uruk to crude mortal blade-play... know your place in the dirt!",
+      tag: "PEERLESS SWORD VS BABYLON'S TREASURY"
+    },
+    emiya_archer: {
+      intro: "Master of dual blades... your form is strange, but every strike carries the weight of a seasoned warrior!",
+      retort: "Don't push yourself too hard, Captain. That cough of yours sounds far worse than the wounds I'm aiming for.",
+      tag: "KANSHEU & BAKUYA VS KIKU-ICHIMONJI"
+    },
+    hassan_i_sabbah_azrael: {
+      intro: "An auditor of death? I have stared death in the face and coughed blood upon its doorstep many times—my soul isn't ready to be logged just yet!",
+      retort: "The prodigy of the Mibu Wolves. A brilliant life cut short by consuming disease. Your ledger closed far too early, young swordsman.",
+      tag: "SHINSENGUMI WOLVES VS AUDITOR OF DEATH"
+    },
+    tamamo_no_mae: {
+      intro: "A shrine maiden with fox ears... How cute! Wait, why are you aiming curses at my head?!",
+      retort: "Kyaah! A hyperactive samurai girl looking to steal Master's attention?! Polygamist castration fist, ready for deployment!",
+      tag: "SHINSENGUMI CAPTAIN VS FOX SHRINE MAIDEN"
+    },
+    heracles_berserker: {
+      intro: "Twelve lives?! Then I shall strike thirty-six times without blinking! Shinsengumi, advance!",
+      retort: "■■■■■■■■■ーーー!!",
+      tag: "THIRTY-SIX THRUSTS OF HERCULEAN TRIAL"
+    },
+    jeanne_alter: {
+      intro: "Flames and curses? The Kyoto night fires were terrifying, but the Shinsengumi never backs down from a conflagration!",
+      retort: "Another self-righteous goody two-shoes! I'll turn that cheerful haori into cinders before you can even take a step!",
+      tag: "BLUE SINCERITY VS ROARING FLAMES"
     }
   }
 };
 
-// Also alias amamiya, lucia, luvria, edmond, castoria, typhon, van_gogh, tamamo, altera, and azrael in the database
+// Also alias amamiya, lucia, luvria, edmond, castoria, typhon, van_gogh, tamamo, altera, azrael, and okita in the database
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['amamiya'] = SERVANT_MATCHUP_DATABASE.amamiya_no_chihaya_tenkohime;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['lucia'] = SERVANT_MATCHUP_DATABASE.lucia_lyozes;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['luvria'] = SERVANT_MATCHUP_DATABASE.luvria_greenharte;
@@ -2511,6 +2568,9 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['king_hassan'] = SERVANT_MATCHUP_DATABASE.hassan_i_sabbah_azrael;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['first_hassan'] = SERVANT_MATCHUP_DATABASE.hassan_i_sabbah_azrael;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['hassan_azrael'] = SERVANT_MATCHUP_DATABASE.hassan_i_sabbah_azrael;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['okita'] = SERVANT_MATCHUP_DATABASE.okita_souji;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['saber_okita'] = SERVANT_MATCHUP_DATABASE.okita_souji;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['souji_okita'] = SERVANT_MATCHUP_DATABASE.okita_souji;
 
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.
@@ -2609,6 +2669,8 @@ export function getServantMatchupDialogue(
     if (id === 'artoria_caster') return 'castoria';
     if (id === 'azrael' || id === 'king_hassan' || id === 'first_hassan' || id === 'hassan_azrael') return 'hassan_i_sabbah_azrael';
     if (id === 'hassan_i_sabbah_azrael') return 'azrael';
+    if (id === 'okita' || id === 'saber_okita' || id === 'souji_okita') return 'okita_souji';
+    if (id === 'okita_souji') return 'okita';
     return id;
   };
   const cAlt = getAltId(cId);

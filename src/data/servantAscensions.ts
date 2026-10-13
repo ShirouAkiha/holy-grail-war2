@@ -314,6 +314,18 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
       stage3: 'https://static.atlasacademy.io/JP/CharaFigure/6053002/6053002_merged.png',
       stage4: 'https://static.atlasacademy.io/JP/CharaFigure/6053002/6053002_merged.png'
     }
+  },
+  okita_souji: {
+    stage1: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700a@1.png',
+    stage2: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700a@2.png',
+    stage3: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700b@1.png',
+    stage4: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700b@2.png',
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/JP/CharaFigure/1027000/1027000_merged.png',
+      stage2: 'https://static.atlasacademy.io/JP/CharaFigure/1027001/1027001_merged.png',
+      stage3: 'https://static.atlasacademy.io/JP/CharaFigure/1027002/1027002_merged.png',
+      stage4: 'https://static.atlasacademy.io/JP/CharaFigure/1027002/1027002_merged.png'
+    }
   }
 };
 
@@ -394,7 +406,12 @@ export function findCanonicalAscensionData(identifier?: any): { key: string; dat
     hassan_i_sabbah_azrael: 'hassan_i_sabbah_azrael',
     azrael: 'hassan_i_sabbah_azrael',
     hassan_azrael: 'hassan_i_sabbah_azrael',
-    grand_assassin_azrael: 'hassan_i_sabbah_azrael'
+    grand_assassin_azrael: 'hassan_i_sabbah_azrael',
+    okita_souji: 'okita_souji',
+    okita: 'okita_souji',
+    souji_okita: 'okita_souji',
+    saber_okita: 'okita_souji',
+    okita_saber: 'okita_souji'
   };
 
   if (ALIAS_MAP[raw] && CANONICAL_SERVANT_ASCENSIONS[ALIAS_MAP[raw]]) {

@@ -1470,6 +1470,133 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
     spare: [
       "Debt deferred. Do not default again."
     ]
+  },
+  // Okita Souji (Saber) - First Unit Captain of the Shinsengumi
+  okita_souji: {
+    commandCard1: [
+      "Understood!",
+      "Here I go!",
+      "I'm cutting in!"
+    ],
+    commandCard2: [
+      "Leave it to me!",
+      "Shukuchi!",
+      "Right away, Master!"
+    ],
+    commandCard3: [
+      "Yes!",
+      "Target acquired!",
+      "Drawing my blade!"
+    ],
+    attacks: [
+      "Ei!",
+      "Haah!",
+      "Shatter!",
+      "Too slow!",
+      "Slice through!"
+    ],
+    extraAttack: [
+      "Flashing thrust! Pierce through! Mumyō no Yaiba!"
+    ],
+    npSelect: [
+      "Clear skies, absolute focus.",
+      "The blade is unsheathed."
+    ],
+    noblePhantasm: [
+      "One step, fleeting shadow. Two steps, peerless edge. Three steps, absolute thrust... Mumyō Sandan-Zuki!",
+      "The light of the sword pierces the void! Avidyā Three-Stage Thrust!"
+    ],
+    skill1: [
+      "I'm cutting in!",
+      "Shukuchi!",
+      "Light upon my feet!"
+    ],
+    skill2: [
+      "This is the sword of the Shinsengumi!",
+      "Blade, take flight!",
+      "A flash of pure edge!"
+    ],
+    skill3: [
+      "I can see your blade clearly.",
+      "A calm heart, like still water.",
+      "Not yet... I cannot fall here!"
+    ],
+    skills: [
+      "I'm cutting in!",
+      "This is the sword of the Shinsengumi!",
+      "I can see your blade clearly."
+    ],
+    damage: [
+      "Guh!",
+      "Not bad...!",
+      "Tch!"
+    ],
+    heavyDamage: [
+      "Cough... ah, blood...!",
+      "I won't... yield here...!",
+      "Is my chest... collapsing...?"
+    ],
+    defeat: [
+      "Cough...! Ah, not at a time like this... I am sorry, Master...",
+      "My blade... couldn't reach..."
+    ],
+    victory: [
+      "Victory! Heheh, my sword is in tip-top shape today as well, Master!",
+      "All enemies pacified. Returning to Master's side!"
+    ],
+    buster: [
+      "Maximum force! Shinsengumi swordplay knows no retreat!",
+      "Shatter with everything we have!",
+      "A decisive cleave from above!"
+    ],
+    arts: [
+      "Forming the stance. Precise, silent, and deadly.",
+      "Flowing like water, cutting like wind.",
+      "Sharpening the spirit origin for the next thrust."
+    ],
+    quick: [
+      "Lightning steps of the Shinsengumi! None can escape Shukuchi!",
+      "Three steps in a single breath!",
+      "Too fast for mortal eyes to follow!"
+    ],
+    mixed: [
+      "A full demonstration of the Tennen Rishin-ryū!",
+      "Flowing between stance, speed, and lethal cut!",
+      "No opening left unexploited!"
+    ],
+    desperation: [
+      "Cough... Even if my body fails, my blade will not waver!",
+      "For the Shinsengumi's honor... I will strike to the very end!",
+      "Master is watching... I must stand!"
+    ],
+    counterAttack: [
+      "You stepped right into my range!",
+      "A counter-thrust from below!"
+    ],
+    critHit: [
+      "Direct hit to the vital point!",
+      "Severed with a single breath!"
+    ],
+    perfectVictory: [
+      "Flawless victory! Look Master, not a single speck of dust on my haori!",
+      "Heheh! As expected of the First Unit Captain!"
+    ],
+    lowHpVictory: [
+      "Cough... haha, that was a little too close... but a win is a win!",
+      "I kept you worried, didn't I, Master? I'm alright!"
+    ],
+    closeMatchVictory: [
+      "What a terrifying opponent... my hands are still trembling from that clash!"
+    ],
+    bossDefeat: [
+      "The enemy commander has fallen! Shinsengumi, raise the banner of Sincerity!"
+    ],
+    execute: [
+      "By order of the Shinsengumi: execute."
+    ],
+    spare: [
+      "Sheathe your weapon. The Shinsengumi does not cut down those who have yielded."
+    ]
   }
 };
 
@@ -1513,6 +1640,12 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   if (!servantName) return GENERIC_PROFILE;
   const n = servantName.toLowerCase();
 
+  if (n.includes('okita') || n.includes('souji') || n.includes('shinsengumi') || n.includes('sandan-zuki')) {
+    return SERVANT_COMBAT_DIALOGUES.okita_souji;
+  }
+  if (n.includes('nero') || n.includes('claudius') || n.includes('red saber')) {
+    return SERVANT_COMBAT_DIALOGUES.nero;
+  }
   if (n.includes('alter') && (n.includes('heroine') || n.includes('mhx') || n.includes('ecchan'))) {
     return SERVANT_COMBAT_DIALOGUES.mhx_alter;
   }
@@ -1590,6 +1723,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   }
   if (n.includes('azrael') || n.includes('hassan') || n.includes('pale angel') || n.includes('grand assassin') || n.includes('audit')) {
     return SERVANT_COMBAT_DIALOGUES.hassan_i_sabbah_azrael;
+  }
+  if (n.includes('okita') || n.includes('souji') || n.includes('shinsengumi') || n.includes('sandan-zuki')) {
+    return SERVANT_COMBAT_DIALOGUES.okita_souji;
   }
 
   return GENERIC_PROFILE;

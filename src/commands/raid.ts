@@ -1810,6 +1810,8 @@ async function runRaidBattle(
             // 7. Ignore Defense
             const isIgnoreDef = active.servant.templateId === 'emiya_archer' ||
               active.servant.template?.id === 'emiya_archer' ||
+              active.servant.templateId === 'okita_souji' ||
+              active.servant.template?.id === 'okita_souji' ||
               /ignore.*def|bypass.*def|defense-ignoring|ignores defense/i.test(npBaseDesc + ' ' + npOverchargeDesc);
             if (isIgnoreDef) {
               npEffectsLog.push('🛡️ [DEF-Ignoring]');
@@ -1871,6 +1873,32 @@ async function runRaidBattle(
               });
               npEffectsLog.push('🔥 [Burn (1,000/5T) + Spread of Fire (+100%/5T) Inflicted!]');
               npEffectsHud.push('Burn + Spread of Fire');
+            }
+
+            const isMumyoSandanZuki = active.servant.templateId === 'okita_souji' ||
+              active.servant.template?.id === 'okita_souji' ||
+              /mumyō sandan-zuki|mumyo sandan-zuki|avidyā three-stage thrust/i.test(npBaseDesc);
+            if (isMumyoSandanZuki) {
+              battleState.bossBuffs.push({
+                name: 'Mumyō Sandan-Zuki (DEF Down)',
+                type: 'def_down',
+                value: 50,
+                remainingTurns: 3
+              });
+              battleState.bossBuffs.push({
+                name: 'Mumyō Sandan-Zuki (Quick Res Down)',
+                type: 'debuff_quick_res',
+                value: 30,
+                remainingTurns: 3
+              });
+              battleState.bossBuffs.push({
+                name: 'Mumyō Sandan-Zuki (Crit Res Down)',
+                type: 'debuff_crit_res',
+                value: 30,
+                remainingTurns: 3
+              });
+              npEffectsLog.push('🗡️ [Mumyō Sandan-Zuki: Boss DEF -50%, Quick Res -30%, Crit Res -30% (3T)]');
+              npEffectsHud.push('DEF -50% & Quick Res -30%');
             }
 
             const effectiveBossDef = isIgnoreDef ? Math.max(0.2, 1 + bossDefDown) : bossDefFactor;
@@ -2736,6 +2764,68 @@ async function runRaidBattle(
               });
             }
             buffLog = `(🌳 Boss Death Res -30% [3T], Death Rate +30% [3T], Boss DEF -40% [3T]${didStun ? ', ⚡ Boss Stunned [1T]!' : ''})`;
+          } else if (
+            skillObj?.id === 'shukuchi_b_plus' ||
+            /shukuchi/i.test(sName + ' ' + sDesc) ||
+            ((active.servant.templateId === 'okita_souji' || /okita/i.test(active.servant.template?.name || '')) && sIdx === 0)
+          ) {
+            // Okita Souji S1: Shukuchi B+
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (Quick Up)`,
+              type: 'quick_up',
+              value: 50,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Buff-On-Attack ATK Up)`,
+              type: 'atk_up',
+              value: 20,
+              remainingTurns: 1
+            });
+            buffLog = `(⚡ +50% Quick Performance [1T], +20% ATK Buff-On-Attack [1T]!)`;
+          } else if (
+            skillObj?.id === 'peerless_blade_a' ||
+            /peerless blade|mumyou no yaiba|mumyō no yaiba/i.test(sName + ' ' + sDesc) ||
+            ((active.servant.templateId === 'okita_souji' || /okita/i.test(active.servant.template?.name || '')) && sIdx === 1)
+          ) {
+            // Okita Souji S2: Peerless Blade A
+            active.npGauge = Math.min(300, (active.npGauge || 0) + 30);
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (Star Absorb)`,
+              type: 'star_absorb',
+              value: 1000,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Crit DMG Up)`,
+              type: 'crit_dmg',
+              value: 50,
+              remainingTurns: 1
+            });
+            buffLog = `(🗡️ ⚡ +30% NP Gauge, +1,000% Star Absorb [1T], +50% Crit DMG [1T]!)`;
+          } else if (
+            skillObj?.id === 'eye_of_the_mind_false_a' ||
+            /eye of the mind \(false\)|mind's eye \(false\)/i.test(sName + ' ' + sDesc) ||
+            ((active.servant.templateId === 'okita_souji' || /okita/i.test(active.servant.template?.name || '')) && sIdx === 2)
+          ) {
+            // Okita Souji S3: Eye of the Mind (False) A
+            active.isEvading = true;
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (Evade)`,
+              type: 'evade',
+              value: 100,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Crit DMG Up)`,
+              type: 'crit_dmg',
+              value: 50,
+              remainingTurns: 3
+            });
+            buffLog = `(👁️ Evade [1T], +50% Crit DMG [3T]!)`;
           } else if (skillObj?.id === 'scourge_of_god_a' || /scourge of god/i.test(sName)) {
             // Altera S1: Scourge of God A
             // Increases party's NP damage by 20% for 3 turns. Removes all enemies' Defensive Buffs.
