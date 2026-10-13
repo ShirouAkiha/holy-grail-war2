@@ -2776,15 +2776,15 @@ async function runRaidBattle(
               name: `${sName} (Quick Up)`,
               type: 'quick_up',
               value: 50,
-              remainingTurns: 1
+              remainingTurns: 3
             });
             active.activeBuffs.push({
               name: `${sName} (Buff-On-Attack ATK Up)`,
               type: 'atk_up',
               value: 20,
-              remainingTurns: 1
+              remainingTurns: 3
             });
-            buffLog = `(⚡ +50% Quick Performance [1T], +20% ATK Buff-On-Attack [1T]!)`;
+            buffLog = `(⚡ +50% Quick Performance [3T], +20% ATK Buff-On-Attack [3T]!)`;
           } else if (
             skillObj?.id === 'peerless_blade_a' ||
             /peerless blade|mumyou no yaiba|mumyō no yaiba/i.test(sName + ' ' + sDesc) ||
@@ -2794,9 +2794,9 @@ async function runRaidBattle(
             active.npGauge = Math.min(300, (active.npGauge || 0) + 30);
             active.activeBuffs = active.activeBuffs || [];
             active.activeBuffs.push({
-              name: `${sName} (Star Absorb)`,
-              type: 'star_absorb',
-              value: 1000,
+              name: `${sName} (Star Drop Rate Up)`,
+              type: 'star_drop',
+              value: 30,
               remainingTurns: 1
             });
             active.activeBuffs.push({
@@ -2805,7 +2805,7 @@ async function runRaidBattle(
               value: 50,
               remainingTurns: 1
             });
-            buffLog = `(🗡️ ⚡ +30% NP Gauge, +1,000% Star Absorb [1T], +50% Crit DMG [1T]!)`;
+            buffLog = `(🗡️ ⚡ +30% NP Gauge, +30% Star Drop Rate [1T], +50% Crit DMG [1T]!)`;
           } else if (
             skillObj?.id === 'eye_of_the_mind_false_a' ||
             /eye of the mind \(false\)|mind's eye \(false\)/i.test(sName + ' ' + sDesc) ||

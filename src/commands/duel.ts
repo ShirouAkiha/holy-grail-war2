@@ -2183,7 +2183,7 @@ function activateCombatantSkill(
       name: `${skill.name} (Quick Up)`,
       type: 'quick_up',
       value: 50,
-      remainingTurns: 1,
+      remainingTurns: 3,
       appliedRound: currentRound,
       appliedTurnUserId: combatant.userId
     });
@@ -2191,11 +2191,11 @@ function activateCombatantSkill(
       name: `${skill.name} (Buff-On-Attack ATK Up)`,
       type: 'buff_atk',
       value: 20,
-      remainingTurns: 1,
+      remainingTurns: 3,
       appliedRound: currentRound,
       appliedTurnUserId: combatant.userId
     });
-    logText = `⚡ **${sName}** activated **${skill.name}**! (+50% Quick Performance [1T], +20% ATK Buff-On-Attack [1T])${quoteLine}`;
+    logText = `⚡ **${sName}** activated **${skill.name}**! (+50% Quick Performance [3T], +20% ATK Buff-On-Attack [3T])${quoteLine}`;
   } else if (
     skill.id === 'peerless_blade_a' ||
     /peerless blade|mumyou no yaiba|mumyō no yaiba/i.test(skill.name) ||
@@ -2205,9 +2205,9 @@ function activateCombatantSkill(
     combatant.npGauge = Math.min(300, (combatant.npGauge || 0) + 30);
     combatant.activeBuffs = combatant.activeBuffs || [];
     combatant.activeBuffs.push({
-      name: `${skill.name} (Star Absorb)`,
-      type: 'star_absorb',
-      value: 1000,
+      name: `${skill.name} (Star Drop Rate Up)`,
+      type: 'star_drop',
+      value: 30,
       remainingTurns: 1,
       appliedRound: currentRound,
       appliedTurnUserId: combatant.userId
@@ -2220,7 +2220,7 @@ function activateCombatantSkill(
       appliedRound: currentRound,
       appliedTurnUserId: combatant.userId
     });
-    logText = `🗡️ **${sName}** activated **${skill.name}**! (+30% NP Gauge, +1,000% Star Absorb [1T], +50% Crit DMG [1T])${quoteLine}`;
+    logText = `🗡️ **${sName}** activated **${skill.name}**! (+30% NP Gauge, +30% Star Drop Rate [1T], +50% Crit DMG [1T])${quoteLine}`;
   } else if (
     skill.id === 'eye_of_the_mind_false_a' ||
     /eye of the mind \(false\)|mind's eye \(false\)/i.test(skill.name) ||
