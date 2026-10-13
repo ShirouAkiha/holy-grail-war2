@@ -141,17 +141,20 @@ export function buildInventoryHub(
       const paginated = candidateCes.slice(startIndex, startIndex + itemsPerPage);
 
       itemLines = paginated.map((ce: any) => {
+        const matchingOwned = ownedCes.filter((c: any) => c.id === ce.id || c.instanceId === ce.id);
         const count = ownedCountMap.get(ce.id) || 0;
         const isEq = activeServant?.equippedCeId === ce.id;
         const stars = '★'.repeat(ce.rarity || 5);
         const eqBadge = isEq ? ' **[EQUIPPED]**' : '';
         const ownBadge = count > 0 ? `\`[Owned ×${count}]\`` : `\`[Catalog]\``;
+        const isAnyLocked = matchingOwned.some((c: any) => c.locked);
+        const lockTag = count > 0 ? (isAnyLocked ? ' 🔒[Locked]' : ' 🔓[Unlocked]') : '';
         const bondTag = ce.isBondCe ? ` 🎖️[Bond: ${ce.bondServantName || 'Heroic Spirit'}]` : '';
         const emberTag = ce.isEmber ? ` ✨[EXP Ember: +${(ce.expValue || 1000).toLocaleString()} XP]` : '';
-        const isSel = (selectedItemId && selectedItemId === ce.id);
+        const isSel = (selectedItemId && (selectedItemId === ce.id || matchingOwned.some((c: any) => c.instanceId === selectedItemId)));
         const pointer = isSel ? '▶ ' : '• ';
 
-        return `${pointer}**[${stars}]** **${ce.name}** ${ownBadge}${bondTag}${emberTag} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
+        return `${pointer}**[${stars}]** **${ce.name}** ${ownBadge}${lockTag}${bondTag}${emberTag} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
       });
     }
 
@@ -160,14 +163,16 @@ export function buildInventoryHub(
     selectOptions = [
       { label: 'Unequip Current Essence', value: 'none', description: 'Remove active Craft Essence from Servant' },
       ...candidateCes.slice(0, 24).map((ce: any) => {
+        const matchingOwned = ownedCes.find((c: any) => c.id === ce.id || c.instanceId === ce.id || c.instanceId === selectedItemId);
         const count = ownedCountMap.get(ce.id) || 0;
+        const lockSymbol = matchingOwned ? (matchingOwned.locked ? '🔒 ' : '🔓 ') : '';
         const countStr = count > 0 ? ` (x${count})` : ' [Catalog]';
         const stars = '★'.repeat(ce.rarity || 5);
         return {
-          label: `${stars} ${ce.name}${countStr}`.slice(0, 100),
-          value: ce.id,
+          label: `${stars} ${lockSymbol}${ce.name}${countStr}`.slice(0, 100),
+          value: matchingOwned?.instanceId || ce.id,
           description: `+${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP • ${(ce.effectText || 'Craft Essence').slice(0, 40)}`,
-          default: selectedItemId === ce.id
+          default: selectedItemId === ce.id || selectedItemId === matchingOwned?.instanceId
         };
       })
     ];
@@ -273,7 +278,7 @@ export function buildInventoryHub(
     .setTitle(title)
     .setDescription(`${equippedBanner}\n\n` + itemLines.join('\n'))
     .setColor(category === 'ces' ? 0x38bdf8 : category === 'servants' ? 0xd4af37 : 0xa855f7)
-    .setFooter({ text: `Page ${currentPage}/${totalPages} • Total: ${totalItems} • Select an item below, then press Equip, View Art, or Inspect Lore.` });
+    .setFooter({ text: `Page ${currentPage}/${totalPages} • Total: ${totalItems} • Select an item below, then press Equip, Lock/Unlock, or Inspect Lore.` });
 
   // Row 1: Primary Categories
   const catRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -319,7 +324,7 @@ export function buildInventoryHub(
   const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('inv_select_item')
-      .setPlaceholder(category === 'ces' ? '🔍 Select a Craft Essence to equip or view...' : 'Select an item from inventory...')
+      .setPlaceholder(category === 'ces' ? '🔍 Select a Craft Essence to equip, lock/unlock, or view...' : 'Select an item from inventory...')
       .addOptions(selectOptions.length > 0 ? selectOptions.slice(0, 25) : [{ label: 'No items', value: 'none' }])
   );
 
@@ -332,13 +337,20 @@ export function buildInventoryHub(
     new ButtonBuilder().setCustomId('inv_act_inspect').setLabel('Inspect Lore').setStyle(ButtonStyle.Secondary).setEmoji('📖')
   );
 
-  // Row 5: Secondary Actions / Quick Links
-  const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId('inv_act_unequip').setLabel('Unequip').setStyle(ButtonStyle.Danger).setEmoji('❌'),
-    new ButtonBuilder().setCustomId('inv_quick_gacha').setLabel('Gacha Sanctum (/gacha)').setStyle(ButtonStyle.Secondary).setEmoji('🔮'),
-    new ButtonBuilder().setCustomId('inv_quick_stats').setLabel('Servant Workshop (/servant)').setStyle(ButtonStyle.Secondary).setEmoji('👑'),
-    new ButtonBuilder().setCustomId('inv_quick_war').setLabel('Grail War Room (/grailwar)').setStyle(ButtonStyle.Secondary).setEmoji('🏰')
-  );
+  // Row 5: Secondary Actions / Lock Management / Quick Links
+  const linkRow = category === 'ces'
+    ? new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('inv_act_unequip').setLabel('Unequip').setStyle(ButtonStyle.Danger).setEmoji('❌'),
+        new ButtonBuilder().setCustomId('inv_act_lock_toggle').setLabel('Lock / Unlock').setStyle(ButtonStyle.Primary).setEmoji('🔒'),
+        new ButtonBuilder().setCustomId('inv_act_unlock_all').setLabel('Unlock All CEs').setStyle(ButtonStyle.Success).setEmoji('🔓'),
+        new ButtonBuilder().setCustomId('inv_quick_stats').setLabel('Servant Workshop').setStyle(ButtonStyle.Secondary).setEmoji('👑')
+      )
+    : new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('inv_act_unequip').setLabel('Unequip').setStyle(ButtonStyle.Danger).setEmoji('❌'),
+        new ButtonBuilder().setCustomId('inv_quick_gacha').setLabel('Gacha Sanctum (/gacha)').setStyle(ButtonStyle.Secondary).setEmoji('🔮'),
+        new ButtonBuilder().setCustomId('inv_quick_stats').setLabel('Servant Workshop (/servant)').setStyle(ButtonStyle.Secondary).setEmoji('👑'),
+        new ButtonBuilder().setCustomId('inv_quick_war').setLabel('Grail War Room (/grailwar)').setStyle(ButtonStyle.Secondary).setEmoji('🏰')
+      );
 
   const components = filterRow
     ? [catRow, filterRow, selectRow, actRow, linkRow]
@@ -432,6 +444,49 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
         selectedItemId = i.values[0];
       }
 
+      // Action: Lock / Unlock Toggle
+      else if (customId === 'inv_act_lock_toggle') {
+        if (currentCategory === 'ces') {
+          const targetCe = ownedCes.find((c: any) => c.instanceId === selectedItemId || c.id === selectedItemId);
+          if (targetCe) {
+            targetCe.locked = !targetCe.locked;
+            await saveMaster(master);
+            await i.reply({
+              flags: MessageFlags.Ephemeral,
+              content: targetCe.locked
+                ? `🔒 **${targetCe.name}** is now **Locked** (Protected from synthesis).`
+                : `🔓 **${targetCe.name}** is now **Unlocked** (Ready for synthesis/feeding in Workshop)!`
+            });
+            return;
+          } else {
+            await i.reply({
+              flags: MessageFlags.Ephemeral,
+              content: `⚠️ Please select an owned Craft Essence from the dropdown menu first to toggle its lock status.`
+            });
+            return;
+          }
+        }
+      }
+
+      // Action: Unlock All CEs
+      else if (customId === 'inv_act_unlock_all') {
+        if (currentCategory === 'ces') {
+          let unlockedCount = 0;
+          for (const c of ownedCes) {
+            if (!c.isBondCe) {
+              c.locked = false;
+              unlockedCount++;
+            }
+          }
+          await saveMaster(master);
+          await i.reply({
+            flags: MessageFlags.Ephemeral,
+            content: `🔓 Successfully unlocked **${unlockedCount}** Craft Essences in your Vault! You can now synthesize them in \`/servant\` Workshop.`
+          });
+          return;
+        }
+      }
+
       // Action: Equip
       else if (customId === 'inv_act_equip') {
         if (currentCategory === 'ces') {
@@ -441,7 +496,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
               activeServant.equippedCe = undefined;
             }
           } else {
-            const picked = ownedCes.find((c: any) => c.id === selectedItemId) || CRAFT_ESSENCE_DATABASE.find(c => c.id === selectedItemId);
+            const picked = ownedCes.find((c: any) => c.instanceId === selectedItemId || c.id === selectedItemId) || CRAFT_ESSENCE_DATABASE.find(c => c.id === selectedItemId);
             if (picked && activeServant) {
               activeServant.equippedCeId = picked.id;
               activeServant.equippedCe = picked;

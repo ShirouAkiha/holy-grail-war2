@@ -105,9 +105,10 @@ export function allocateStatPoints(
 // Binds or unbinds a Craft Essence to the Servant instance.
 export function equipCraftEssence(
   servant: MasterServantInstance,
-  craftEssenceId?: string
+  craftEssenceId?: string,
+  masterCraftEssences?: any[]
 ): MasterServantInstance {
-  if (!craftEssenceId) {
+  if (!craftEssenceId || craftEssenceId === 'none') {
     return {
       ...servant,
       equippedCeId: undefined,
@@ -115,9 +116,16 @@ export function equipCraftEssence(
     };
   }
 
-  const ce = CRAFT_ESSENCE_DATABASE.find((c: any) => c.id === craftEssenceId);
+  let ce: any = undefined;
+  if (masterCraftEssences && Array.isArray(masterCraftEssences)) {
+    ce = masterCraftEssences.find((c: any) => c && (c.instanceId === craftEssenceId || c.id === craftEssenceId));
+  }
   if (!ce) {
-    throw new Error('Craft Essence not found in database.');
+    ce = CRAFT_ESSENCE_DATABASE.find((c: any) => c.id === craftEssenceId);
+  }
+
+  if (!ce) {
+    throw new Error('Craft Essence not found in database or inventory.');
   }
 
   return {
