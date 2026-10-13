@@ -7224,7 +7224,7 @@ async function finishDuel(
     defeatedCombatants = [...losingTeam];
   }
 
-  const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, contextInteraction?.guildId || undefined);
+  const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, i?.guildId || undefined);
   const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
 
   interface DefeatedTargetState {
