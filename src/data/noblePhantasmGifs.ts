@@ -160,6 +160,16 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     gifUrl: 'https://ella.janitorai.com/media-approved/kVayE4r7ymceqPcg_My_g.gif',
     fallbackGif: 'https://ella.janitorai.com/media-approved/kVayE4r7ymceqPcg_My_g.gif',
     chant: "Listen closely. The evening bell has tolled thy name. Surrender thy head to the blade of fate... Mal'ak al-Mawt!"
+  },
+  'Okita Souji': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/HQmlf5uAXpkxz6B93nmbS.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/HQmlf5uAXpkxz6B93nmbS.gif',
+    chant: 'One step, fleeting shadow. Two steps, peerless edge. Three steps, absolute thrust... Mumyō Sandan-Zuki!'
+  },
+  'Okita': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/HQmlf5uAXpkxz6B93nmbS.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/HQmlf5uAXpkxz6B93nmbS.gif',
+    chant: 'One step, fleeting shadow. Two steps, peerless edge. Three steps, absolute thrust... Mumyō Sandan-Zuki!'
   }
 };
 
@@ -207,6 +217,9 @@ export function getNoblePhantasmGif(servantOrTemplate: any): string {
   const npName = np?.name || '';
   if (npName) {
     const lowerNp = npName.toLowerCase();
+    if (lowerNp.includes('sandan-zuki') || lowerNp.includes('sandanzuki') || lowerNp.includes('three-stage thrust') || lowerNp.includes('mumyo') || lowerNp.includes('mumyō')) {
+      return NOBLE_PHANTASM_GIFS['Okita Souji'].gifUrl;
+    }
     if (lowerNp.includes('excalibur morgan')) {
       return NOBLE_PHANTASM_GIFS['Artoria Pendragon (Alter)'].gifUrl;
     }

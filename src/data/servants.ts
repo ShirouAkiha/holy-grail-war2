@@ -2713,7 +2713,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       target: 'single_enemy',
       multiplier: 1200,
       overchargeEffect: 'Reduces enemy DEF by 50% (3 turns), Quick resistance by 30% (3 turns), and Critical Damage resistance by 30% (3 turns).',
-      gifUrl: 'https://static.atlasacademy.io/JP/CharaGraph/102700/102700b@2.png'
+      gifUrl: 'https://ella.janitorai.com/media-approved/HQmlf5uAXpkxz6B93nmbS.gif'
     },
     lore: `Okita Souji (沖田総司), Class Name Saber (セイバー), is a 5★ SSR Saber Servant.\n\nThe captain of the first unit of the Shinsengumi, the legendary public peace policing force active in Kyoto during the Bakumatsu period. Widely feared as a genius swordsman of unparalleled talent, yet renowned among friends and children for her gentle, cheerful disposition.\n\nHer signature technique, Mumyō Sandan-Zuki (Avidyā Three-Stage Thrust), is a peerless secret sword that unleashes a First Thrust, Second Thrust, and Third Thrust almost instantaneously from the flat hilt stance, defying causality and spatial defense.`,
     summonQuote: '"Servant Saber, Okita Souji, has answered your summon! ...Eh, the haori? Ah, I must have misplaced it somewhere... Well, no matter! Master, let us fight together with everything we have!"',
