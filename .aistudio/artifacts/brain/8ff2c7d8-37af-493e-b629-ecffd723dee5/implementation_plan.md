@@ -1,142 +1,94 @@
-# Implementation Plan - Canonical Parameter Rank Verification & Fixed Default Stat Ranks
+# Holy Grail War Mode Battle Initiation & Mode Lifecycle Fix
 
-Lock Servant stat parameter ranks to their canonical Fate/Type-Moon default ranks (`E` through `EX`), verify and audit all 25 Servants in the database against official lore, and display their default rank alongside increasing numeric scores and aptitude multipliers.
-
----
-
-## 1. User Requirement Alignment & Decisions
-
-Based on user answers:
-- **Rank Behavior:** Each Servant will **keep their fixed default canon rank** permanently on display, rather than having the rank letter shift as stat points are invested. The numeric score and combat effectiveness scale upward with points, while the letter rank reflects their innate canonical Heroic Spirit identity.
-- **Verification & Canon Accuracy:** All 25 Servants in `SERVANT_DATABASE` will have **explicit canonical parameter rank letters** (`paramRanks: { strength, endurance, agility, mana, luck }`) verified against official Type-Moon/Fate material, with base numeric stats synchronized to match standard rank thresholds (`E: 10, D: 12, C: 14, B: 16, A: 18, A+: 20, EX: 24`).
+Fix the Holy Grail War tournament battle initiation so that 1v1 Holy Grail War duels (with normal rival selection or direct challenges) initiate authentic Holy Grail War battles instead of Free Battles, ensure tournament participants automatically shift to War Mode upon war ignition, and enforce permanent war termination if a participant manually changes their mode to Safe Mode from their profile.
 
 ---
 
-## 2. Proposed Changes
+### User Review & Critical Decisions
 
-### A. TypeScript Type Definitions (`src/types.ts`)
-- Add `ServantParameterRanks` interface:
-  ```ts
-  export interface ServantParameterRanks {
-    strength: string;
-    endurance: string;
-    agility: string;
-    mana: string;
-    luck: string;
-  }
-  ```
-- Add optional `paramRanks?: ServantParameterRanks` to `ServantTemplate`.
+> [!IMPORTANT]
+> The implementation strictly aligns with your exact rules for the Holy Grail War tournament lifecycle:
+
+- **Automatic Shift on War Start**: When the Holy Grail War ignites from registration (or admin launch), all chosen participants automatically shift from Safe Mode to Holy Grail War Mode (`environmentMode = 'war'`) with full HP and active Command Seals.
+- **Manual Mode Toggle Termination**: If an active, living participant manually toggles their mode to Safe Mode from their `/profile`, they are immediately terminated/eliminated from the war (`isAlive = false`, `eliminatedReason = 'forfeited'`), their tournament slot is closed, and they cannot rejoin the ongoing war until the next tournament.
+- **Holy Grail War Battle Initiation Fix**: When an active participant runs `/duel mode:1v1` (with normal opponent selection or target mention), the duel engine will properly resolve their server's active tournament session (`findActiveWarSessionForMaster`), match against living rival participants, and initiate a real Holy Grail War battle with Command Seal evacuation stakes, rather than falling back to Free Battle.
 
 ---
 
-### B. Canon Audit & Verification across All 25 Servants (`src/data/servants.ts`)
-Audit each Servant against official Type-Moon / Fate/Grand Order / Fate/stay night materials and add explicit `paramRanks`:
+### 1. Root Cause Analysis: Why War Battles Were Defaulting to Free Battle
 
-1. **Artoria Pendragon (Saber):**
-   - Canon: STR: `B`, END: `B`, AGI: `C`, MNA: `B`, LCK: `B`
-   - Base stats: `{ strength: 16, endurance: 16, agility: 14, mana: 16, luck: 16 }`
-2. **Altera (Saber):**
-   - Canon: STR: `B`, END: `A`, AGI: `A`, MNA: `B`, LCK: `A`
-   - Base stats: `{ strength: 16, endurance: 18, agility: 18, mana: 16, luck: 18 }`
-3. **Gilgamesh (Archer):**
-   - Canon: STR: `B`, END: `C`, AGI: `B`, MNA: `B`, LCK: `A`
-   - Base stats: `{ strength: 16, endurance: 14, agility: 16, mana: 16, luck: 18 }`
-4. **Scáthach (Lancer):**
-   - Canon: STR: `B`, END: `A`, AGI: `A`, MNA: `C`, LCK: `D`
-   - Base stats: `{ strength: 16, endurance: 18, agility: 18, mana: 14, luck: 12 }`
-5. **Jeanne d'Arc (Ruler):**
-   - Canon: STR: `B`, END: `B`, AGI: `A`, MNA: `A`, LCK: `C`
-   - Base stats: `{ strength: 16, endurance: 16, agility: 18, mana: 18, luck: 14 }`
-6. **Jeanne d'Arc (Alter) (Avenger):**
-   - Canon: STR: `A`, END: `C`, AGI: `A`, MNA: `A+`, LCK: `E`
-   - Base stats: `{ strength: 18, endurance: 14, agility: 18, mana: 20, luck: 10 }`
-7. **Mysterious Heroine X (Alter) (Berserker):**
-   - Canon: STR: `A`, END: `B`, AGI: `B`, MNA: `A+`, LCK: `D`
-   - Base stats: `{ strength: 18, endurance: 16, agility: 16, mana: 20, luck: 12 }`
-8. **Artoria Pendragon (Alter) (Saber):**
-   - Canon: STR: `A`, END: `A`, AGI: `D`, MNA: `A++`, LCK: `C`
-   - Base stats: `{ strength: 18, endurance: 18, agility: 12, mana: 22, luck: 14 }`
-9. **Nero Claudius (Saber):**
-   - Canon: STR: `D`, END: `D`, AGI: `A`, MNA: `B`, LCK: `A`
-   - Base stats: `{ strength: 12, endurance: 12, agility: 18, mana: 16, luck: 18 }`
-10. **EMIYA (Archer):**
-    - Canon: STR: `D`, END: `C`, AGI: `C`, MNA: `B`, LCK: `E`
-    - Base stats: `{ strength: 12, endurance: 14, agility: 14, mana: 16, luck: 10 }`
-11. **Heracles (Berserker):**
-    - Canon: STR: `A+`, END: `A`, AGI: `A`, MNA: `A`, LCK: `B`
-    - Base stats: `{ strength: 20, endurance: 18, agility: 18, mana: 18, luck: 16 }`
-12. **Cú Chulainn (Lancer):**
-    - Canon: STR: `B`, END: `C`, AGI: `A`, MNA: `C`, LCK: `E`
-    - Base stats: `{ strength: 16, endurance: 14, agility: 18, mana: 14, luck: 10 }`
-13. **Karna (Lancer):**
-    - Canon: STR: `B`, END: `C`, AGI: `A`, MNA: `B`, LCK: `D`
-    - Base stats: `{ strength: 16, endurance: 14, agility: 18, mana: 16, luck: 12 }`
-14. **Artoria Caster (Caster):**
-    - Canon: STR: `B`, END: `D`, AGI: `B`, MNA: `A`, LCK: `B`
-    - Base stats: `{ strength: 16, endurance: 12, agility: 16, mana: 18, luck: 16 }`
-15. **Typhon Ephemeros (Pretender):**
-    - Canon: STR: `B`, END: `B`, AGI: `B`, MNA: `A`, LCK: `B`
-    - Base stats: `{ strength: 16, endurance: 16, agility: 16, mana: 18, luck: 16 }`
-16. **Van Gogh (Foreigner):**
-    - Canon: STR: `E`, END: `D`, AGI: `C`, MNA: `A`, LCK: `E`
-    - Base stats: `{ strength: 10, endurance: 12, agility: 14, mana: 18, luck: 10 }`
-17. **Tamamo no Mae (Caster):**
-    - Canon: STR: `E`, END: `E`, AGI: `B`, MNA: `A`, LCK: `D`
-    - Base stats: `{ strength: 10, endurance: 10, agility: 16, mana: 18, luck: 12 }`
-18. **Hassan-i-Sabbah (Azrael) (Grand Assassin):**
-    - Canon: STR: `B`, END: `A`, AGI: `B`, MNA: `E`, LCK: `E`
-    - Base stats: `{ strength: 16, endurance: 18, agility: 16, mana: 10, luck: 10 }`
-19. **Okita Souji (Saber):**
-    - Canon: STR: `B`, END: `E`, AGI: `A+`, MNA: `E`, LCK: `D`
-    - Base stats: `{ strength: 16, endurance: 10, agility: 20, mana: 10, luck: 12 }`
-20. **Aoko Aozaki (Caster):**
-    - Canon: STR: `C`, END: `C`, AGI: `B`, MNA: `EX`, LCK: `B`
-    - Base stats: `{ strength: 14, endurance: 14, agility: 16, mana: 24, luck: 16 }`
-21. **Adiosa (Foreigner):**
-    - Custom: STR: `A`, END: `A+`, AGI: `E`, MNA: `A+`, LCK: `E`
-22. **Amamiya no Chihaya Tenkohime (Saber):**
-    - Custom: STR: `C`, END: `D`, AGI: `A`, MNA: `A`, LCK: `D`
-23. **Lucernalia Lyozes (Lancer):**
-    - Custom: STR: `B`, END: `C`, AGI: `B+`, MNA: `B`, LCK: `D`
-24. **Luvria Greenharte (Caster):**
-    - Custom: STR: `D`, END: `C`, AGI: `B`, MNA: `A+`, LCK: `B`
-25. **Edmond (Shielder):**
-    - Custom: STR: `B`, END: `A+`, AGI: `D`, MNA: `D`, LCK: `C`
+1. **Unscoped Guild War Lookup**:
+   - In `src/commands/duel.ts` (lines 4129, 7191, 8241), `getOrInitWarSession(challengerMaster)` was called without the Discord server's `guildId`.
+   - The tournament started by the admin was partitioned under the server's Discord guild ID, whereas `getOrInitWarSession(challengerMaster)` looked inside `'default-fuyuki-guild'`, where the participant roster was empty.
+2. **Safe Mode Downgrade Cascade**:
+   - Because the participant wasn't found in the empty default guild session, `isChallengerInWar` evaluated to `false`.
+   - In `duel.ts` (line 4150), `isChallengerInSafeMode` (`!isChallengerInWar`) was forced to `true`, causing `isFreeBattle = true`.
+   - As a result, even when selecting `mode: 1v1 (Holy Grail War)`, the duel was treated as a casual Free Battle, ending with `🕊️ FREE BATTLE CONCLUDED`.
+3. **Profile Session Disconnect**:
+   - In `src/commands/profile.ts` (line 453), `getOrInitWarSession(master)` similarly lacked guild context, causing `/profile` to show `Mode: Safe 🛡️ (Active)` instead of reflecting active Holy Grail War participation.
 
 ---
 
-### C. Stat System Canon Rank Helper (`src/engine/statSystem.ts`)
-- Add `getServantDefaultParamRank(servant, paramKey)` helper:
-  - Returns `servant.template?.paramRanks?.[paramKey]` if defined.
-  - Falls back to `getParameterRank(baseValue)` if not defined.
-- Update `getParameterRankMultiplier` to read the Servant's default canonical rank for accurate aptitude multipliers (`EX: 1.45x, A+: 1.35x, A: 1.30x, B: 1.15x, C: 1.00x, D: 0.85x, E: 0.75x`).
+### 2. Proposed Changes & Technical Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              Admin / Recruitment Ignition                   │
+│   • Admin announces recruitment embed in channel            │
+│   • Timer expires / Force start ignites tournament          │
+│   • All chosen participants set to environmentMode = 'war'  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+            ┌──────────────────┴──────────────────┐
+            ▼                                     ▼
+┌──────────────────────────────┐┌──────────────────────────────┐
+│  Participant in /profile     ││  Participant in /duel        │
+│ • Displays War Mode & seals  ││ • Runs /duel mode:1v1        │
+│ • If clicks "Quit to Safe":  ││ • Resolves active guild war  │
+│   → Forfeits war immediately ││ • Matches living rivals      │
+│   → isAlive = false          ││ • Initiates Holy Grail Duel  │
+│   → Cannot rejoin active war ││ • Real Command Seal stakes   │
+└──────────────────────────────┘└──────────────────────────────┘
+```
+
+#### A. Duel Engine Session Resolution (`src/commands/duel.ts`)
+- Replace unqualified `getOrInitWarSession(challengerMaster)` with:
+  `findActiveWarSessionForMaster(challengerMaster.discordId, challengerMaster, interaction.guildId || undefined)`
+- Apply the same fix in:
+  - Slash command execution (`execute`)
+  - Multi-master helper routines (lines 6334, 6509, 6941)
+  - Interactive duel start & conclusion (`startInteractiveDuel` at line 7191)
+  - Prefix duel handling (`handlePrefixDuel` at line 8241)
+- In `isFreeBattle` determination:
+  - If `rawMode === '1v1'` and challenger is an enrolled living participant, auto-synchronize `challengerMaster.environmentMode = 'war'` and ensure `isFreeBattle = false`.
+  - Normal opponent selection (Branch 2) correctly draws from `livingRivalParticipants` in the tournament and launches with `isFreeBattle = false`.
+
+#### B. Profile & Manual Mode Toggle (`src/commands/profile.ts` & `src/index.ts`)
+- In `src/commands/profile.ts` (line 453):
+  - Resolve war session via `findActiveWarSessionForMaster(interaction.user.id, master, interaction.guildId || undefined)` so enrolled participants immediately see their active War status, Command Seals, and Bounded Fields.
+- In `buildProfileButtons`:
+  - Clearly label the toggle button when active in war: `🏳️ Quit War (Forfeit to Safe Mode)`.
+- In `src/index.ts` (`profile_toggle_mode` handler at line 1711):
+  - When an active, living participant clicks the toggle to change to Safe Mode, execute `forfeitWar(master, war)`:
+    - Sets `master.environmentMode = 'safe'`
+    - Sets `participant.isAlive = false` and `participant.eliminatedReason = 'forfeited'`
+    - Broadcasts the forfeit event to the Holy Grail War event log
+    - Saves master and war state to disk
+    - Prevents rejoining the ongoing tournament until an admin restarts or resets the war.
+
+#### C. Recruitment Ignition Guarantee (`src/engine/warRecruitmentService.ts`)
+- Verify that during `igniteWarFromRecruitment`, all chosen applicants have:
+  - `master.environmentMode = 'war'`
+  - `master.guildId = targetGuildId`
+  - Current Servant HP fully refreshed and starting Command Seals inscribed.
 
 ---
 
-### D. UI Presentation Overhaul (`src/commands/servant.ts` & `src/commands/servants.ts`)
-- **Profile Embed (`/servant` -> Profile):**
-  - Displays each parameter with its fixed canonical rank:
-    `• Strength (STR): 16 [Rank B] • Endurance (END): 10 [Rank E]`
-- **Parameter Point Allocation Embed (`/servant` -> Stats):**
-  - Displays the numeric score alongside the fixed default rank and its growth aptitude:
-    `💪 Strength (STR): 16 [Rank B] • (Growth Aptitude: +15%) — Increases base attack damage (+0 allocated, max 1000)`
-    `🛡️ Endurance (END): 10 [Rank E] • (Growth Aptitude: -25%) — Increases max HP (+300 HP/pt) & up to 50% native damage reduction (+0 allocated, max 1000)`
-    `⚡ Agility (AGI): 20 [Rank A+] • (Growth Aptitude: +35%) — Boosts crit generation & dodge (+0 allocated, max 1000)`
-  - When the Master allocates 200 points to Strength:
-    `💪 Strength (STR): 246 [Rank B] • (Growth Aptitude: +15%) — Increases base attack damage (+200 allocated, max 1000)`
-    *(The numeric value scales up with investment, but the rank remains their canonical Heroic Spirit Rank B!)*
-- **Roster Embed (`/servants`):**
-  - Formats all canonical ranks directly from `paramRanks`:
-    `• STR: 16 [Rank B] | END: 10 [Rank E] | AGI: 20 [Rank A+]`
+### 3. Verification Plan
 
----
-
-## 3. Verification Plan
-- Run automated simulation test using `npx tsx` across all 25 Servants to verify that all canonical ranks match official Type-Moon lore.
-- Verify that Okita Souji displays:
-  - STR: `[Rank B]` (+15% Aptitude)
-  - END: `[Rank E]` (-25% Aptitude)
-  - AGI: `[Rank A+]` (+35% Aptitude)
-  - MNA: `[Rank E]` (-25% Aptitude)
-  - LCK: `[Rank D]` (-15% Aptitude)
-- Run `lint_applet` and `npx tsc --noEmit` to ensure zero compilation or typing regressions.
+1. **Automated Verification**:
+   - Run `npx tsc --noEmit` and `lint_applet` to ensure zero compilation or typing errors across `duel.ts`, `profile.ts`, and `warRecruitmentService.ts`.
+2. **Simulation Tests**:
+   - Simulate recruitment ignition with 2 Masters in a guild: verify both masters have `environmentMode === 'war'` and are registered in `warSession.participants`.
+   - Simulate Master A invoking `/duel mode:1v1` with normal opponent selection: verify `isFreeBattle === false`, Master B is selected as rival, and combat conclusion enters the Command Seal evacuation branch (`⚠️ CRITICAL DEFEAT — COMMAND SEAL DECISION`) rather than `🕊️ FREE BATTLE CONCLUDED`.
+   - Simulate Master A clicking `profile_toggle_mode` from `/profile`: verify Master A is transitioned to `safe` mode and marked `isAlive = false (forfeited)` in the tournament session.

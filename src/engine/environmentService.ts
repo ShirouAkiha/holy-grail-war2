@@ -30,7 +30,7 @@
  */
 
 import { MasterProfile, HolyGrailWarSession } from '../types';
-import { getAllWarSessions } from './grailwar';
+import { getAllWarSessions, findActiveWarSessionForMaster, forfeitWar } from './grailwar';
 import { saveMaster } from '../database/service';
 
 export type EnvironmentMode = 'safe' | 'war';
@@ -61,12 +61,24 @@ export function getMasterEnvironment(
 
 /**
  * Toggles a Master's environment between Safe Mode (Outside War) and In-War Mode.
+ * If switching to Safe Mode while actively enrolled in a War, forfeits/terminates the participant.
  */
 export function setMasterEnvironment(
   master: MasterProfile,
-  mode: EnvironmentMode
+  mode: EnvironmentMode,
+  preferredGuildId?: string
 ): MasterProfile {
   master.environmentMode = mode;
+  if (mode === 'safe') {
+    const activeWar = findActiveWarSessionForMaster(master.discordId, master, preferredGuildId);
+    if (activeWar) {
+      const p = activeWar.participants[master.discordId] ||
+        Object.values(activeWar.participants).find(x => x.discordId === master.discordId);
+      if (p && p.isAlive) {
+        forfeitWar(master, activeWar);
+      }
+    }
+  }
   return master;
 }
 

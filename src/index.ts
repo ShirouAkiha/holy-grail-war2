@@ -1709,8 +1709,11 @@ client.on(Events.InteractionCreate, async interaction => {
           master.autoConsumeCommandSeal = newMode === 'on';
           await saveMaster(master);
         } else if (btnId === 'profile_toggle_mode') {
-          const curP = war.participants[interaction.user.id];
-          if (master.environmentMode === 'war' && curP && curP.isAlive) {
+          const curP = war.participants[interaction.user.id] ||
+            Object.values(war.participants).find((p: any) => p.discordId === interaction.user.id);
+          const isAliveInWar = !!curP && curP.isAlive;
+
+          if (isAliveInWar || master.environmentMode === 'war') {
             const forfeitRes = forfeitWar(master, war);
             war = forfeitRes.war;
             msg = forfeitRes.message;

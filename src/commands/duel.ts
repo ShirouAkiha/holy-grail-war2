@@ -14,7 +14,7 @@ import { getOrCreateMaster, saveMaster, getDuelNpSettings, getAllMasters, getAll
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
 import { resolveAscensionSprite } from '../data/servantAscensions';
-import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp, getReputationInfo, isUserSlainCivilianInWar } from '../engine/grailwar';
+import { getOrInitWarSession, findActiveWarSessionForMaster, recordDuelOutcome, calculateCurrentHp, getReputationInfo, isUserSlainCivilianInWar } from '../engine/grailwar';
 import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard, renderMasterCommandSealDialogueCard, renderSkillDialogueCard, cleanCanvasText } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
@@ -4126,7 +4126,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const warSession = getOrInitWarSession(challengerMaster);
+    const preferredGuildId = interaction.guildId || undefined;
+    const warSession = findActiveWarSessionForMaster(challengerMaster.discordId, challengerMaster, preferredGuildId);
     const rawMode = interaction.options.getString('mode');
     const isExplicitFree = interaction.options.getBoolean('free') === true;
 
@@ -4136,18 +4137,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // Check if challenger is enrolled and alive in the active Holy Grail War
     const challengerParticipant = warSession.participants[challengerMaster.discordId] ||
-      Object.values(warSession.participants).find(p => p.username.toLowerCase() === challengerMaster.username.toLowerCase());
+      Object.values(warSession.participants).find(p => p.discordId === challengerMaster.discordId || p.username.toLowerCase() === challengerMaster.username.toLowerCase());
 
-    const isChallengerInWar = challengerMaster.environmentMode === 'war' && !!challengerParticipant && challengerParticipant.isAlive;
-    const isChallengerInSafeMode = !isChallengerInWar;
+    const isEnrolledAndAliveInWar = !!challengerParticipant && challengerParticipant.isAlive;
 
-    // Determine if this is a Free Battle (Safe Mode / Sparring)
-    const isFreeBattle =
-      isExplicitFree ||
-      rawMode === 'free' ||
-      rawMode === 'free_1v2' ||
-      rawMode === 'free_2v2' ||
-      isChallengerInSafeMode;
+    // When enrolled and alive in active Holy Grail War, ensure Master environmentMode reflects 'war'
+    if (isEnrolledAndAliveInWar && challengerMaster.environmentMode !== 'war') {
+      challengerMaster.environmentMode = 'war';
+      await saveMaster(challengerMaster);
+    }
 
     // Determine combat mode (1v1, 1v2, 2v2, forcejoin)
     let mode: '1v1' | '1v2' | '2v2' | 'forcejoin' = '1v1';
@@ -4159,6 +4157,39 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       mode = '2v2';
     } else {
       mode = '1v1';
+    }
+
+    // Determine if this is a Free Battle (Safe Mode / Friendly Sparring)
+    let isFreeBattle = false;
+    if (isExplicitFree || rawMode === 'free' || rawMode === 'free_1v2' || rawMode === 'free_2v2') {
+      isFreeBattle = true;
+    } else if (rawMode === '1v1' || rawMode === '2v2' || rawMode === '1v2') {
+      // User explicitly selected Holy Grail War mode!
+      if (!isEnrolledAndAliveInWar) {
+        if (challengerParticipant && !challengerParticipant.isAlive) {
+          const deadEmbed = new EmbedBuilder()
+            .setTitle('☠️ ELIMINATED FROM WAR BRACKET')
+            .setDescription(
+              `Master **${challengerMaster.username}**, you were defeated/eliminated in this Holy Grail War season.\n\n` +
+              `• **🕊️ Free Battles Available:** You can still engage in friendly duels without tournament elimination using \`/duel mode:free\`!\n` +
+              `• **🔄 Restart Tournament:** Admins can restart the Holy Grail War via \`/admin\` to begin a new ritual.`
+            )
+            .setColor(0xef4444);
+          await interaction.reply({ embeds: [deadEmbed], flags: MessageFlags.Ephemeral });
+          return;
+        } else {
+          await interaction.reply({
+            content: `❌ **Not Enrolled in Holy Grail War:** You are currently not registered in an ongoing Holy Grail War tournament.\n\n` +
+              `• ⚔️ **Tournament Battles:** You must be registered in the active war to initiate **1v1 Holy Grail Duels**.\n` +
+              `• 🕊️ **Friendly Sparring:** You can duel without tournament stakes anytime using \`/duel mode:free\`!`,
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+      }
+      isFreeBattle = false;
+    } else {
+      isFreeBattle = !isEnrolledAndAliveInWar || challengerMaster.environmentMode === 'safe';
     }
 
     // Check if challenger is eliminated from the Holy Grail War tournament (only relevant in War battles)
@@ -4513,9 +4544,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const isOpponentCivilian = !opponentMaster.servants || opponentMaster.servants.length === 0;
 
       const opponentParticipant = warSession.participants[opponentUser.id] ||
-        Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
+        Object.values(warSession.participants).find(p => p.discordId === opponentUser.id || p.username.toLowerCase() === opponentUser.username.toLowerCase());
 
-      const isOpponentInWar = opponentMaster.environmentMode === 'war' && !!opponentParticipant && opponentParticipant.isAlive;
+      if (opponentParticipant && opponentParticipant.isAlive && opponentMaster.environmentMode !== 'war') {
+        opponentMaster.environmentMode = 'war';
+        await saveMaster(opponentMaster);
+      }
+
+      const isOpponentInWar = !!opponentParticipant && opponentParticipant.isAlive;
 
       // In Free Battle: Opponent must have a contracted Servant
       if (isFreeBattle) {
@@ -6331,7 +6367,7 @@ async function startInteractiveDuel(
         const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
         const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
 
-        const warSession = getOrInitWarSession(p1Master);
+        const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, contextInteraction?.guildId || undefined);
         const joinPart = warSession.participants[joinerMaster.discordId];
         const joinHp = (isFreeBattle || joinerMaster.environmentMode === 'safe') ? undefined : (joinPart ? calculateCurrentHp(joinPart) : undefined);
 
@@ -6506,7 +6542,7 @@ async function startInteractiveDuel(
         const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
         const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
 
-        const warSession = getOrInitWarSession(p1Master);
+        const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, contextInteraction?.guildId || undefined);
         const joinPart = warSession.participants[joinerMaster.discordId];
         const joinHp = (isFreeBattle || joinerMaster.environmentMode === 'safe') ? undefined : (joinPart ? calculateCurrentHp(joinPart) : undefined);
 
@@ -6938,7 +6974,7 @@ async function startInteractiveDuel(
         if (success) {
           fleeActor.isFled = true;
 
-          const warSession = getOrInitWarSession(p1Master);
+          const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, contextInteraction?.guildId || undefined);
           const now = Date.now();
           const fleePart = warSession.participants[fleeActor.userId];
           if (fleePart) {
@@ -7188,7 +7224,7 @@ async function finishDuel(
     defeatedCombatants = [...losingTeam];
   }
 
-  const warSession = getOrInitWarSession(p1Master);
+  const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, contextInteraction?.guildId || undefined);
   const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
 
   interface DefeatedTargetState {
@@ -8238,14 +8274,27 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       return;
     }
 
-    const warSession = getOrInitWarSession(challengerMaster);
+    const warSession = findActiveWarSessionForMaster(challengerMaster.discordId, challengerMaster, message.guild?.id || undefined);
     const text = args.join(' ').toLowerCase();
 
-    const isChallengerInWar = challengerMaster.environmentMode === 'war';
-    const isChallengerInSafeMode = !isChallengerInWar;
+    const challengerParticipant = warSession.participants[challengerMaster.discordId] ||
+      Object.values(warSession.participants).find(p => p.discordId === challengerMaster.discordId || p.username.toLowerCase() === challengerMaster.username.toLowerCase());
+
+    const isEnrolledAndAliveInWar = !!challengerParticipant && challengerParticipant.isAlive;
+    if (isEnrolledAndAliveInWar && challengerMaster.environmentMode !== 'war') {
+      challengerMaster.environmentMode = 'war';
+      await saveMaster(challengerMaster);
+    }
 
     const isExplicitFree = text.includes('free') || text.includes('spar') || text.includes('safe');
-    const isFreeBattle = isExplicitFree || isChallengerInSafeMode;
+    let isFreeBattle = false;
+    if (isExplicitFree) {
+      isFreeBattle = true;
+    } else if (text.includes('1v1') || text.includes('war')) {
+      isFreeBattle = !isEnrolledAndAliveInWar;
+    } else {
+      isFreeBattle = !isEnrolledAndAliveInWar || challengerMaster.environmentMode === 'safe';
+    }
 
     const is1v2Requested = text.includes('1v2') || text.includes('raid');
     const is2v2Requested = text.includes('2v2') || text.includes('alliance') || text.includes('tag');

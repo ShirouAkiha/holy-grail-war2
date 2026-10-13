@@ -12,6 +12,7 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
+  findActiveWarSessionForMaster,
   getHealingStatus
 } from '../engine/grailwar';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
@@ -450,8 +451,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const war = getOrInitWarSession(master);
-    const userParticipant = war.participants[interaction.user.id];
+    const war = findActiveWarSessionForMaster(interaction.user.id, master, interaction.guildId || undefined);
+    const userParticipant = war.participants[interaction.user.id] ||
+      Object.values(war.participants).find((p: any) => p.discordId === interaction.user.id);
 
     if (isPublic) {
       const publicEmbed = buildPublicProfileEmbed(master, war);
