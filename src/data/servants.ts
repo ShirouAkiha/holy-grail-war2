@@ -2190,7 +2190,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       name: 'Dragon Grail that Reverses the Void',
       cardType: 'Buster',
       chant: 'Drink deep of the ephemeral fruit... Reverse the cosmos, hollow the stars! Dragon Grail that Reverses the Void!',
-      description: 'Deals damage to all enemies (800%). Applies [Ignore Invincibility] (1 turn, activates first). Powerup: Deals extra damage scaling with own active debuffs (+10% per stack, up to +100% max). Inflicts Burn (1,000 dmg/turn, 5 turns) and Spread of Fire (+100% Burn dmg, 5 turns) to all enemies.',
+      description: 'Deals damage to all enemies (800%). Applies [Ignore Invincibility] (1 turn, activates first, base effect - no Overcharge required). Powerup: Deals extra damage scaling with own active debuffs (+10% per stack, up to +100% max). Inflicts Burn (1,000 dmg/turn, 5 turns) and Spread of Fire (+100% Burn dmg, 5 turns) to all enemies.',
       target: 'aoe',
       multiplier: 800,
       overchargeEffect: 'Inflicts Burn (1,000 dmg/5T) + Spread of Fire (+100% Burn dmg/5T) & scales with self debuffs (+10% per stack, max 10)',
