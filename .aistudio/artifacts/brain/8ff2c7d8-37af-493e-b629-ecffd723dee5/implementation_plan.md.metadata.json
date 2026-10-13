@@ -1,6 +1,6 @@
 {
-  "summary": "Comprehensive game balancing plan introducing Fate parameter rank-based stat scaling (aptitude multipliers for EX through E ranks), increased Endurance Max HP formula, and Endurance damage mitigation to prevent one-shot bursts in duels.",
-  "updatedAt": "2026-10-13T08:22:20.162594585Z",
+  "summary": "Implementation plan to audit all 25 Servants against canonical Fate parameter ranks, add explicit paramRanks metadata to ServantTemplate and SERVANT_DATABASE, and lock stat parameter ranks to default canonical ranks across all Profile and Point Allocation menus while allowing numeric scores to increase with investment.",
+  "updatedAt": "2026-10-13T09:37:34.763270403Z",
   "requestFeedback": true,
   "userFacing": true
 }

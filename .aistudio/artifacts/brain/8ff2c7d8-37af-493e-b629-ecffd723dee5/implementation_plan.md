@@ -1,54 +1,142 @@
-# Implementation Plan - Tank Balancing & Parameter Rank-Based Stat Scaling
+# Implementation Plan - Canonical Parameter Rank Verification & Fixed Default Stat Ranks
 
-Address extreme offensive burst damage (e.g. 120,000+ NP damage one-shots) by introducing Fate parameter rank-based stat aptitude scaling, upgraded Max HP endurance formulas, and Endurance-driven damage mitigation.
-
-## Problem Analysis
-Currently, allocated stat points grant flat, linear additions across all Servants regardless of their natural specialties:
-- **Strength Scaling:** High Strength investment (`+900 STR * 80 ATK = +72,000 Base ATK`) interacts with high Noble Phantasm multipliers (1,000%–1,200%), yielding 100,000–130,000+ damage in a single hit.
-- **Endurance Underperformance:** Endurance currently only grants `+150 HP` per point (`+900 END = +135,000 HP`) and a flat defense of `10 + END * 2` (only 1,810 DEF), which offers negligible mitigation against six-figure damage numbers.
-- **Homogeneous Stat Growth:** Every Servant receives the exact same stat returns from points, meaning a frail glass cannon (e.g., C/E Endurance) and a natural fortress (e.g., A/EX Endurance like Heracles or Mash) scale identically.
+Lock Servant stat parameter ranks to their canonical Fate/Type-Moon default ranks (`E` through `EX`), verify and audit all 25 Servants in the database against official lore, and display their default rank alongside increasing numeric scores and aptitude multipliers.
 
 ---
 
-## Proposed Changes
+## 1. User Requirement Alignment & Decisions
 
-### 1. Parameter Rank Aptitude Multiplier System
-Implement a canonical Fate rank aptitude multiplier function `getParameterRankMultiplier(rank: string): number`:
-- **EX Rank:** `1.45x` aptitude growth (Transcendent, extreme returns)
-- **A+ / A Rank:** `1.30x` – `1.35x` aptitude growth (Legendary fortress / powerhouse)
-- **B+ / B Rank:** `1.15x` – `1.20x` aptitude growth (Above average proficiency)
-- **C Rank:** `1.00x` aptitude growth (Baseline standard)
-- **D Rank:** `0.85x` aptitude growth (Below average specialization)
-- **E Rank:** `0.75x` aptitude growth (Frail / poor aptitude, e.g., Weak Constitution)
-
-Each Servant's allocated stat points will be scaled by their natural parameter rank:
-`effectiveStat = baseStat + allocatedPoints * rankMultiplier`
-
-### 2. Enhanced Max HP Pool Scaling
-Revise the Max HP formula in `src/commands/duel.ts` (and `src/commands/raid.ts`):
-- Increase the Endurance HP coefficient from `150` to `300` HP per effective Endurance point.
-- Add an Endurance percentage HP resilience bonus:
-  `hpBonusPercent = (effectiveEndurance / 1000) * 25%`
-- This ensures an Endurance-focused tank with 600–900 Endurance reliably possesses enough survivability to withstand sustained combat.
-
-### 3. Endurance Damage Mitigation (Diminishing-Returns Curve)
-Implement an armor/mitigation curve based on Endurance in damage resolution:
-- Calculate a native damage reduction factor:
-  `damageReductionPercent = Math.min(50, (effectiveEndurance / (effectiveEndurance + 800)) * 50)`
-- This prevents a tank from being deleted on Turn 1 by unbuffed/raw bursts while maintaining meaningful damage values across long battles.
-- Combine this with existing DEF buffs and damage cut mechanics without creating complete invulnerability.
-
-### 4. UI / Profile Feedback
-- Update the servant profile/status embed to show parameter rank badges and their aptitude rating (e.g., `Endurance: A [Aptitude: +30% Growth]`).
+Based on user answers:
+- **Rank Behavior:** Each Servant will **keep their fixed default canon rank** permanently on display, rather than having the rank letter shift as stat points are invested. The numeric score and combat effectiveness scale upward with points, while the letter rank reflects their innate canonical Heroic Spirit identity.
+- **Verification & Canon Accuracy:** All 25 Servants in `SERVANT_DATABASE` will have **explicit canonical parameter rank letters** (`paramRanks: { strength, endurance, agility, mana, luck }`) verified against official Type-Moon/Fate material, with base numeric stats synchronized to match standard rank thresholds (`E: 10, D: 12, C: 14, B: 16, A: 18, A+: 20, EX: 24`).
 
 ---
 
-## Verification Plan
-1. **Stat Calculation Tests:**
-   - Verify that an `Endurance A` servant receives `+30%` extra HP and defense per point allocated compared to a `C` or `E` rank servant.
-   - Verify that a 900 Endurance tank achieves adequate HP and damage reduction.
-2. **Combat Duel Simulation:**
-   - Simulate a duel with a high-damage NP attacker (e.g. Aoko Aozaki, 900 STR) against an Endurance tank (e.g. Heracles / Van Gogh with high END investment).
-   - Confirm the tank survives the burst with tactical counterplay available.
-3. **Regression Testing:**
-   - Ensure raid boss battles and existing PvE duel flows continue functioning smoothly without breaking baseline mechanics.
+## 2. Proposed Changes
+
+### A. TypeScript Type Definitions (`src/types.ts`)
+- Add `ServantParameterRanks` interface:
+  ```ts
+  export interface ServantParameterRanks {
+    strength: string;
+    endurance: string;
+    agility: string;
+    mana: string;
+    luck: string;
+  }
+  ```
+- Add optional `paramRanks?: ServantParameterRanks` to `ServantTemplate`.
+
+---
+
+### B. Canon Audit & Verification across All 25 Servants (`src/data/servants.ts`)
+Audit each Servant against official Type-Moon / Fate/Grand Order / Fate/stay night materials and add explicit `paramRanks`:
+
+1. **Artoria Pendragon (Saber):**
+   - Canon: STR: `B`, END: `B`, AGI: `C`, MNA: `B`, LCK: `B`
+   - Base stats: `{ strength: 16, endurance: 16, agility: 14, mana: 16, luck: 16 }`
+2. **Altera (Saber):**
+   - Canon: STR: `B`, END: `A`, AGI: `A`, MNA: `B`, LCK: `A`
+   - Base stats: `{ strength: 16, endurance: 18, agility: 18, mana: 16, luck: 18 }`
+3. **Gilgamesh (Archer):**
+   - Canon: STR: `B`, END: `C`, AGI: `B`, MNA: `B`, LCK: `A`
+   - Base stats: `{ strength: 16, endurance: 14, agility: 16, mana: 16, luck: 18 }`
+4. **Scáthach (Lancer):**
+   - Canon: STR: `B`, END: `A`, AGI: `A`, MNA: `C`, LCK: `D`
+   - Base stats: `{ strength: 16, endurance: 18, agility: 18, mana: 14, luck: 12 }`
+5. **Jeanne d'Arc (Ruler):**
+   - Canon: STR: `B`, END: `B`, AGI: `A`, MNA: `A`, LCK: `C`
+   - Base stats: `{ strength: 16, endurance: 16, agility: 18, mana: 18, luck: 14 }`
+6. **Jeanne d'Arc (Alter) (Avenger):**
+   - Canon: STR: `A`, END: `C`, AGI: `A`, MNA: `A+`, LCK: `E`
+   - Base stats: `{ strength: 18, endurance: 14, agility: 18, mana: 20, luck: 10 }`
+7. **Mysterious Heroine X (Alter) (Berserker):**
+   - Canon: STR: `A`, END: `B`, AGI: `B`, MNA: `A+`, LCK: `D`
+   - Base stats: `{ strength: 18, endurance: 16, agility: 16, mana: 20, luck: 12 }`
+8. **Artoria Pendragon (Alter) (Saber):**
+   - Canon: STR: `A`, END: `A`, AGI: `D`, MNA: `A++`, LCK: `C`
+   - Base stats: `{ strength: 18, endurance: 18, agility: 12, mana: 22, luck: 14 }`
+9. **Nero Claudius (Saber):**
+   - Canon: STR: `D`, END: `D`, AGI: `A`, MNA: `B`, LCK: `A`
+   - Base stats: `{ strength: 12, endurance: 12, agility: 18, mana: 16, luck: 18 }`
+10. **EMIYA (Archer):**
+    - Canon: STR: `D`, END: `C`, AGI: `C`, MNA: `B`, LCK: `E`
+    - Base stats: `{ strength: 12, endurance: 14, agility: 14, mana: 16, luck: 10 }`
+11. **Heracles (Berserker):**
+    - Canon: STR: `A+`, END: `A`, AGI: `A`, MNA: `A`, LCK: `B`
+    - Base stats: `{ strength: 20, endurance: 18, agility: 18, mana: 18, luck: 16 }`
+12. **Cú Chulainn (Lancer):**
+    - Canon: STR: `B`, END: `C`, AGI: `A`, MNA: `C`, LCK: `E`
+    - Base stats: `{ strength: 16, endurance: 14, agility: 18, mana: 14, luck: 10 }`
+13. **Karna (Lancer):**
+    - Canon: STR: `B`, END: `C`, AGI: `A`, MNA: `B`, LCK: `D`
+    - Base stats: `{ strength: 16, endurance: 14, agility: 18, mana: 16, luck: 12 }`
+14. **Artoria Caster (Caster):**
+    - Canon: STR: `B`, END: `D`, AGI: `B`, MNA: `A`, LCK: `B`
+    - Base stats: `{ strength: 16, endurance: 12, agility: 16, mana: 18, luck: 16 }`
+15. **Typhon Ephemeros (Pretender):**
+    - Canon: STR: `B`, END: `B`, AGI: `B`, MNA: `A`, LCK: `B`
+    - Base stats: `{ strength: 16, endurance: 16, agility: 16, mana: 18, luck: 16 }`
+16. **Van Gogh (Foreigner):**
+    - Canon: STR: `E`, END: `D`, AGI: `C`, MNA: `A`, LCK: `E`
+    - Base stats: `{ strength: 10, endurance: 12, agility: 14, mana: 18, luck: 10 }`
+17. **Tamamo no Mae (Caster):**
+    - Canon: STR: `E`, END: `E`, AGI: `B`, MNA: `A`, LCK: `D`
+    - Base stats: `{ strength: 10, endurance: 10, agility: 16, mana: 18, luck: 12 }`
+18. **Hassan-i-Sabbah (Azrael) (Grand Assassin):**
+    - Canon: STR: `B`, END: `A`, AGI: `B`, MNA: `E`, LCK: `E`
+    - Base stats: `{ strength: 16, endurance: 18, agility: 16, mana: 10, luck: 10 }`
+19. **Okita Souji (Saber):**
+    - Canon: STR: `B`, END: `E`, AGI: `A+`, MNA: `E`, LCK: `D`
+    - Base stats: `{ strength: 16, endurance: 10, agility: 20, mana: 10, luck: 12 }`
+20. **Aoko Aozaki (Caster):**
+    - Canon: STR: `C`, END: `C`, AGI: `B`, MNA: `EX`, LCK: `B`
+    - Base stats: `{ strength: 14, endurance: 14, agility: 16, mana: 24, luck: 16 }`
+21. **Adiosa (Foreigner):**
+    - Custom: STR: `A`, END: `A+`, AGI: `E`, MNA: `A+`, LCK: `E`
+22. **Amamiya no Chihaya Tenkohime (Saber):**
+    - Custom: STR: `C`, END: `D`, AGI: `A`, MNA: `A`, LCK: `D`
+23. **Lucernalia Lyozes (Lancer):**
+    - Custom: STR: `B`, END: `C`, AGI: `B+`, MNA: `B`, LCK: `D`
+24. **Luvria Greenharte (Caster):**
+    - Custom: STR: `D`, END: `C`, AGI: `B`, MNA: `A+`, LCK: `B`
+25. **Edmond (Shielder):**
+    - Custom: STR: `B`, END: `A+`, AGI: `D`, MNA: `D`, LCK: `C`
+
+---
+
+### C. Stat System Canon Rank Helper (`src/engine/statSystem.ts`)
+- Add `getServantDefaultParamRank(servant, paramKey)` helper:
+  - Returns `servant.template?.paramRanks?.[paramKey]` if defined.
+  - Falls back to `getParameterRank(baseValue)` if not defined.
+- Update `getParameterRankMultiplier` to read the Servant's default canonical rank for accurate aptitude multipliers (`EX: 1.45x, A+: 1.35x, A: 1.30x, B: 1.15x, C: 1.00x, D: 0.85x, E: 0.75x`).
+
+---
+
+### D. UI Presentation Overhaul (`src/commands/servant.ts` & `src/commands/servants.ts`)
+- **Profile Embed (`/servant` -> Profile):**
+  - Displays each parameter with its fixed canonical rank:
+    `• Strength (STR): 16 [Rank B] • Endurance (END): 10 [Rank E]`
+- **Parameter Point Allocation Embed (`/servant` -> Stats):**
+  - Displays the numeric score alongside the fixed default rank and its growth aptitude:
+    `💪 Strength (STR): 16 [Rank B] • (Growth Aptitude: +15%) — Increases base attack damage (+0 allocated, max 1000)`
+    `🛡️ Endurance (END): 10 [Rank E] • (Growth Aptitude: -25%) — Increases max HP (+300 HP/pt) & up to 50% native damage reduction (+0 allocated, max 1000)`
+    `⚡ Agility (AGI): 20 [Rank A+] • (Growth Aptitude: +35%) — Boosts crit generation & dodge (+0 allocated, max 1000)`
+  - When the Master allocates 200 points to Strength:
+    `💪 Strength (STR): 246 [Rank B] • (Growth Aptitude: +15%) — Increases base attack damage (+200 allocated, max 1000)`
+    *(The numeric value scales up with investment, but the rank remains their canonical Heroic Spirit Rank B!)*
+- **Roster Embed (`/servants`):**
+  - Formats all canonical ranks directly from `paramRanks`:
+    `• STR: 16 [Rank B] | END: 10 [Rank E] | AGI: 20 [Rank A+]`
+
+---
+
+## 3. Verification Plan
+- Run automated simulation test using `npx tsx` across all 25 Servants to verify that all canonical ranks match official Type-Moon lore.
+- Verify that Okita Souji displays:
+  - STR: `[Rank B]` (+15% Aptitude)
+  - END: `[Rank E]` (-25% Aptitude)
+  - AGI: `[Rank A+]` (+35% Aptitude)
+  - MNA: `[Rank E]` (-25% Aptitude)
+  - LCK: `[Rank D]` (-15% Aptitude)
+- Run `lint_applet` and `npx tsc --noEmit` to ensure zero compilation or typing regressions.

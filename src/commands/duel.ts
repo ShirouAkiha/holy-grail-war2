@@ -29,7 +29,7 @@ import { addServantBattleExp } from '../engine/customization';
 import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
 import { getRandomBackgroundUrl } from '../data/backgrounds';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
-import { getParameterRankMultiplier, getEnduranceDamageReductionPercent } from '../engine/statSystem';
+import { getParameterRankMultiplier, getEnduranceDamageReductionPercent, getServantDefaultParamRank } from '../engine/statSystem';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -253,9 +253,13 @@ function createCombatant(
   const t = { ...canonical, ...(servant.template?.isCustomOrMeme ? servant.template : {}) };
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
   const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
-  const strRankMult = getParameterRankMultiplier(base.strength || 10);
-  const endRankMult = getParameterRankMultiplier(base.endurance || 10);
-  const agiRankMult = getParameterRankMultiplier(base.agility || 10);
+  const strRank = getServantDefaultParamRank(servant, 'strength');
+  const endRank = getServantDefaultParamRank(servant, 'endurance');
+  const agiRank = getServantDefaultParamRank(servant, 'agility');
+
+  const strRankMult = getParameterRankMultiplier(strRank);
+  const endRankMult = getParameterRankMultiplier(endRank);
+  const agiRankMult = getParameterRankMultiplier(agiRank);
 
   const totalStr = (base.strength || 10) + Math.round((alloc.strength || 0) * strRankMult);
   const totalEnd = (base.endurance || 10) + Math.round((alloc.endurance || 0) * endRankMult);

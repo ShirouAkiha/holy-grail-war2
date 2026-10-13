@@ -82,7 +82,8 @@ export function allocateStatPoints(
   const baseStats = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
   const baseEnd = baseStats.endurance || 10;
   const allocEnd = updatedAllocated.endurance || 0;
-  const endMult = baseEnd >= 20 ? 1.45 : baseEnd >= 18 ? 1.30 : baseEnd >= 16 ? 1.15 : baseEnd >= 14 ? 1.00 : baseEnd >= 12 ? 0.85 : 0.75;
+  const endRank = t.paramRanks?.endurance || (baseEnd >= 20 ? 'A+' : baseEnd >= 18 ? 'A' : baseEnd >= 16 ? 'B' : baseEnd >= 14 ? 'C' : baseEnd >= 12 ? 'D' : 'E');
+  const endMult = endRank.includes('EX') ? 1.45 : endRank.includes('A++') || endRank.includes('A+++') ? 1.40 : endRank.includes('A+') ? 1.35 : endRank.startsWith('A') ? 1.30 : endRank.includes('B+') ? 1.20 : endRank.startsWith('B') ? 1.15 : endRank.startsWith('C') ? 1.00 : endRank.startsWith('D') ? 0.85 : endRank.includes('E++') || endRank.includes('E+') ? 0.80 : 0.75;
   const totalEnd = baseEnd + Math.round(allocEnd * endMult);
   const ceHp = servant.equippedCe?.hpBonus || 0;
   const rawHp = (t.baseHp || 28000) + totalEnd * 300 + ceHp;

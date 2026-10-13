@@ -417,7 +417,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 30000,
     baseAtk: 10800,
-    baseStats: { strength: 17, endurance: 16, agility: 14, mana: 17, luck: 12 },
+    baseStats: { strength: 18, endurance: 16, agility: 14, mana: 16, luck: 14 },
+    paramRanks: { strength: 'A', endurance: 'B', agility: 'C', mana: 'B', luck: 'C' },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
@@ -508,7 +509,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 29000,
     baseAtk: 11500,
-    baseStats: { strength: 18, endurance: 17, agility: 17, mana: 12, luck: 12 },
+    baseStats: { strength: 18, endurance: 18, agility: 18, mana: 16, luck: 18 },
+    paramRanks: { strength: 'A', endurance: 'A', agility: 'A', mana: 'B', luck: 'A' },
     commandDeck: ['Quick', 'Arts', 'Arts', 'Buster', 'Buster'],
     skills: [
       {
@@ -611,7 +613,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 28000,
     baseAtk: 11400,
-    baseStats: { strength: 15, endurance: 13, agility: 15, mana: 16, luck: 17 },
+    baseStats: { strength: 18, endurance: 14, agility: 16, mana: 16, luck: 18 },
+    paramRanks: { strength: 'A', endurance: 'C', agility: 'B', mana: 'B', luck: 'A' },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Quick', 'Quick'],
     skills: [
       {
@@ -690,7 +693,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 29000,
     baseAtk: 11200,
-    baseStats: { strength: 16, endurance: 15, agility: 18, mana: 15, luck: 12 },
+    baseStats: { strength: 16, endurance: 18, agility: 18, mana: 14, luck: 12 },
+    paramRanks: { strength: 'B', endurance: 'A', agility: 'A', mana: 'C', luck: 'D' },
     commandDeck: ['Quick', 'Quick', 'Buster', 'Buster', 'Arts'],
     skills: [
       {
@@ -772,7 +776,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 34500,
     baseAtk: 9200,
-    baseStats: { strength: 13, endurance: 20, agility: 12, mana: 17, luck: 14 },
+    baseStats: { strength: 16, endurance: 16, agility: 18, mana: 24, luck: 14 },
+    paramRanks: { strength: 'B', endurance: 'B', agility: 'A', mana: 'EX', luck: 'C' },
     commandDeck: ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'],
     skills: [
       {
@@ -847,7 +852,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 27500,
     baseAtk: 11800,
-    baseStats: { strength: 19, endurance: 14, agility: 14, mana: 16, luck: 13 },
+    baseStats: { strength: 18, endurance: 14, agility: 18, mana: 24, luck: 10 },
+    paramRanks: { strength: 'A', endurance: 'C', agility: 'A', mana: 'EX', luck: 'E' },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
@@ -926,7 +932,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 27500,
     baseAtk: 11400,
-    baseStats: { strength: 17, endurance: 15, agility: 18, mana: 16, luck: 10 },
+    baseStats: { strength: 18, endurance: 16, agility: 16, mana: 20, luck: 12 },
+    paramRanks: { strength: 'A', endurance: 'B', agility: 'B', mana: 'A+', luck: 'D' },
     commandDeck: ['Quick', 'Quick', 'Arts', 'Arts', 'Buster'],
     skills: [
       {
@@ -1006,7 +1013,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 29000,
     baseAtk: 11200,
-    baseStats: { strength: 19, endurance: 15, agility: 13, mana: 17, luck: 12 },
+    baseStats: { strength: 18, endurance: 18, agility: 12, mana: 22, luck: 24 },
+    paramRanks: { strength: 'A', endurance: 'A', agility: 'D', mana: 'A++', luck: 'EX' },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
@@ -1078,7 +1086,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 31000,
     baseAtk: 10400,
-    baseStats: { strength: 15, endurance: 15, agility: 15, mana: 16, luck: 15 },
+    baseStats: { strength: 12, endurance: 12, agility: 18, mana: 16, luck: 18 },
+    paramRanks: { strength: 'D', endurance: 'D', agility: 'A', mana: 'B', luck: 'A' },
     commandDeck: ['Arts', 'Arts', 'Buster', 'Buster', 'Quick'],
     skills: [
       {
@@ -1157,7 +1166,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 29000,
     baseAtk: 10800,
-    baseStats: { strength: 15, endurance: 15, agility: 16, mana: 16, luck: 14 },
+    baseStats: { strength: 12, endurance: 14, agility: 14, mana: 16, luck: 10 },
+    paramRanks: { strength: 'D', endurance: 'C', agility: 'C', mana: 'B', luck: 'E' },
     commandDeck: ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'],
     skills: [
       {
@@ -1238,7 +1248,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 26500,
     baseAtk: 11800,
-    baseStats: { strength: 21, endurance: 18, agility: 14, mana: 10, luck: 13 },
+    baseStats: { strength: 20, endurance: 18, agility: 18, mana: 18, luck: 18 },
+    paramRanks: { strength: 'A+', endurance: 'A', agility: 'A', mana: 'A', luck: 'A' },
     commandDeck: ['Buster', 'Buster', 'Buster', 'Arts', 'Quick'],
     skills: [
       {
@@ -1317,7 +1328,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 29500,
     baseAtk: 10800,
-    baseStats: { strength: 16, endurance: 16, agility: 19, mana: 13, luck: 12 },
+    baseStats: { strength: 16, endurance: 14, agility: 18, mana: 14, luck: 10 },
+    paramRanks: { strength: 'B', endurance: 'C', agility: 'A', mana: 'C', luck: 'E' },
     commandDeck: ['Quick', 'Quick', 'Arts', 'Buster', 'Buster'],
     skills: [
       {
@@ -1396,7 +1408,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 29500,
     baseAtk: 11200,
-    baseStats: { strength: 18, endurance: 16, agility: 16, mana: 16, luck: 10 },
+    baseStats: { strength: 16, endurance: 14, agility: 18, mana: 24, luck: 12 },
+    paramRanks: { strength: 'B', endurance: 'C', agility: 'A', mana: 'EX', luck: 'D' },
     commandDeck: ['Buster', 'Buster', 'Quick', 'Arts', 'Arts'],
     skills: [
       {
@@ -1482,7 +1495,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 32000,
     baseAtk: 11600,
-    baseStats: { strength: 18, endurance: 19, agility: 10, mana: 19, luck: 10 },
+    baseStats: { strength: 18, endurance: 20, agility: 10, mana: 20, luck: 10 },
+    paramRanks: { strength: 'A', endurance: 'A+', agility: 'E', mana: 'A+', luck: 'E' },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
@@ -1569,7 +1583,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 28000,
     baseAtk: 11200,
-    baseStats: { strength: 14, endurance: 14, agility: 18, mana: 20, luck: 12 },
+    baseStats: { strength: 14, endurance: 14, agility: 16, mana: 24, luck: 16 },
+    paramRanks: { strength: 'C', endurance: 'C', agility: 'B', mana: 'EX', luck: 'B' },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
@@ -1652,7 +1667,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 29500,
     baseAtk: 11100,
-    baseStats: { strength: 14, endurance: 13, agility: 18, mana: 18, luck: 13 },
+    baseStats: { strength: 14, endurance: 12, agility: 18, mana: 18, luck: 12 },
+    paramRanks: { strength: 'C', endurance: 'D', agility: 'A', mana: 'A', luck: 'D' },
     commandDeck: ['Quick', 'Quick', 'Arts', 'Arts', 'Buster'],
     skills: [
       {
@@ -1730,7 +1746,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 29800,
     baseAtk: 11100,
-    baseStats: { strength: 16, endurance: 15, agility: 17, mana: 16, luck: 12 },
+    baseStats: { strength: 16, endurance: 14, agility: 17, mana: 16, luck: 12 },
+    paramRanks: { strength: 'B', endurance: 'C', agility: 'B+', mana: 'B', luck: 'D' },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
@@ -1823,7 +1840,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 30400,
     baseAtk: 11400,
-    baseStats: { strength: 12, endurance: 14, agility: 15, mana: 20, luck: 16 },
+    baseStats: { strength: 12, endurance: 14, agility: 16, mana: 20, luck: 16 },
+    paramRanks: { strength: 'D', endurance: 'C', agility: 'B', mana: 'A+', luck: 'B' },
     commandDeck: ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'],
     skills: [
       {
@@ -1919,13 +1937,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 32500,
     baseAtk: 10800,
-    baseStats: {
-      strength: 16,
-      endurance: 20,
-      agility: 12,
-      mana: 13,
-      luck: 14
-    },
+    baseStats: { strength: 16, endurance: 20, agility: 12, mana: 12, luck: 14 },
+    paramRanks: { strength: 'B', endurance: 'A+', agility: 'D', mana: 'D', luck: 'C' },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
@@ -2021,7 +2034,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 28000,
     baseAtk: 11200,
-    baseStats: { strength: 10, endurance: 12, agility: 14, mana: 20, luck: 18 },
+    baseStats: { strength: 16, endurance: 12, agility: 16, mana: 18, luck: 16 },
+    paramRanks: { strength: 'B', endurance: 'D', agility: 'B', mana: 'A', luck: 'B' },
     commandDeck: ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'],
     skills: [
       {
@@ -2117,7 +2131,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 31000,
     baseAtk: 11500,
-    baseStats: { strength: 17, endurance: 15, agility: 14, mana: 18, luck: 12 },
+    baseStats: { strength: 16, endurance: 16, agility: 16, mana: 18, luck: 16 },
+    paramRanks: { strength: 'B', endurance: 'B', agility: 'B', mana: 'A', luck: 'B' },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
@@ -2215,7 +2230,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 29900,
     baseAtk: 11500,
-    baseStats: { strength: 12, endurance: 14, agility: 18, mana: 19, luck: 10 },
+    baseStats: { strength: 10, endurance: 12, agility: 14, mana: 18, luck: 24 },
+    paramRanks: { strength: 'E', endurance: 'D', agility: 'C', mana: 'A', luck: 'EX' },
     commandDeck: ['Quick', 'Quick', 'Quick', 'Arts', 'Buster'],
     skills: [
       {
@@ -2314,7 +2330,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 30200,
     baseAtk: 10600,
-    baseStats: { strength: 10, endurance: 12, agility: 16, mana: 22, luck: 16 },
+    baseStats: { strength: 10, endurance: 10, agility: 22, mana: 18, luck: 12 },
+    paramRanks: { strength: 'E', endurance: 'E', agility: 'A++', mana: 'A', luck: 'D' },
     commandDeck: ['Quick', 'Arts', 'Arts', 'Arts', 'Buster'],
     traits: [
       'Animal Characteristics Servant',
@@ -2425,7 +2442,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 31500,
     baseAtk: 12100,
-    baseStats: { strength: 22, endurance: 20, agility: 18, mana: 16, luck: 12 },
+    baseStats: { strength: 18, endurance: 18, agility: 16, mana: 10, luck: 10 },
+    paramRanks: { strength: 'A', endurance: 'A', agility: 'B', mana: 'E', luck: 'E' },
     commandDeck: ['Arts', 'Arts', 'Quick', 'Buster', 'Buster'],
     traits: [
       'Humanoid',
@@ -2624,7 +2642,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     rarity: 5,
     baseHp: 31200,
     baseAtk: 12064,
-    baseStats: { strength: 18, endurance: 14, agility: 24, mana: 14, luck: 16 },
+    baseStats: { strength: 16, endurance: 11, agility: 20, mana: 10, luck: 12 },
+    paramRanks: { strength: 'B', endurance: 'E++', agility: 'A+', mana: 'E', luck: 'D' },
     commandDeck: ['Quick', 'Quick', 'Arts', 'Arts', 'Buster'],
     traits: [
       'Humanoid',

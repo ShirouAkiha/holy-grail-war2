@@ -43,6 +43,14 @@ export interface ServantStats {
   luck: number;       // Affects Crit DMG & Debuff/Stun Resistance
 }
 
+export interface ServantParameterRanks {
+  strength: string;
+  endurance: string;
+  agility: string;
+  mana: string;
+  luck: string;
+}
+
 export interface ServantSkill {
   id: string;
   name: string;
@@ -169,6 +177,7 @@ export interface ServantTemplate {
   baseHp: number;
   baseAtk: number;
   baseStats: ServantStats;
+  paramRanks?: ServantParameterRanks;
   commandDeck: [CardType, CardType, CardType, CardType, CardType];
   skills: ServantSkill[];
   passives?: PassiveSkill[];
