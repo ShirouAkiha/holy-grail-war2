@@ -101,6 +101,7 @@ export function getParameterRankMultiplier(rankOrBase: string | number): number 
   if (rank.startsWith('A')) return 1.30;
   if (rank.includes('B+')) return 1.20;
   if (rank.startsWith('B')) return 1.15;
+  if (rank.includes('C++') || rank.includes('C+')) return 1.05;
   if (rank.startsWith('C')) return 1.00;
   if (rank.startsWith('D')) return 0.85;
   if (rank.includes('E++') || rank.includes('E+')) return 0.80;
