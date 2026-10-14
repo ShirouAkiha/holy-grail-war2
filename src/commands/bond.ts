@@ -1059,6 +1059,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 // ==========================================
 export async function handleBondSelectInteraction(interaction: StringSelectMenuInteraction) {
   try {
+    const messageOwnerId = interaction.message?.interactionMetadata?.user?.id ||
+                           (interaction.message?.interaction as any)?.user?.id;
+
+    if (messageOwnerId && interaction.user.id !== messageOwnerId) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: `❌ **Access Denied:** This Bond Sanctum session belongs to <@${messageOwnerId}>!\nRun \`/bond\` to open your own private Bond Sanctum.`
+      });
+      return;
+    }
+
     await interaction.deferUpdate();
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
 
@@ -1149,6 +1160,17 @@ export async function handleBondSelectInteraction(interaction: StringSelectMenuI
 // ==========================================
 export async function handleBondButtonInteraction(interaction: ButtonInteraction) {
   try {
+    const messageOwnerId = interaction.message?.interactionMetadata?.user?.id ||
+                           (interaction.message?.interaction as any)?.user?.id;
+
+    if (messageOwnerId && interaction.user.id !== messageOwnerId) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: `❌ **Access Denied:** This Bond Sanctum session belongs to <@${messageOwnerId}>!\nRun \`/bond\` to open your own private Bond Sanctum.`
+      });
+      return;
+    }
+
     const btnId = interaction.customId;
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
 

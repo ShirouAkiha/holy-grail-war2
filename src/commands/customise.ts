@@ -747,6 +747,17 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
  */
 export async function handleGlobalInventoryInteraction(interaction: any) {
   try {
+    const messageOwnerId = interaction.message?.interactionMetadata?.user?.id ||
+                           (interaction.message?.interaction as any)?.user?.id;
+
+    if (messageOwnerId && interaction.user.id !== messageOwnerId) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: `❌ **Access Denied:** This Inventory menu belongs to <@${messageOwnerId}>!\nRun \`/inventory\` to open your own Master inventory.`
+      });
+      return;
+    }
+
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
     const customId = interaction.customId;

@@ -781,22 +781,37 @@ export async function buildServantHub(
   // Roster Dropdown if multiple servants
   if (master.servants.length > 1) {
     const seenServantIds = new Set<string>();
-    const servantOptions = master.servants.slice(0, 25).map((s: any, sIdx: number) => {
+    
+    // Ensure targetServant is ALWAYS included even if master owns > 25 servants
+    let rosterListForSelect = [...master.servants.slice(0, 25)];
+    if (targetServant && !rosterListForSelect.some((s: any) => s.id === targetServant.id)) {
+      rosterListForSelect = [targetServant, ...master.servants.slice(0, 24)];
+    }
+
+    const servantOptions = rosterListForSelect.map((s: any, sIdx: number) => {
       let val = s.id || `servant_${sIdx}`;
       if (seenServantIds.has(val)) {
         val = `${val}_${sIdx}`;
       }
       seenServantIds.add(val);
+      const sN = s.nickname || s.template?.name || s.name || 'Servant';
+      const sC = s.template?.servantClass || s.servantClass || 'Saber';
       return {
-        label: `${s.nickname || s.template?.name || 'Servant'} (${s.template?.servantClass || 'Saber'})`.slice(0, 100),
-        description: `Lv. ${s.level || 1} • ${s.template?.servantClass || 'Heroic Spirit'} • Points: ${s.availableStatPoints || 0} pts`.slice(0, 100),
+        label: `${sN} (${sC})`.slice(0, 100),
+        description: `Lv. ${s.level || 1} • ${sC} • Points: ${s.availableStatPoints || 0} pts`.slice(0, 100),
         value: val,
         default: s.id === targetServant.id
       };
     });
+
+    const totalCount = master.servants.length;
+    const placeholderText = totalCount > 25
+      ? `Selected: ${sName} (${totalCount} Total Servants)`
+      : `Selected: ${sName} (Lv.${lvl})`;
+
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('servant_sel_switch')
-      .setPlaceholder(`Selected: ${sName} (Lv.${lvl})`)
+      .setPlaceholder(placeholderText.slice(0, 150))
       .addOptions(servantOptions);
     components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu));
   }
