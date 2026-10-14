@@ -304,14 +304,19 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
     new ButtonBuilder()
       .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
       .setLabel('Present Gifts 🎁')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(safeCustomId(`vn_spar:${sKey}`))
+      .setLabel(sparsLeft > 0 ? `Spar & Train ⚔️ (${sparsLeft}/3)` : `Spar & Train ⚔️ (0/3)`)
       .setStyle(ButtonStyle.Secondary)
+      .setDisabled(sparsLeft <= 0)
   ];
 
   if (isBond10) {
     row1Components.push(
       new ButtonBuilder()
         .setCustomId(safeCustomId(`ce_art_bond:${sKey}`))
-        .setLabel('View Bond CE Art 🎖️')
+        .setLabel('Bond CE Art 🎖️')
         .setStyle(ButtonStyle.Primary)
     );
   }
@@ -319,11 +324,6 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(row1Components);
 
   const row2Components: ButtonBuilder[] = [
-    new ButtonBuilder()
-      .setCustomId(safeCustomId(`vn_spar:${sKey}`))
-      .setLabel(sparsLeft > 0 ? `Spar & Train ⚔️ (${sparsLeft}/3)` : `Spar & Train ⚔️ (0/3)`)
-      .setStyle(sparsLeft > 0 ? ButtonStyle.Secondary : ButtonStyle.Secondary)
-      .setDisabled(sparsLeft <= 0),
     new ButtonBuilder()
       .setCustomId(safeCustomId(`vn_bg_menu:${sKey}`))
       .setLabel('Stage BG 🖼️')
@@ -783,27 +783,31 @@ export async function handleExpressionLabView(
     .setImage('attachment://expression_lab.png')
     .setFooter({ text: 'Use buttons below to switch expressions and ascension stages live!' });
 
-  const emotionList = ['smile', 'angry', 'blush', 'wink', 'shock', 'neutral'];
+  const emotionList = ['smile', 'angry', 'blush', 'wink', 'shock'];
   const emotionRowComponents = emotionList.map(emo => 
     new ButtonBuilder()
       .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${stage}:${emo}`))
-      .setLabel(emo === 'smile' ? '😊 Smile' : emo === 'angry' ? '😠 Angry' : emo === 'blush' ? '😳 Blush' : emo === 'wink' ? '😉 Wink' : emo === 'shock' ? '😱 Shock' : '😐 Neutral')
+      .setLabel(emo === 'smile' ? '😊 Smile' : emo === 'angry' ? '😠 Angry' : emo === 'blush' ? '😳 Blush' : emo === 'wink' ? '😉 Wink' : '😱 Shock')
       .setStyle(emo === emotion ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(emotionRowComponents);
 
-  const stageRowComponents = [1, 2, 3].map(st => 
+  const stageRowComponents: ButtonBuilder[] = [
     new ButtonBuilder()
-      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${st}:${emotion}`))
-      .setLabel(`Stage ${st}`)
-      .setStyle(st === stage ? ButtonStyle.Success : ButtonStyle.Secondary)
-  );
-  stageRowComponents.push(
+      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${stage}:neutral`))
+      .setLabel('😐 Neutral')
+      .setStyle(emotion === 'neutral' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    ...([1, 2, 3].map(st => 
+      new ButtonBuilder()
+        .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${st}:${emotion}`))
+        .setLabel(`Stage ${st}`)
+        .setStyle(st === stage ? ButtonStyle.Success : ButtonStyle.Secondary)
+    )),
     new ButtonBuilder()
       .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
-      .setLabel('🔙 Back to Bond')
+      .setLabel('🔙 Back')
       .setStyle(ButtonStyle.Danger)
-  );
+  ];
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(stageRowComponents);
 
   return {
