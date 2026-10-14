@@ -36,6 +36,7 @@ import { renderVisualNovelCard } from '../canvas/renderer';
 import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
 import { BACKGROUND_PRESETS, findBackgroundPreset } from '../data/backgrounds';
 import { resolveAscensionArtwork, resolveAscensionSprite } from '../data/servantAscensions';
+import { resolveStageExpressionConfig, SERVANT_EXPRESSIONS, ExpressionEmotion } from '../data/servantExpressions';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -55,6 +56,7 @@ export const data = new SlashCommandBuilder()
         { name: '🎁 Present Gifts & Afternoon Tea (Boost Bond EXP)', value: 'gift' },
         { name: '⚔️ Master-Servant Sparring & Drills (+80 Bond EXP)', value: 'spar' },
         { name: '🎙️ Voice Quotes & My Room Lines', value: 'quotes' },
+        { name: '🧪 Expression Testing Lab (Test stage sprites & expressions)', value: 'expression_lab' },
         { name: '❓ Ways to Gain Bond Guide', value: 'guide' }
       )
   )
@@ -329,6 +331,10 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
     new ButtonBuilder()
       .setCustomId(safeCustomId(`vn_view_quotes:${sKey}`))
       .setLabel('Voice Quotes 🎙️')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(safeCustomId(`vn_exp_lab:${sKey}`))
+      .setLabel('Expression Lab 🧪')
       .setStyle(ButtonStyle.Secondary)
   ];
 
@@ -729,6 +735,100 @@ export function buildBondGuideEmbed() {
     .setFooter({ text: 'Reach Bond Lv. 5 (1,400 EXP) for +10% Card Potency & Bond Lv. 10 (6,800 EXP) for Exclusive CE!' });
 }
 
+export async function handleExpressionLabView(
+  master: any,
+  targetServant: any,
+  stage: number = 1,
+  emotion: string = 'smile'
+) {
+  const sTemplate = targetServant.template || targetServant;
+  const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
+  const sKey = getServantCompactKey(targetServant, master);
+
+  const activeStage = stage || targetServant.selectedAscensionStage || 1;
+  const currentEmotion = emotion || 'smile';
+
+  const expConfig = resolveStageExpressionConfig(servantName, activeStage);
+  const faceInfo = expConfig?.faces?.[currentEmotion as ExpressionEmotion];
+  const emotionLabel = faceInfo?.label || currentEmotion.toUpperCase();
+
+  const imageBuffer = await renderVisualNovelCard({
+    servantName,
+    servantClass: sTemplate.servantClass || 'Saber',
+    ...getResolvedServantCardProps(targetServant, sTemplate),
+    backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant),
+    speakerName: servantName,
+    dialogueText: `❝ Expression Test Mode: [${emotionLabel}] on Ascension Stage ${activeStage}! Testing facial sprite compositing and stage alignment. ❞`,
+    title: `🧪 Expression Testing Lab — ${servantName}`,
+    subtitle: `Stage ${activeStage} (${expConfig?.stageName || 'Ascension Sprite'}) • ${emotionLabel}`,
+    expressionStage: activeStage,
+    expressionEmotion: currentEmotion as ExpressionEmotion,
+    reactionEmotion: currentEmotion,
+    isComplete: true
+  });
+
+  const attachment = new AttachmentBuilder(imageBuffer, { name: 'expression_lab.png' });
+
+  const embed = new EmbedBuilder()
+    .setTitle(`🧪 Expression Testing Lab | ${servantName}`)
+    .setDescription(
+      `Test stage-aware facial expressions and ascension sprites interactively!\n\n` +
+      `🎭 **Current Expression:** \`${emotionLabel}\`\n` +
+      `👑 **Active Stage:** \`Ascension Stage ${activeStage} (${expConfig?.stageName || 'Base Form'})\`\n\n` +
+      `*Click the expression buttons or stage selectors below to test facial overlays live!*`
+    )
+    .setColor(0x8b5cf6)
+    .setImage('attachment://expression_lab.png');
+
+  // Row 1: Emotion Buttons
+  const emotions: { id: ExpressionEmotion; label: string; emoji: string }[] = [
+    { id: 'smile', label: 'Smile', emoji: '😊' },
+    { id: 'angry', label: 'Angry', emoji: '😠' },
+    { id: 'blush', label: 'Blush', emoji: '😳' },
+    { id: 'wink', label: 'Wink', emoji: '😉' },
+    { id: 'shock', label: 'Shock', emoji: '😱' },
+  ];
+
+  const emotionButtons = emotions.map(e =>
+    new ButtonBuilder()
+      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${activeStage}:${e.id}`))
+      .setLabel(e.label)
+      .setEmoji(e.emoji)
+      .setStyle(currentEmotion === e.id ? ButtonStyle.Primary : ButtonStyle.Secondary)
+  );
+
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(emotionButtons);
+
+  // Row 2: Stage Selector Buttons + Neutral
+  const stageButtons = [1, 2, 3].map(stg =>
+    new ButtonBuilder()
+      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${stg}:${currentEmotion}`))
+      .setLabel(`Stage ${stg}`)
+      .setEmoji('👑')
+      .setStyle(activeStage === stg ? ButtonStyle.Success : ButtonStyle.Secondary)
+  );
+
+  stageButtons.push(
+    new ButtonBuilder()
+      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${activeStage}:neutral`))
+      .setLabel('Neutral')
+      .setEmoji('😐')
+      .setStyle(currentEmotion === 'neutral' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+  );
+
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(stageButtons);
+
+  // Row 3: Return to Sanctum
+  const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
+      .setLabel('📊 Return to Bond Sanctum')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return { embeds: [embed], files: [attachment], components: [row1, row2, row3] };
+}
+
 // ==========================================
 // 3. MAIN EXECUTE HANDLER
 // ==========================================
@@ -952,6 +1052,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     }
 
+    if (viewOption === 'expression_lab') {
+      const view = await handleExpressionLabView(
+        master,
+        targetServant,
+        targetServant.selectedAscensionStage || 1,
+        'smile'
+      );
+      return interaction.editReply(view);
+    }
+
     if (viewOption === 'interlude') {
       const { event, isReplay, statusNote } = selectActiveInterludeForServant(targetServant);
       const scene1 = event.scenes[0];
@@ -1159,6 +1269,31 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const rosterEmbed = buildBondRosterEmbed(master);
       const rows = buildBondRosterActionRows(master);
       return interaction.editReply({ embeds: [rosterEmbed], files: [], components: rows });
+    }
+
+    if (btnId.startsWith('vn_exp_lab:')) {
+      await interaction.deferUpdate();
+      const sKey = btnId.split(':')[1];
+      const chosen = resolveTargetServant(master, null, sKey);
+      if (!chosen) {
+        return interaction.followUp({ flags: MessageFlags.Ephemeral, content: '❌ Selected Servant is not contracted.' });
+      }
+      const view = await handleExpressionLabView(master, chosen, chosen.selectedAscensionStage || 1, 'smile');
+      return interaction.editReply(view);
+    }
+
+    if (btnId.startsWith('vn_exp_set:')) {
+      await interaction.deferUpdate();
+      const parts = btnId.split(':');
+      const sKey = parts[1];
+      const targetStage = parseInt(parts[2] || '1', 10);
+      const targetEmotion = parts[3] || 'smile';
+      const chosen = resolveTargetServant(master, null, sKey);
+      if (!chosen) {
+        return interaction.followUp({ flags: MessageFlags.Ephemeral, content: '❌ Selected Servant is not contracted.' });
+      }
+      const view = await handleExpressionLabView(master, chosen, targetStage, targetEmotion);
+      return interaction.editReply(view);
     }
 
     if (btnId.startsWith('vn_set_active:')) {
