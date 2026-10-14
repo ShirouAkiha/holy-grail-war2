@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan to fix Holy Grail War battle initiation, ensure automatic shift to Holy Grail War mode upon tournament start, terminate participants who manually switch to Safe Mode from profile, and resolve guild session partitioning in duel matchmaking.",
-  "updatedAt": "2026-10-13T12:10:07.286072176Z",
+  "summary": "Implementation plan for auditing and fixing Dark Sakura raid combat, climax choices, and reward persistence bugs.",
+  "updatedAt": "2026-10-14T07:03:28.391125047Z",
   "requestFeedback": true,
   "userFacing": true
 }

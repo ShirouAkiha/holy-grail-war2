@@ -1129,7 +1129,16 @@ export async function handleDarkSakuraClimax(
     const isParticipant = participants.some((p: any) => p.userId === btn.user.id);
     if (!isParticipant) {
       await btn.reply({
-        content: '❌ You are not a combatant in this raid.',
+        content: '❌ You are not a registered combatant in this Dark Sakura raid.',
+        flags: MessageFlags.Ephemeral
+      }).catch(() => {});
+      return;
+    }
+
+    if (userChoices.has(btn.user.id)) {
+      const prevChoice = userChoices.get(btn.user.id) === 'spare' ? '🌸 REACH OUT' : '⚔️ SEVER RIBBON';
+      await btn.reply({
+        content: `⚠️ You have already recorded your decision: **${prevChoice}**!`,
         flags: MessageFlags.Ephemeral
       }).catch(() => {});
       return;
@@ -1138,7 +1147,10 @@ export async function handleDarkSakuraClimax(
     const choice = btn.customId === 'sakura_climax_spare' ? 'spare' : 'execute';
     userChoices.set(btn.user.id, choice);
 
-    await btn.deferUpdate().catch(() => {});
+    await btn.reply({
+      content: choice === 'spare' ? '🌸 You recorded your choice to **Reach Out** into the abyssal mud!' : '⚔️ You recorded your choice to **Sever the Ribbon**!',
+      flags: MessageFlags.Ephemeral
+    }).catch(() => {});
 
     // Update display
     await promptMsg.edit({
@@ -1163,70 +1175,30 @@ export async function handleDarkSakuraClimax(
   const baseExp = boss.drops.servantExp || 45_000;
 
   for (const p of participants) {
-    const master = await getOrCreateMaster(p.userId, p.username);
-    const record = getDarkSakuraRecord(master);
-    record.lastEncounterTime = Date.now();
+    try {
+      const master = await getOrCreateMaster(p.userId, p.username);
+      const record = getDarkSakuraRecord(master);
+      record.lastEncounterTime = Date.now();
 
-    // Default to spare if no choice was made in time
-    const choice = userChoices.get(p.userId) || 'spare';
+      // Default to spare if no choice was made in time
+      const choice = userChoices.get(p.userId) || 'spare';
 
-    // Locate participant's servant (active servant or matched instance)
-    const s = master.servants?.find((sv: any) => sv.id === p.servant?.id) ||
-              master.servants?.find((sv: any) => sv.id === master.activeServantId) ||
-              master.servants?.[0];
-    const sName = s?.nickname || s?.template?.name || p.servant?.nickname || p.servant?.template?.name || 'Servant';
+      // Locate participant's servant (active servant or matched instance)
+      const s = master.servants?.find((sv: any) => sv.id === p.servant?.id) ||
+                master.servants?.find((sv: any) => sv.id === master.activeServantId) ||
+                master.servants?.[0];
+      const sName = s?.nickname || s?.template?.name || p.servant?.nickname || p.servant?.template?.name || 'Servant';
 
-    master.craftEssences = master.craftEssences || [];
+      master.craftEssences = master.craftEssences || [];
 
-    if (choice === 'execute') {
-      participantOutcomes.push('killed');
-      // Guaranteed safe rewards
-      master.saintQuartz = (master.saintQuartz || 0) + baseSq;
-
-      let lvlDetail = '';
-      if (s) {
-        const expRes = addServantBattleExp(s, baseExp);
-        s.experience = expRes.updatedServant.experience;
-        s.level = expRes.updatedServant.level;
-        s.availableStatPoints = expRes.updatedServant.availableStatPoints;
-        lvlDetail = `Lv.${expRes.newLevel}`;
-        if (expRes.didLevelUp) {
-          lvlDetail += ` *(+${expRes.levelsGained} Level-Up! +${expRes.statPointsGained} Stat Points)*`;
-        }
-      }
-
-      // 4x Universal EXP Embers (2x ★5 SSR + 2x ★4 SR)
-      const emberSSR1 = createExpEmberCraftEssence(5, 1);
-      const emberSSR2 = createExpEmberCraftEssence(5, 2);
-      const emberSR1 = createExpEmberCraftEssence(4, 3);
-      const emberSR2 = createExpEmberCraftEssence(4, 4);
-      master.craftEssences.push(emberSSR1, emberSSR2, emberSR1, emberSR2);
-
-      record.kills += 1;
-      record.slayerStreak += 1;
-      record.mercyStreak = 0;
-      record.lastOutcome = 'killed';
-
-      const expInfo = lvlDetail ? ` (${lvlDetail})` : '';
-      resultReports.push(
-        `• <@${p.userId}> (**${p.username}**) chose **⚔️ EXECUTE**:\n` +
-        `  └─ 💎 **Spoils:** **+${baseSq} SQ**, **+${baseExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+4x Universal EXP Embers** ✨ (2x ★5 SSR + 2x ★4 SR)`
-      );
-    } else {
-      // Sparing gamble!
-      const trustChance = calculateSpareTrustChance(record);
-      const isTrusted = Math.random() < trustChance;
-
-      if (isTrusted) {
-        participantOutcomes.push('spared_mercy');
-        // Double rewards!
-        const doubleSq = baseSq * 2;
-        const doubleExp = baseExp * 2;
-        master.saintQuartz = (master.saintQuartz || 0) + doubleSq;
+      if (choice === 'execute') {
+        participantOutcomes.push('killed');
+        // Guaranteed safe rewards
+        master.saintQuartz = (master.saintQuartz || 0) + baseSq;
 
         let lvlDetail = '';
         if (s) {
-          const expRes = addServantBattleExp(s, doubleExp);
+          const expRes = addServantBattleExp(s, baseExp);
           s.experience = expRes.updatedServant.experience;
           s.level = expRes.updatedServant.level;
           s.availableStatPoints = expRes.updatedServant.availableStatPoints;
@@ -1236,75 +1208,120 @@ export async function handleDarkSakuraClimax(
           }
         }
 
-        // 8x Universal EXP Embers (4x ★5 SSR + 4x ★4 SR)
-        for (let idx = 0; idx < 4; idx++) {
-          master.craftEssences.push(createExpEmberCraftEssence(5, idx + 1));
-        }
-        for (let idx = 0; idx < 4; idx++) {
-          master.craftEssences.push(createExpEmberCraftEssence(4, idx + 5));
-        }
+        // 4x Universal EXP Embers (2x ★5 SSR + 2x ★4 SR)
+        const emberSSR1 = createExpEmberCraftEssence(5, 1);
+        const emberSSR2 = createExpEmberCraftEssence(5, 2);
+        const emberSR1 = createExpEmberCraftEssence(4, 3);
+        const emberSR2 = createExpEmberCraftEssence(4, 4);
+        master.craftEssences.push(emberSSR1, emberSSR2, emberSR1, emberSR2);
 
-        let ceDropNotice = '';
-        const alreadyOwnsRibbon = master.craftEssences.some((c: any) => c.id === 'ce_dark_sakura_ribbon' || c.name === 'Ribbon of the Hollow Night');
-        
-        // Guaranteed on first unlock; 20% rare chance on subsequent spares
-        const isCeDropRoll = !alreadyOwnsRibbon || Math.random() < 0.20;
-
-        if (isCeDropRoll) {
-          const ribbonCe = createDarkSakuraRibbonCe();
-          master.craftEssences.push(ribbonCe);
-          ceDropNotice = `\n  └─ 🌸 **RARE DROP:** Obtained ★5 CE **[Ribbon of the Hollow Night]**!`;
-        } else {
-          master.manaPrisms = (master.manaPrisms || 0) + 500;
-          ceDropNotice = `\n  └─ 🔵 **BOUNTY BONUS:** Granted **+500 Mana Prisms**!`;
-        }
-
-        record.spares += 1;
-        record.mercyStreak += 1;
-        record.slayerStreak = 0;
-        record.lastOutcome = 'spared_mercy';
+        record.kills += 1;
+        record.slayerStreak += 1;
+        record.mercyStreak = 0;
+        record.lastOutcome = 'killed';
 
         const expInfo = lvlDetail ? ` (${lvlDetail})` : '';
         resultReports.push(
-          `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[SHADOW PURIFIED]**:\n` +
-          `  └─ 💎 **DOUBLED SPOILS:** **+${doubleSq} SQ**, **+${doubleExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+8x Universal EXP Embers** ✨ (4x ★5 SSR + 4x ★4 SR)${ceDropNotice}`
+          `• <@${p.userId}> (**${p.username}**) chose **⚔️ EXECUTE**:\n` +
+          `  └─ 💎 **Spoils:** **+${baseSq} SQ**, **+${baseExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+4x Universal EXP Embers** ✨ (2x ★5 SSR + 2x ★4 SR)`
         );
       } else {
-        participantOutcomes.push('spared_betrayed');
-        // Betrayal / mud devour!
-        record.betrayalCount += 1;
-        record.mercyStreak += 1; // Master's choice was Mercy; commitment is preserved!
-        record.slayerStreak = 0;
-        record.lastOutcome = 'spared_betrayed';
+        // Sparing gamble!
+        const trustChance = calculateSpareTrustChance(record);
+        const isTrusted = Math.random() < trustChance;
 
-        // Minor pity EXP (15,000) & 2x SR Embers consolation
-        const pityExp = 15_000;
-        let lvlDetail = '';
-        if (s) {
-          const expRes = addServantBattleExp(s, pityExp);
-          s.experience = expRes.updatedServant.experience;
-          s.level = expRes.updatedServant.level;
-          s.availableStatPoints = expRes.updatedServant.availableStatPoints;
-          lvlDetail = `Lv.${expRes.newLevel}`;
-          if (expRes.didLevelUp) {
-            lvlDetail += ` *(+${expRes.levelsGained} Level-Up! +${expRes.statPointsGained} Stat Points)*`;
+        if (isTrusted) {
+          participantOutcomes.push('spared_mercy');
+          // Double rewards!
+          const doubleSq = baseSq * 2;
+          const doubleExp = baseExp * 2;
+          master.saintQuartz = (master.saintQuartz || 0) + doubleSq;
+
+          let lvlDetail = '';
+          if (s) {
+            const expRes = addServantBattleExp(s, doubleExp);
+            s.experience = expRes.updatedServant.experience;
+            s.level = expRes.updatedServant.level;
+            s.availableStatPoints = expRes.updatedServant.availableStatPoints;
+            lvlDetail = `Lv.${expRes.newLevel}`;
+            if (expRes.didLevelUp) {
+              lvlDetail += ` *(+${expRes.levelsGained} Level-Up! +${expRes.statPointsGained} Stat Points)*`;
+            }
           }
+
+          // 8x Universal EXP Embers (4x ★5 SSR + 4x ★4 SR)
+          for (let idx = 0; idx < 4; idx++) {
+            master.craftEssences.push(createExpEmberCraftEssence(5, idx + 1));
+          }
+          for (let idx = 0; idx < 4; idx++) {
+            master.craftEssences.push(createExpEmberCraftEssence(4, idx + 5));
+          }
+
+          let ceDropNotice = '';
+          const alreadyOwnsRibbon = master.craftEssences.some((c: any) => c.id === 'ce_dark_sakura_ribbon' || c.name === 'Ribbon of the Hollow Night');
+          
+          // Guaranteed on first unlock; 20% rare chance on subsequent spares
+          const isCeDropRoll = !alreadyOwnsRibbon || Math.random() < 0.20;
+
+          if (isCeDropRoll) {
+            const ribbonCe = createDarkSakuraRibbonCe();
+            master.craftEssences.push(ribbonCe);
+            ceDropNotice = `\n  └─ 🌸 **RARE DROP:** Obtained ★5 CE **[Ribbon of the Hollow Night]**!`;
+          } else {
+            master.manaPrisms = (master.manaPrisms || 0) + 500;
+            ceDropNotice = `\n  └─ 🔵 **BOUNTY BONUS:** Granted **+500 Mana Prisms**!`;
+          }
+
+          record.spares += 1;
+          record.mercyStreak += 1;
+          record.slayerStreak = 0;
+          record.lastOutcome = 'spared_mercy';
+
+          const expInfo = lvlDetail ? ` (${lvlDetail})` : '';
+          resultReports.push(
+            `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[SHADOW PURIFIED]**:\n` +
+            `  └─ 💎 **DOUBLED SPOILS:** **+${doubleSq} SQ**, **+${doubleExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+8x Universal EXP Embers** ✨ (4x ★5 SSR + 4x ★4 SR)${ceDropNotice}`
+          );
+        } else {
+          participantOutcomes.push('spared_betrayed');
+          // Betrayal / mud devour!
+          record.betrayalCount += 1;
+          record.mercyStreak += 1; // Master's choice was Mercy; commitment is preserved!
+          record.slayerStreak = 0;
+          record.lastOutcome = 'spared_betrayed';
+
+          // Minor pity EXP (15,000) & 2x SR Embers consolation
+          const pityExp = 15_000;
+          let lvlDetail = '';
+          if (s) {
+            const expRes = addServantBattleExp(s, pityExp);
+            s.experience = expRes.updatedServant.experience;
+            s.level = expRes.updatedServant.level;
+            s.availableStatPoints = expRes.updatedServant.availableStatPoints;
+            lvlDetail = `Lv.${expRes.newLevel}`;
+            if (expRes.didLevelUp) {
+              lvlDetail += ` *(+${expRes.levelsGained} Level-Up! +${expRes.statPointsGained} Stat Points)*`;
+            }
+          }
+
+          master.craftEssences.push(
+            createExpEmberCraftEssence(4, 1),
+            createExpEmberCraftEssence(4, 2)
+          );
+
+          const expInfo = lvlDetail ? ` (${lvlDetail})` : '';
+          resultReports.push(
+            `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[DEVOTION CONSUMED]**:\n` +
+            `  └─ 📦 **Consolation:** **+${pityExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+2x Universal EXP Embers** ✨ (2x ★4 SR) *(0 SQ gained)*`
+          );
         }
-
-        master.craftEssences.push(
-          createExpEmberCraftEssence(4, 1),
-          createExpEmberCraftEssence(4, 2)
-        );
-
-        const expInfo = lvlDetail ? ` (${lvlDetail})` : '';
-        resultReports.push(
-          `• <@${p.userId}> (**${p.username}**) chose **🌸 SPARE** — **[DEVOTION CONSUMED]**:\n` +
-          `  └─ 📦 **Consolation:** **+${pityExp.toLocaleString()} EXP** on **${sName}**${expInfo}, and **+2x Universal EXP Embers** ✨ (2x ★4 SR) *(0 SQ gained)*`
-        );
       }
-    }
 
-    await saveMaster(master);
+      await saveMaster(master);
+    } catch (participantErr) {
+      console.error(`Error saving Dark Sakura climax rewards for participant ${p.userId}:`, participantErr);
+      resultReports.push(`• <@${p.userId}> (**${p.username}**): ⚠️ *Failed to process rewards due to a profile save error.*`);
+    }
   }
 
   // Determine host's temperament tier to tailor post-raid climax reaction dialogue

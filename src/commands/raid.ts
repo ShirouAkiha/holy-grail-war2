@@ -3759,8 +3759,14 @@ async function runRaidBattle(
 async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: boolean }> {
   state.bossBuffs = state.bossBuffs || [];
 
-  const livingParticipants = state.participants.filter(p => !p.isDead);
-  if (livingParticipants.length === 0) return { bossUsedNp: false };
+  if (state.bossCurrentHp <= 0) {
+    return { bossUsedNp: false };
+  }
+
+  const livingParticipants = state.participants.filter(p => !p.isDead && p.currentHp > 0);
+  if (livingParticipants.length === 0) {
+    return { bossUsedNp: false };
+  }
 
   // Reset Guts activation flag for this turn
   state.participants.forEach(p => {
