@@ -1597,6 +1597,126 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
     spare: [
       "Sheathe your weapon. The Shinsengumi does not cut down those who have yielded."
     ]
+  },
+
+  // Archetype: Earth (Arcueid Brunestud) - MoonCancer
+  archetype_earth: {
+    battleStart: [
+      "The inner sea stirs. Reconstructing the realm of the Millennium Castle.",
+      "Allow me to reconstruct this stage. Do not look away.",
+      "Alright! Let me handle this! Leave it to me, Master!",
+      "Okay, time to get serious! Here I come!",
+      "The planet's pulse aligns... I shall quiet your turmoil now."
+    ],
+    commandCard1: [
+      "Crush.",
+      "Smash!",
+      "Understood."
+    ],
+    commandCard2: [
+      "Flow.",
+      "Ha!",
+      "Very well."
+    ],
+    commandCard3: [
+      "Sever.",
+      "Zoom!",
+      "Swiftly."
+    ],
+    buster: [
+      "Crush into dust beneath the weight of the celestial body!",
+      "Smash! Right through your defenses!",
+      "Reconstruct... and shatter!",
+      "Feel the crushing weight of the planet itself!"
+    ],
+    arts: [
+      "Flow through the veins of the world... mana overflow!",
+      "Pure elemental resonance... gather!",
+      "The inner sea answers my call.",
+      "Re-weaving the atmosphere around us!"
+    ],
+    quick: [
+      "Zoom! You can't outrun the moon's shadow!",
+      "Sever! Faster than a falling star!",
+      "Light as a rabbit, sharp as a blade!",
+      "Catch me if you can!"
+    ],
+    mixed: [
+      "Reconstructing the stage... Earth and sky, obey my command!",
+      "From the Millennium Castle to the battlefield—I'll take you all on!",
+      "True Ancestor authority activated! Let's see how long you last!",
+      "A princess knows when to play and when to end the game!"
+    ],
+    desperation: [
+      "Hmph! Don't get arrogant just because you landed a cheap hit!",
+      "My blood impulse... No! I won't lose control here!",
+      "The planet's soul does not falter before mortal blades!"
+    ],
+    skills: [
+      "Behold the gaze of the celestial body! (Rainbow Mystic Eyes A)",
+      "The earth breathes... pure mana overflowing! (Breath of the Planet C)",
+      "Thy authority is returned to the soil! (Funny Vamp EX)",
+      "Check this out! Pretty cool, right?",
+      "Charging up! Pure elemental energy!",
+      "Hehe, mine now! Thanks!"
+    ],
+    skill1: [
+      "Behold the gaze of the celestial body!",
+      "Check this out! Pretty cool, right?",
+      "Direct your gaze toward the moon."
+    ],
+    skill2: [
+      "The earth breathes... pure mana overflowing!",
+      "Charging up! Pure energy!",
+      "Blessings of the celestial sphere."
+    ],
+    skill3: [
+      "Thy authority is returned to the soil!",
+      "Hehe, mine now! Thanks!",
+      "Restrain your impulses."
+    ],
+    npSelect: [
+      "Reaching into the depths of the inner sea...",
+      "Millennium Castle, open!",
+      "Time to show you the true power of the planet!"
+    ],
+    noblePhantasm: [
+      "Reaching into the depths of the inner sea... Millennium Castle, open! Optatus Aeternitas!",
+      "Reconstructing the world! Realm of the True Ancestor—Millennium Castle, manifest! Optatus Aeternitas!"
+    ],
+    extraAttack: [
+      "Take this! Marble Phantasm!",
+      "Shatter into a million fragments!",
+      "To the moon with you!"
+    ],
+    victory: [
+      "That was quite amusing! See, Master? A princess can handle anything with style!",
+      "Yahoo! We won! See? I told you it'd be a total breeze!",
+      "The storm has passed. Peace returns to the garden once more."
+    ],
+    perfectVictory: [
+      "A flawless demonstration! Not even a scratch on my royal dress!",
+      "Easiest battle ever! Did you see how awesome I was, Master?"
+    ],
+    lowHpVictory: [
+      "Phew... That got a bit intense! But a victory is a victory!",
+      "Ouch... My head is spinning, but we made it through!"
+    ],
+    defeat: [
+      "Hmph... How insolent. I suppose I should take a nap beneath the moon...",
+      "Ouch... Hey, that actually hurt! I'm going home...",
+      "The moon grows dim... Ah, forgive me..."
+    ],
+    damage: [
+      "How rude!",
+      "Out of the way!",
+      "Tch!"
+    ],
+    heavyDamage: [
+      "Kyaa!",
+      "You dare...?!",
+      "That actually stung!"
+    ]
   }
 };
 
@@ -1640,6 +1760,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   if (!servantName) return GENERIC_PROFILE;
   const n = servantName.toLowerCase();
 
+  if (n.includes('archetype') || n.includes('arcueid') || n.includes('brunestud') || n.includes('funny vamp') || (n.includes('earth') && (n.includes('moon') || n.includes('proto')))) {
+    return SERVANT_COMBAT_DIALOGUES.archetype_earth;
+  }
   if (n.includes('okita') || n.includes('souji') || n.includes('shinsengumi') || n.includes('sandan-zuki')) {
     return SERVANT_COMBAT_DIALOGUES.okita_souji;
   }

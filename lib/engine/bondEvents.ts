@@ -4969,10 +4969,393 @@ export const OKITA_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const ARCHETYPE_EARTH_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'archetype_earth_bond_event_1',
+    servantTemplateId: 'archetype_earth',
+    requiredBondLevel: 1,
+    title: 'The Moon Princess & Her Contractor',
+    subtitle: 'Bond Interlude: Archetype: Earth',
+    description: 'A quiet night in modern Japan turns into an unexpected summit between three facets of the Brain of the Planet and one insolent Master.',
+    rewardBondExp: 300,
+    rewardSaintQuartz: 3,
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Archetype: Earth (Ascension 1)',
+        ascensionStage: 1,
+        backgroundTheme: 'night_overlook',
+        dialogueText: 'Contractor. You have been staring at your own bleeding hand for ten minutes now. Tell me, is this a human ritual of self-pity, or has your fragile mind finally shattered from my mere presence?',
+        choices: [
+          {
+            id: 's1_a',
+            text: "I'm just wondering if my health insurance covers 'mauled by a local Japanese gas leak.' Think I can claim you as a dependent?",
+            response: 'Insurance? Ah, the comedic human delusion that gold can ward off inevitable demise. You may claim me as your Executioner if you do not bandage that pathetic wound immediately.',
+            bondExpGain: 150,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 's1_b',
+            text: 'Sorry, Your Majesty. Just trying to calculate how many liters of blood I have left before I start seeing my ancestors.',
+            response: 'You have roughly four and a half liters remaining, Contractor. Hardly enough to paint a single pillar of the Millennium Castle, so keep it inside your veins where it belongs.',
+            bondExpGain: 150,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 's1_c',
+            text: "If I die right now, who gets custody of the Holy Grail? Because I'm leaving you my student loans in my will.",
+            response: 'Debt is a construct of mortal civilization, and I am the soul of the planet. Though I must admit, your audacity in the face of mortal peril is mildly entertaining.',
+            bondExpGain: 160,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Archetype: Earth (Ascension 1)',
+        ascensionStage: 1,
+        backgroundTheme: 'night_overlook',
+        dialogueText: 'Still, this city beneath us reeks of desperate magi and stagnant mana. Explain to me again why you summoned the Brain of the Planet for a petty provincial brawl over a glorified teacup.',
+        choices: [
+          {
+            id: 's2_a',
+            text: "Hey, I didn't pick the menu! I threw some relics in a circle and hoped for a cute girl. At least I got the 'cute' part right, even if the attitude is extra spicy.",
+            response: "Calling the Ultimate One 'cute' and 'spicy' as if I were street food... Your lack of self-preservation borders on an art form, human.",
+            bondExpGain: 160,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 's2_b',
+            text: "To be fair, it's a very shiny teacup. Plus, if I didn't summon you, who else would listen to my terrible stand-up routine at three in the morning?",
+            response: 'So I am to be your captive audience as well as your sword? Very well. Dance for my amusement, fool, before the next assassin arrives to silence you.',
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 's2_c',
+            text: 'Look on the bright side, you get a free vacation to modern Japan. We have vending machines, neon lights, and five other guys trying to murder us.',
+            response: 'A vacation among concrete cages and buzzing wires. How novel. Though watching five lesser Spirits shatter against my heels might provide a brief distraction.',
+            bondExpGain: 150,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Archetype: Earth (Ascension 2)',
+        ascensionStage: 2,
+        backgroundTheme: 'night_overlook',
+        dialogueText: 'Wait a second—hold on! Ugh, she is way too stiff! Switching over to me is much better for a casual chat like this, don\'t you think?',
+        choices: [
+          {
+            id: 's3_a',
+            text: "Whoa, did you just change outfits and personalities mid-sentence? Is there a customer service number I can call to figure out who I'm actually talking to?",
+            response: "Rude! I'm still me, just... from a slightly different point in the timeline! Think of the first one as me when I haven't had any fun for a few thousand years.",
+            bondExpGain: 160,
+            reactionEmotion: 'excited',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 's3_b',
+            text: 'Hello, version two! Are you the one who\'s going to bite my neck, or the one who wants to go get ramen? Please say ramen.',
+            response: 'Definitely ramen! Actually, I hate the taste of blood anyway, so your neck is totally safe with me. Unless you keep making terrible jokes, then I might just punch you instead!',
+            bondExpGain: 170,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 's3_c',
+            text: "Wait, so there's more than one of you in there? Great, I didn't just summon a Servant, I summoned a whole HOA board.",
+            response: "An HOA board? I don't know what that is, sounds boring! I'm Arcueid, the fun version, and honestly, the Queen was taking this whole Grail War thing way too seriously.",
+            bondExpGain: 150,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Archetype: Earth (Ascension 2)',
+        ascensionStage: 2,
+        backgroundTheme: 'night_overlook',
+        dialogueText: 'Seriously though, you\'re shivering pretty bad, Master. You keep cracking jokes like nothing\'s wrong, but that Berserker back there almost took your head off. Why do you always act like a clown when you\'re terrified?',
+        choices: [
+          {
+            id: 's4_a',
+            text: "Because crying ruins my ruggedly handsome aesthetic. Besides, if I start screaming now, I might never stop, and that would really kill the mood.",
+            response: "Ruggedly handsome? Right now you look more like a wet stray cat! Still... I guess I know someone else who acts tough when he's actually super fragile, so I don't hate it.",
+            bondExpGain: 160,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 's4_b',
+            text: 'Hey, humor is a valid coping mechanism! My therapist said so right before I skipped town to join a magical death match.',
+            response: "You humans really love making things complicated! When you're scared, you should just say 'Help me, Arcueid!' instead of babbling about taxes and therapists.",
+            bondExpGain: 160,
+            reactionEmotion: 'excited',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 's4_c',
+            text: "If I take this seriously for even five seconds, I'll realize I'm a mediocre mage fighting literal gods. Let me have my bad puns, it's all the armor I've got.",
+            response: "Well, you're definitely a mediocre mage, I won't argue there! But you've got *me* as your Servant, so you can drop the tough-guy act a little bit, okay?",
+            bondExpGain: 170,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Archetype: Earth (Ascension 2)',
+        ascensionStage: 2,
+        backgroundTheme: 'night_overlook',
+        dialogueText: 'It\'s funny, though. Looking at this city at night... it reminds me of home. Or well, *my* home, with someone really important to me. Even in a different world\'s Japan, the streetlights look the exact same.',
+        choices: [
+          {
+            id: 's5_a',
+            text: "Uh oh, am I hearing about an ex-boyfriend right now? Should I be worried that some guy is going to jump universes just to beat me up for monopolizing your time?",
+            response: "Ex?! No way, he's still my number one! And don't worry, he's just a normal human—well, mostly normal—so he can't jump worlds, even if he can cut pretty much anything.",
+            bondExpGain: 160,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 's5_b',
+            text: 'Sounds like this guy actually managed to survive your mood swings. Give me his number, I need survival tips immediately.',
+            response: 'Hey, my mood swings aren\'t that bad! Though... okay, maybe I did cut him into seventeen pieces the first time we met, so you might have a point there.',
+            bondExpGain: 170,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 's5_c',
+            text: 'Must be a pretty special guy if the literal brain of the planet gets sentimental over streetlights because of him.',
+            response: 'He really is! He\'s stubborn, lectures me about curfew, and breaks way too easily, kind of like you. That\'s probably why I haven\'t ditched you yet!',
+            bondExpGain: 180,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Archetype: Earth (Ascension 3)',
+        ascensionStage: 3,
+        backgroundTheme: 'night_overlook',
+        dialogueText: '...Excuse me. Could you both please lower your voices? The vibrations of this city are already overwhelming enough without you shouting about... cutting people into pieces.',
+        choices: [
+          {
+            id: 's6_a',
+            text: "And here comes contestant number three! Let me guess, you're the polite sister who actually reads the terms and conditions before signing a magical contract?",
+            response: 'I am not a contestant, Master, nor do I have sisters here. I am merely the past of this Spirit Origin, from before I ever stepped foot outside the Millennium Castle.',
+            bondExpGain: 150,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 's6_b',
+            text: "My bad, Princess. Didn't realize we had a noise ordinance inside your Spirit Origin. Want me to fetch you some earplugs, or do True Ancestors only use silk?",
+            response: 'I do not know what \'earplugs\' are, though your tone suggests mockery. Still, I forgive you. I am told commoners often speak without filtering their thoughts.',
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 's6_c',
+            text: "Okay, seriously, how many of you are packed in there? Is this a buy-one-get-two-free deal, because my mana supply is currently crying in the corner.",
+            response: 'Your mana supply is indeed dangerously low. Which is precisely why I emerged—her energetic form consumes far more energy than my passive state.',
+            bondExpGain: 160,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Archetype: Earth (Ascension 3)',
+        ascensionStage: 3,
+        backgroundTheme: 'night_overlook',
+        dialogueText: 'Truthfully, I find this modern Japan completely bewildering. The air is thick with iron and electricity, and you humans rush about as if you are burning from the inside. Does it not exhaust you to live so loudly?',
+        choices: [
+          {
+            id: 's7_a',
+            text: "Exhausting? Totally. Between rent, caffeine addiction, and dodging flying swords, I haven't had a good night's sleep since 2019.",
+            response: 'You trade your vital rest for paper currency and bitter water? The customs of the surface world are far more tragic than the books in my library led me to believe.',
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 's7_b',
+            text: 'We only get about eighty years on the clock, Princess. If we don\'t make a lot of noise while we\'re here, the universe might forget we showed up at all.',
+            response: 'Eighty years... To me, that is barely a brief nap. Yet you fill that blink of an eye with such frantic jokes and desperate struggles. It is... strangely dazzling.',
+            bondExpGain: 170,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 's7_c',
+            text: 'Says the girl living in a giant ice castle all by herself. Honestly, a little street noise beats staring at a blank wall for a thousand years, doesn\'t it?',
+            response: 'Silence is pure, Master. In the castle, nothing changes, and therefore nothing hurts. Out here, everything you touch seems destined to break—including yourself.',
+            bondExpGain: 160,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_8'
+          }
+        ]
+      },
+      {
+        id: 'scene_8',
+        speakerName: 'Archetype: Earth (Ascension 3)',
+        ascensionStage: 3,
+        backgroundTheme: 'night_overlook',
+        dialogueText: 'Even now, your pulse is erratic from blood loss, yet your mouth continues to form jest after jest. Tell me honestly, Kimi... why do you wish to survive this Holy Grail War so badly if your life is so fleeting anyway?',
+        choices: [
+          {
+            id: 's8_a',
+            text: 'Because there\'s a limited-edition pudding at the convenience store down the street, and I refuse to die before trying it. Priorities, Princess.',
+            response: 'Risking your soul for chilled custard... You truly are an incomprehensible creature. Yet, if it means that much to you, I shall ensure the convenience store remains intact.',
+            bondExpGain: 160,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 's8_b',
+            text: 'Because it\'s the only life I\'ve got. It might look short and messy to a planet, but from down here on the ground, every extra tomorrow is worth fighting for.',
+            response: 'Every tomorrow... I see. Perhaps that is why my future self fell in love with the surface. There is a warmth in your stubbornness that even the moon cannot replicate.',
+            bondExpGain: 180,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 's8_c',
+            text: 'Honestly? I didn\'t care much until I met you three. Now I gotta stay alive just to see which personality wins the rock-paper-scissors match in your head.',
+            response: 'We do not play games in my mind, Master. However... your desire to continue observing us is acceptable. I do not find your company entirely unpleasant.',
+            bondExpGain: 170,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_9'
+          }
+        ]
+      },
+      {
+        id: 'scene_9',
+        speakerName: 'Archetype: Earth (Ascension 1)',
+        ascensionStage: 1,
+        backgroundTheme: 'night_overlook',
+        dialogueText: 'Hmph. Enough of this delicate tip-toeing. The little princess is far too soft on you, Contractor, and the cheerful one spoils you like a pet.',
+        choices: [
+          {
+            id: 's9_a',
+            text: 'Welcome back, Your Majesty! We were just talking about feelings and pudding. Want to join the group hug, or are you allergic to emotional vulnerability?',
+            response: 'Speak the words \'group hug\' to me again and I shall compress you into a diamond, human. I require no vulnerability; I am the foundation upon which you stand.',
+            bondExpGain: 150,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_10'
+          },
+          {
+            id: 's9_b',
+            text: 'Oh good, the scary one is back. Does this mean break time is over, or did you just miss the sound of my sarcastic voice?',
+            response: 'I missed nothing. I simply grew tired of watching you bleed out while waxing poetic with my younger self. Sit still before I mend your flesh by force.',
+            bondExpGain: 160,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_10'
+          },
+          {
+            id: 's9_c',
+            text: 'Hey, I\'m a fantastic pet! I\'m housebroken, I barely shed, and I only complain about mana transfer ninety percent of the time.',
+            response: 'A pet that talks back is usually defective. Yet in your case, your relentless lack of dignity is the exact tether keeping my anchor to this era stable.',
+            bondExpGain: 170,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_10'
+          }
+        ]
+      },
+      {
+        id: 'scene_10',
+        speakerName: 'Archetype: Earth (Ascension 1)',
+        ascensionStage: 1,
+        backgroundTheme: 'night_overlook',
+        dialogueText: 'Listen well, fool. You are fragile, your magic circuits are third-rate, and your sense of humor is an affront to the planet itself. How do you intend to win this war with such pathetic specifications?',
+        choices: [
+          {
+            id: 's10_a',
+            text: 'Simple: I hide behind the terrifyingly gorgeous moon goddess while shouting unhelpful advice from the backline. It\'s a classic strategy, works every time.',
+            response: 'At least you know your place. Very well—cower behind my shadow and bark your foolish jokes, and I shall flatten any Heroic Spirit who dares look past me.',
+            bondExpGain: 160,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_11'
+          },
+          {
+            id: 's10_b',
+            text: 'By cheating, lying, and improvising until everyone else gives up. You bring the apocalyptic firepower, I\'ll bring the bad attitude and street smarts.',
+            response: 'Treachery and improvisation... the quintessential human weapons. How deliciously absurd. Let us see how the proud heroes of history fare against a shameless trickster and the Earth itself.',
+            bondExpGain: 170,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_11'
+          },
+          {
+            id: 's10_c',
+            text: 'Who says I need top-tier specs when I already pulled the ultimate jackpot? You wouldn\'t let your favorite jester die in the first round, right?',
+            response: 'Arrogant worm, assuming you are my favorite anything. ...Though it would be a stain on my royalty if my attendant perished before the final curtain falls.',
+            bondExpGain: 180,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_11'
+          }
+        ]
+      },
+      {
+        id: 'scene_11',
+        speakerName: 'Archetype: Earth (Ascension 1)',
+        ascensionStage: 1,
+        backgroundTheme: 'night_overlook',
+        dialogueText: 'The sun will rise over this noisy country soon, Contractor. Rest your battered body while I stand watch—and when you wake, you had better have fresher jokes prepared for us.',
+        choices: [
+          {
+            id: 's11_a',
+            text: "Deal. Just don't blow up the neighborhood while I'm asleep, the security deposit on this apartment is murder.",
+            response: 'If the landlord complains, I shall drop the Millennium Castle upon his head. Now close your eyes, fool, before I knock you unconscious myself.',
+            bondExpGain: 160,
+            reactionEmotion: 'amused',
+            nextSceneId: 'end'
+          },
+          {
+            id: 's11_b',
+            text: 'Goodnight, Your Majesty, Arcueid, and Princess. Try not to argue too loudly in my head while I\'m knocked out.',
+            response: 'We are one and the same, human, though all three of us agree on one thing: you talk far too much. Sleep well, my ridiculous Contractor.',
+            bondExpGain: 180,
+            reactionEmotion: 'happy',
+            nextSceneId: 'end'
+          },
+          {
+            id: 's11_c',
+            text: "Wait, you're actually letting me sleep? Look at that, I knew you had a heart of gold buried under all that cosmic superiority.",
+            response: 'It is not gold, it is planetary bedrock—and you are pushing your luck. Go to sleep, Contractor, so that tomorrow you may continue to amuse me.',
+            bondExpGain: 170,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'end'
+          }
+        ]
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
 export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
+  archetype_earth: ARCHETYPE_EARTH_BOND_EVENTS,
+  archetype: ARCHETYPE_EARTH_BOND_EVENTS,
+  arcueid: ARCHETYPE_EARTH_BOND_EVENTS,
+  arcueid_brunestud: ARCHETYPE_EARTH_BOND_EVENTS,
+  earth: ARCHETYPE_EARTH_BOND_EVENTS,
   okita_souji: OKITA_BOND_EVENTS,
   okita: OKITA_BOND_EVENTS,
   souji_okita: OKITA_BOND_EVENTS,

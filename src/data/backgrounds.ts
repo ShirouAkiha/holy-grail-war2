@@ -47,8 +47,16 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
     name: 'Hillside Highway — Night Cityscape',
     description: 'Night highway overlooking the illuminated city',
     url: 'https://ella.janitorai.com/media-approved/qGyOU6LDrhkfgxVTj8joK.webp'
+  },
+  {
+    id: 'millennium_castle',
+    name: 'Millennium Castle Battlefield (千年城)',
+    description: 'Throne of the True Ancestor beneath the celestial moon',
+    url: 'https://ella.janitorai.com/media-approved/mOEhq2x9RkL0KU_fI1DZK.webp'
   }
 ];
+
+export const MILLENNIUM_CASTLE_BG_URL = 'https://ella.janitorai.com/media-approved/mOEhq2x9RkL0KU_fI1DZK.webp';
 
 export function getRandomBackgroundUrl(): string {
   const idx = Math.floor(Math.random() * BACKGROUND_PRESETS.length);

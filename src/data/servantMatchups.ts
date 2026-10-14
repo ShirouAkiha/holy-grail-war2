@@ -2572,6 +2572,139 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['saber_okita'] = SERVANT_MATCHUP_DATABASE.okita_souji;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['souji_okita'] = SERVANT_MATCHUP_DATABASE.okita_souji;
 
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['archetype_earth'] = {
+  artoria_pendragon: {
+    intro: "The Star’s sacred blade, wielded by a king who died upholding a tragic dream. Show me if that conviction can outshine the pulse of the celestial body itself.",
+    retort: "My sword was sworn to the land and its people, Archetype. Even before the soul of the planet, my vow remains unbroken.",
+    tag: "CELESTIAL PULSE VS HOLY OATH"
+  },
+  artoria_pendragon_alter: {
+    intro: "Drenched in mud and spite, yet you still cling to kingship. How unsightly, pale shadow of the holy sword.",
+    retort: "Spare me the royal condescension. Tyranny does not ask permission from the dirt it stands upon.",
+    tag: "CELESTIAL ROYALTY VS BLACKENED TYRANNY"
+  },
+  artoria_caster: {
+    intro: "Whoa, your bell has such an echoing resonance! But... why does your chest ache with so much gloom? Come on, smile a little!",
+    retort: "I—I'm fine, really! Just... please don’t look so closely at me! Why does the planet’s avatar have to be this pushy?!",
+    tag: "PILGRIM BELL VS PLANETARY AVATAR"
+  },
+  jeanne_alter: {
+    intro: "Fuming and burning again? You're like a dry brushfire! Don't you ever get tired of scorching your own feet?",
+    retort: "Shut up, you pampered moon tick! I don't need a lecture on burning from someone sitting pretty in a fantasy castle!",
+    tag: "MOON VAMP VS BRUSHFIRE WITCH"
+  },
+  gilgamesh_archer: {
+    intro: "The King of Uruk. You collect humanity’s toys and dare call this world your garden? The soil beneath you disagrees.",
+    retort: "Fuhahaha! The planet’s terminal comes to play court? Know your place, spirit—man’s sovereignty was carved from your silent clay!",
+    tag: "SOUL OF EARTH VS KING OF HEROES"
+  },
+  emiya_archer: {
+    intro: "Hahaha, you reek of rusted gears and stubborn iron! It’s such an unnatural scent—did someone forge a man out of regrets?",
+    retort: "A remarkably harsh critique from the spirit of the world. Forgive me, but clearing out unnatural pests happens to be my trade.",
+    tag: "MAN OF REGRETS VS SPIRIT OF WORLD"
+  },
+  cu_chulainn: {
+    intro: "A hound of the sun! You look like you'd run around until you dropped dead just for fun. Care to see how far this field stretches?",
+    retort: "Heh, playing tag with the planet's princess? Sounds like a one-way trip to the grave—count me in!",
+    tag: "HOUND OF CULANN VS PLANET PRINCESS"
+  },
+  scathach_lancer: {
+    intro: "Dweller of the Dun Scaith. Stepping beyond mortality has left you withered in purpose. Do you seek an end by my hand?",
+    retort: "A strike from the planet’s true executioner... delightful. Let us see if your authority can pierce the gate I guard.",
+    tag: "LAND OF SHADOWS VS PLANET EXECUTIONER"
+  },
+  heracles_berserker: {
+    intro: "Such agonizing, roiling fury... Is this the shape of a hero torn apart by mortal sorrow? Please, calm yourself...",
+    retort: "■■■■■■■■■—!! (A guttural, world-shaking roar that rattles the earth, defiant of all celestial order.)",
+    tag: "SHELTERED PRINCESS VS NEMEAN RAGE"
+  },
+  van_gogh: {
+    intro: "The scent of foreign stars clings to your flowers... It makes the soil cold. Who grafted such sorrow onto you?",
+    retort: "Ah, ehehe... de-despised by the world's soil itself... Just a failed yellow sunflower, rotting away in your garden...",
+    tag: "COLD SOIL VS ROTTING SUNFLOWER"
+  },
+  tamamo_no_mae: {
+    intro: "Golden fur hiding the visage of an incinerating star. Are you still playing maiden, division of Amaterasu?",
+    retort: "My, my, how dreadfully uncouth! A good wife keeps her claws tucked away—unlike a certain runaway vampire who forgot her manners!",
+    tag: "SUN GODDESS DIVESTMENT VS MOON ROYALTY"
+  },
+  altera: {
+    intro: "The White Titan’s lingering fragment. You were built to reduce my cradle to ash. I shall not permit a second descent.",
+    retort: "The breath of this world... It is vibrant. Yet if it resists... this sword will harvest it. Destruction is... bad civilization.",
+    tag: "CRADLE OF PLANET VS WHITE TITAN HARVEST"
+  },
+  hassan_i_sabbah_azrael: {
+    intro: "Grand Assassin. You bring the boundary of death to a garden without end. Whose head do you seek in my presence?",
+    retort: "Even the cradle of life cannot escape the evening bell. Bare thy neck, entity of the celestial sphere.",
+    tag: "EVENING BELL VS CELESTIAL CRADLE"
+  },
+  jeanne_darc_ruler: {
+    intro: "You hold no hatred for the flames that consumed you? Mortal faith is... confusing to comprehend.",
+    retort: "Hatred cannot restore the land, Princess. It is the Lord's love and the beauty of this world that I choose to remember.",
+    tag: "MORTAL FAITH VS PLANETARY WONDER"
+  },
+  mhx_alter: {
+    intro: "Darkness... but also the smell of sugar and fried dough? What strange corner of the universe spit you out?!",
+    retort: "Silence, local entity. My sweets ration is low and the dark side calls. Hand over the bean paste or face extinction.",
+    tag: "DARK MATTER SWEETS VS PLANETARY PRINCESS"
+  },
+  nero_claudius_saber: {
+    intro: "A singing rose of Rome. Loud, gaudy, and utterly inconsequential. Does all of mortal passion boil down to self-adulation?",
+    retort: "Inconsequential?! Umu! To deny Roma's splendor is to deny beauty itself! Gaze upon my brilliance and weep, Moon Queen!",
+    tag: "ROMAN SPLENDOR VS MOON QUEEN"
+  },
+  karna_lancer: {
+    intro: "Son of Surya, endowed with armor that wards off doom. Will you burn to cinders before the majesty of the genuine earth?",
+    retort: "Words are unnecessary. Whether you represent the world or the heavens, my spear strikes true for my Master.",
+    tag: "SON OF SURYA VS MAJESTY OF EARTH"
+  },
+  aoko_aozaki: {
+    intro: "Aoko! Hey, Aoko! What are you doing wandering around here?! Did you make another giant mess with your Fifth Magic?!",
+    retort: "Ugh, give me a break... Of all the troublemakers to run into, it had to be the True Ancestor princess. Don't look at me like that!",
+    tag: "TSUKIHIME ENCOUNTER: VAMPIRE PRINCESS VS FIFTH MAGICIAN"
+  },
+  typhon_ephemeros: {
+    intro: "A fleeting spark born of a divine dragon's calamity. Return to the vapor of the primordial sea, newborn wisp.",
+    retort: "A dragon's breath does not yield to planetary whims. I will consume your authority and make this sky mine!",
+    tag: "PRIMORDIAL SEA VS DRAGON STORM"
+  },
+  okita_souji: {
+    intro: "Such blazing speed! But your spiritual core is flickering like a guttering candle. Are you really okay to fight?",
+    retort: "Ha-haha! No need to worry, beautiful lady! The Shinsengumi's first unit captain is always at top—*cough, wheeze*—form!",
+    tag: "BLAZING SPEED VS FLICKERING CORE"
+  },
+  luvria_greenharte: {
+    intro: "You speak of negating concepts as if rewriting my world were child’s play. Let us see if your mortal hubris can snuff out the planet's breath.",
+    retort: "Hark, the sovereign speaks! Thou art a grand stage indeed, yet even the world bows when I sever the concept of victory from thy grasp.",
+    tag: "PLANET'S BREATH VS CONCEPT NEGATION"
+  },
+  lucia_lyozes: {
+    intro: "Your gaze peers five seconds into the future. Tell me, elf—do you see anything beyond your own destruction?",
+    retort: "I have witnessed the ruin of an entire continent, Queen of the Castle. Your overwhelming scale does not change my duty to strike.",
+    tag: "FIVE SECONDS FORESIGHT VS OBLIVION VERDICT"
+  },
+  adiosa_dragon_envoy: {
+    intro: "A parasite claiming planetary pruning, crushing life under sheer arrogance. This sphere answers to its soul, beast—not to ancient lizards.",
+    retort: "Drazk'hlor. Voth zul ruk'thar gath krav'nok. Nok zul kri.",
+    tag: "PLANETARY SOUL VS ANCIENT DRAGON ANNIHILATION"
+  },
+  amamiya_no_chihaya_tenkohime: {
+    intro: "A pink fox spirit?! Aww, you’re so cute and fluffy! Wait, why are your ears shaking so hard? I'm not gonna bite!",
+    retort: "Hiii! Kyuuu! Stay back, stay back ja nee! Washi doesn't like big scary vampires! Your castle is probably full of dust and cobwebs!",
+    tag: "FLUFFY FOX SPIRIT VS PRINCESS"
+  },
+  archetype_earth: {
+    intro: "To cast aside royal dignity to frolic in the mortal mud... How disgraceful. Have you forgotten your duty to the Crimson Moon?",
+    retort: "Oh, shut up, you stiff-faced shut-in! Sitting all alone on that freezing throne was the most boring eternity imaginable! I'd rather run free under the sun!",
+    tag: "TRUE ANCESTOR QUEEN VS FREELINE ARCUEID"
+  }
+};
+
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['archetype'] = SERVANT_MATCHUP_DATABASE.archetype_earth;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['arcueid'] = SERVANT_MATCHUP_DATABASE.archetype_earth;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['arcueid_brunestud'] = SERVANT_MATCHUP_DATABASE.archetype_earth;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['earth'] = SERVANT_MATCHUP_DATABASE.archetype_earth;
+
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.
  * Generates compelling class-advantage, trait-based, and alignment-based dialogues.

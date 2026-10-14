@@ -1711,6 +1711,82 @@ function activateCombatantSkill(
       remainingTurns: 3
     });
     logText = `🍷 **${sName}** activated **${skill.name}**! (+50% NP Gauge, +20% ATK (3T), [Demerit] Inflicted Curse 500 dmg/turn (3T) to self)${quoteLine}`;
+  } else if (skill.id === 'rainbow_mystic_eyes_a' || /rainbow mystic eyes/i.test(skill.name)) {
+    // Archetype: Earth S1: Rainbow Mystic Eyes A
+    const oppList = (livingEnemies && livingEnemies.length > 0) ? livingEnemies : (opponent ? [opponent] : []);
+    oppList.forEach((opp: DuelCombatant) => {
+      if (opp && opp.currentHp > 0) {
+        opp.activeBuffs = opp.activeBuffs || [];
+        opp.activeBuffs.push({
+          name: 'Rainbow Mystic Eyes (Skill Seal)',
+          type: 'skill_seal',
+          value: 100,
+          remainingTurns: 1,
+          appliedRound: currentRound,
+          appliedTurnUserId: combatant.userId
+        });
+        opp.activeBuffs.push({
+          name: 'Rainbow Mystic Eyes (DEF Down)',
+          type: 'debuff_def',
+          value: 20,
+          remainingTurns: 3,
+          appliedRound: currentRound,
+          appliedTurnUserId: combatant.userId
+        });
+      }
+    });
+    combatant.activeBuffs.push({
+      name: 'Rainbow Mystic Eyes (ATK Up)',
+      type: 'buff_atk',
+      value: 30,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    logText = `👁️ **${sName}** activated **${skill.name}**! (All enemies: **Skill Sealed [1T]**, **-20% DEF [3T]**; Self: **+30% ATK [3T]**)${quoteLine}`;
+  } else if (skill.id === 'breath_of_the_planet_c' || /breath of the planet/i.test(skill.name)) {
+    // Archetype: Earth S2: Breath of the Planet C
+    combatant.npGauge = Math.min(300, (combatant.npGauge || 0) + 50);
+    combatant.activeBuffs.push({
+      name: 'Breath of the Planet (NP DMG Up)',
+      type: 'np_dmg',
+      value: 20,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    logText = `🌍 **${sName}** activated **${skill.name}**! (**+50% NP Gauge**, **+20% NP Damage [3T]**)${quoteLine}`;
+  } else if (skill.id === 'funny_vamp_ex' || /funny vamp/i.test(skill.name)) {
+    // Archetype: Earth S3: Funny Vamp EX
+    const teamMembers = (livingAllies && livingAllies.length > 0) ? livingAllies : [combatant];
+    const isCastleField = combatant.activeBuffs.some(b => b.type === 'millennium_castle_field' || b.name.includes('Millennium Castle'));
+    teamMembers.forEach((ally: DuelCombatant) => {
+      if (ally && ally.currentHp > 0) {
+        ally.activeBuffs = ally.activeBuffs || [];
+        ally.activeBuffs.push({
+          name: 'Funny Vamp (Invincible)',
+          type: 'invincible',
+          value: 100,
+          remainingTurns: 3,
+          remainingHits: 1,
+          isHitCount: true,
+          appliedRound: currentRound,
+          appliedTurnUserId: combatant.userId
+        });
+        ally.activeBuffs.push({
+          name: 'Funny Vamp (Buff Removal Resistance)',
+          type: 'buff_removal_res',
+          value: 100,
+          remainingTurns: 1,
+          appliedRound: currentRound,
+          appliedTurnUserId: combatant.userId
+        });
+        if (isCastleField && ally !== combatant) {
+          ally.npGauge = Math.min(300, (ally.npGauge || 0) + 30);
+        }
+      }
+    });
+    logText = `🦇 **${sName}** activated **${skill.name}**! (Party: **Invincibility [1 Hit, 3T]**, **+100% Buff Removal Resistance [1T]**${isCastleField ? ', **+30% NP Gauge to Allies [Millennium Castle Bonus]**' : ''})${quoteLine}`;
   } else if (skill.id === 'void_space_fine_arts' || /void space fine arts/i.test(skill.name)) {
     // Van Gogh S1: Void Space Fine Arts B+
     // Grants self Guts status for 1 time, 5 turns (revives with 3,000 HP).
@@ -2929,10 +3005,12 @@ function resolveStrike(
   let critDmgBonus = 1.0;
   let npGenBonus = 1.0;
 
+  const isMillenniumCastleField = attacker.activeBuffs.some(b => b.type === 'millennium_castle_field' || b.name.includes('Millennium Castle'));
+  const ultimateOneBonus = (isMillenniumCastleField && attackerPassives.some(p => p.type === 'ultimate_one')) ? 30 : 0;
   const magicGunnerBonus = attackerPassives.filter(p => p.type === 'magic_gunner').reduce((s, p) => s + p.value, 0);
-  const madnessBonus = attackerPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0) + magicGunnerBonus;
-  const ridingBonus = attackerPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0);
-  const territoryBonus = attackerPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0) + magicGunnerBonus;
+  const madnessBonus = attackerPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0) + magicGunnerBonus + ultimateOneBonus;
+  const ridingBonus = attackerPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0) + ultimateOneBonus;
+  const territoryBonus = attackerPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0) + magicGunnerBonus + ultimateOneBonus;
   const critPassiveBonus = attackerPassives.filter(p => p.type === 'independent_action' || p.type === 'oblivion_correction').reduce((s, p) => s + p.value, 0);
   const divinityBonus = attackerPassives.filter(p => p.type === 'divinity').reduce((s, p) => s + p.value, 0);
   const presenceConcealBonus = attackerPassives.filter(p => p.type === 'presence_concealment').reduce((s, p) => s + p.value, 0) + (magicGunnerBonus > 0 ? 5 : 0);
@@ -3422,7 +3500,14 @@ function resolveStrike(
         const npDmgBuff = attacker.activeBuffs
           .filter(b => b.type === 'np_dmg' || b.type === 'np_dmg_up' || /np damage|np dmg/i.test(b.name))
           .reduce((s, b) => s + b.value, 0);
-        const ceNpDmgMult = 1.0 + (npDmgBuff / 100);
+        const isCastleField = attacker.activeBuffs.some(b => b.type === 'millennium_castle_field' || b.name.includes('Millennium Castle'));
+        const partyMembers = (livingAllies && livingAllies.length > 0) ? livingAllies : [attacker];
+        const hasMoonMargaretBonus = isCastleField && partyMembers.some(m => {
+          const ce = m.servant?.equippedCe;
+          return ce && (ce.id === 'ce_moon_margaret' || /moon margaret|ce1671/i.test(ce.name || ''));
+        });
+        const moonMargaretBonus = hasMoonMargaretBonus ? 25 : 0;
+        const ceNpDmgMult = 1.0 + ((npDmgBuff + moonMargaretBonus) / 100);
         const npDmgDebuff = attacker.activeBuffs
           .filter(b => b.type === 'debuff_np_strength' || b.type === 'debuff_np_dmg' || /np strength|radiant holy light|true name/i.test(b.name))
           .reduce((s, b) => s + b.value, 0);
@@ -3466,6 +3551,48 @@ function resolveStrike(
               appliedRound: attacker.activeBuffs[0]?.appliedRound,
               appliedTurnUserId: attacker.userId
             });
+          }
+        }
+
+        const isArchetypeNp = attacker.servant.templateId === 'archetype_earth' ||
+          attacker.servant.template?.id === 'archetype_earth' ||
+          /marble phantasm/i.test(npTemplate.name || '');
+        if (isArchetypeNp) {
+          // 1. Adds Millennium Castle Battlefield status to field for 3 turns (Activates first)
+          const allDuelCombatants = [
+            attacker,
+            ...(livingAllies || []),
+            defender,
+            ...(livingOpponents || [])
+          ];
+          allDuelCombatants.forEach(c => {
+            if (c && c.currentHp > 0) {
+              c.activeBuffs = c.activeBuffs || [];
+              const existingCastle = c.activeBuffs.find(b => b.type === 'millennium_castle_field' || b.name.includes('Millennium Castle'));
+              if (existingCastle) {
+                existingCastle.remainingTurns = 3;
+              } else {
+                c.activeBuffs.push({
+                  name: 'Millennium Castle Battlefield',
+                  type: 'millennium_castle_field',
+                  value: 1,
+                  remainingTurns: 3,
+                  appliedRound: attacker.activeBuffs[0]?.appliedRound,
+                  appliedTurnUserId: attacker.userId
+                });
+              }
+            }
+          });
+          chainTags.push('🏰 [Millennium Castle Manifestation: Field transformed for 3 turns!]');
+
+          // Overcharge: Charges the NP gauge of all allies except self by 40%
+          if (livingAllies && livingAllies.length > 0) {
+            livingAllies.forEach(ally => {
+              if (ally !== attacker && ally.currentHp > 0) {
+                ally.npGauge = Math.min(300, (ally.npGauge || 0) + 40);
+              }
+            });
+            chainTags.push('🌙 [Lunar Overcharge: +40% NP Gauge to all Allies!]');
           }
         }
 
@@ -3527,7 +3654,16 @@ function resolveStrike(
             }
           }
 
-          const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * typhonDebuffScale * azraelSpecialScale * targetClassMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
+          let archetypeChaoticScale = 1.0;
+          if (isArchetypeNp) {
+            const oppLore = ((targetOpp.servant.template?.lore || '') + ' ' + (targetOpp.servant.template?.title || '') + ' ' + (targetOpp.servant.template?.name || '')).toLowerCase();
+            const isChaoticOpp = oppLore.includes('chaotic');
+            if (isChaoticOpp) {
+              archetypeChaoticScale = 2.0; // +200% Celestial Judgment DMG vs Chaotic alignment
+            }
+          }
+
+          const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * typhonDebuffScale * azraelSpecialScale * archetypeChaoticScale * targetClassMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
           const oppEndMitigation = 1.0 - ((targetOpp.enduranceDamageReduction || 0) / 100);
           let oppDmg = Math.round(Math.max(600, rawNpDmg * oppEndMitigation) * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
@@ -3668,6 +3804,7 @@ function resolveStrike(
             if (isStunnedThisTurn) statuses.push('STUNNED');
             if (isDenyTheVictory && isOvercharged) statuses.push('OVERCHARGE: DEF DOWN', 'NP GAUGE -20%');
             if (isUbw) statuses.push('OVERCHARGE: ATK -30% (3T)');
+            if (isArchetypeNp && archetypeChaoticScale > 1.0) statuses.push('CHAOTIC PURGE (+200% DMG)');
             if ((targetOpp as any).isSlumVeteranTriggered) statuses.push('SLUMS GUTS REVIVED');
           }
 
@@ -5233,7 +5370,8 @@ async function startInteractiveDuel(
   };
 
   // Pick a single, consistent stage background for the entire duel session
-  const battleBgUrl = getRandomBackgroundUrl();
+  let battleBgUrl = getRandomBackgroundUrl();
+  const baseDuelBgUrl = battleBgUrl;
 
   let turnOrder: DuelCombatant[] = [p1, p2, ...(p1Ally ? [p1Ally] : []), ...(p2Ally ? [p2Ally] : [])];
   let currentTurnIndex = 0;
@@ -5780,6 +5918,14 @@ async function startInteractiveDuel(
             c.gutsCount = activeGutsHits;
           }
         });
+
+        // Check if Millennium Castle is active on any living combatant
+        const isCastleOnField = turnOrder.some(c => c && c.currentHp > 0 && c.activeBuffs?.some(b => (b.type === 'millennium_castle_field' || b.name?.includes('Millennium Castle')) && (b.remainingTurns === undefined || b.remainingTurns > 0)));
+        if (isCastleOnField) {
+          battleBgUrl = 'https://ella.janitorai.com/media-approved/mOEhq2x9RkL0KU_fI1DZK.webp';
+        } else if (battleBgUrl === 'https://ella.janitorai.com/media-approved/mOEhq2x9RkL0KU_fI1DZK.webp') {
+          battleBgUrl = baseDuelBgUrl;
+        }
       }
       const candidate = turnOrder[currentTurnIndex];
       if (candidate && candidate.currentHp > 0 && !candidate.isFled) {
@@ -7145,6 +7291,10 @@ async function startInteractiveDuel(
       let combatCutInFile: AttachmentBuilder | null = null;
 
       if (shouldCutIn) {
+        const isCastleOnField = turnOrder.some(c => c && c.currentHp > 0 && c.activeBuffs?.some(b => (b.type === 'millennium_castle_field' || b.name?.includes('Millennium Castle')) && (b.remainingTurns === undefined || b.remainingTurns > 0)));
+        if (isCastleOnField) {
+          battleBgUrl = 'https://ella.janitorai.com/media-approved/mOEhq2x9RkL0KU_fI1DZK.webp';
+        }
         const cutInGifBuffer = await renderDialogueCard(
           attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit',
           playerDialogue.quote,

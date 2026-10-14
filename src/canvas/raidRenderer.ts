@@ -597,6 +597,11 @@ export interface RaidBattleState {
   turnDamageTaken?: number; // Damage dealt by players this turn
   chaosSporesActive?: boolean; // Phase 2 odd-turn 20% DEF shield
   bossShield?: number; // Chaos Deluge shield
+  fieldStatus?: {
+    name: string;
+    remainingTurns: number;
+    backgroundUrl?: string;
+  };
   bossDialogueNotice?: string;
   pendingBossVnCutIn?: {
     title: string;
@@ -973,7 +978,8 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   const trX = width - 265;
   const trY = 24;
   const trW = 235;
-  const trH = 88;
+  const hasFieldStatus = Boolean(state.fieldStatus && state.fieldStatus.remainingTurns > 0);
+  const trH = hasFieldStatus ? 104 : 88;
 
   ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
   ctx.strokeStyle = '#d4af37';
@@ -1001,6 +1007,12 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.fillStyle = '#38bdf8';
   ctx.font = 'bold 15px sans-serif';
   ctx.fillText(`TURN  ${state.round} Turn(s)`, trX + 16, trY + 72);
+
+  if (hasFieldStatus) {
+    ctx.fillStyle = '#d8b4fe';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText(`🏰 ${state.fieldStatus!.name.slice(0, 18)} (${state.fieldStatus!.remainingTurns}T)`, trX + 16, trY + 93);
+  }
   ctx.restore();
 
   // 3. Top-Center/Right In-Canvas Tactical Action HUD (Always visible with zero obstruction)
@@ -1563,7 +1575,7 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
 
   // Preload all assets using in-memory cached image loader
   const [bgImg, bossSpriteImg, bossAvatarImg, bossClassIconImg, ...rest] = await Promise.all([
-    loadImageCached(state.boss.bgUrl),
+    loadImageCached(state.fieldStatus?.backgroundUrl || state.boss.bgUrl),
     loadImageCached(activeSpriteUrl),
     loadImageCached(state.boss.avatarUrl),
     loadImageCached(bossClassIconUrl),

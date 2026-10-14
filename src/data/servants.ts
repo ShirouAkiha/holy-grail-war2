@@ -164,6 +164,23 @@ export function getDefaultClassPassives(servantClass: ServantClass): PassiveSkil
           description: 'Increases Critical Strike Damage by 10%.'
         }
       ];
+    case 'MoonCancer':
+      return [
+        {
+          name: 'Territory Creation EX',
+          type: 'territory_creation',
+          value: 12,
+          rank: 'EX',
+          description: 'Increases own Arts Card effectiveness by 12%.'
+        },
+        {
+          name: 'Item Construction A',
+          type: 'item_construction',
+          value: 10,
+          rank: 'A',
+          description: 'Increases debuff success rate by 10%.'
+        }
+      ];
     default:
       return [
         {
@@ -2773,6 +2790,283 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         intro: "Flames and curses? The Kyoto night fires were terrifying, but the Shinsengumi never backs down from a conflagration!",
         retort: "Another self-righteous goody two-shoes! I'll turn that cheerful haori into cinders before you can even take a step!",
         tag: "BLUE SINCERITY VS ROARING FLAMES"
+      }
+    }
+  },
+  {
+    id: 'archetype_earth',
+    name: 'Archetype: Earth',
+    title: "True Ancestor Royalty • The Lunar Flower of the Planet's Inner Sea",
+    servantClass: 'MoonCancer',
+    rarity: 5,
+    baseHp: 31200,
+    baseAtk: 12200,
+    baseStats: { strength: 16, endurance: 16, agility: 16, mana: 20, luck: 16 },
+    paramRanks: { strength: 'B', endurance: 'B', agility: 'B', mana: 'A', luck: 'B' },
+    commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
+    traits: ['Enuma Elish Nullification', 'Humanoid', 'Immune to Pigify', 'Non-Hominidae Servant', 'Servant'],
+    skills: [
+      {
+        id: 'rainbow_mystic_eyes_a',
+        name: 'Rainbow Mystic Eyes A',
+        cooldown: 6,
+        description: "Seals all enemies' skills for 1 turn. Reduces their defense by 20% for 3 turns. Increases own attack by 30% for 3 turns.",
+        effectType: 'skill_seal',
+        value: 30,
+        duration: 3,
+        target: 'all_enemies',
+        icon: '👁️',
+        quote: '"Gaze into the rainbow... Your movements belong to the world."',
+        quotes: [
+          '"Gaze into the rainbow... Your movements belong to the world."',
+          '"My eyes perceive all lines of authority."',
+          '"Halt. The planet commands your stillness."'
+        ]
+      },
+      {
+        id: 'breath_of_the_planet_c',
+        name: 'Breath of the Planet C',
+        cooldown: 7,
+        description: 'Charges own NP gauge by 50% in PvP and 100% in Raids. Increases own NP damage by 20% for 3 turns.',
+        effectType: 'np_charge',
+        value: 50,
+        duration: 3,
+        icon: '🌍',
+        quote: '"Listen closely... The planet inhales, and life stirs."',
+        quotes: [
+          '"Listen closely... The planet inhales, and life stirs."',
+          '"The primordial pulse gathers within me."',
+          '"Breathe in the inner sea of the stars."'
+        ]
+      },
+      {
+        id: 'funny_vamp_ex',
+        name: 'Funny Vamp EX',
+        cooldown: 6,
+        description: "Grants party Invincibility for 1 attack (3 turns). Increases buff removal resistance of allies by 100% for 1 turn. If field is Millennium Castle Battlefield: Charges party's NP gauge (except self) by 30%.",
+        effectType: 'invincibility',
+        value: 30,
+        duration: 3,
+        target: 'party',
+        icon: '🦇',
+        quote: '"Fufufu, I am a funny vamp after all! Everyone, take cover behind my throne!"',
+        quotes: [
+          '"Fufufu, I am a funny vamp after all! Everyone, take cover behind my throne!"',
+          '"Even for festivities, a princess must shield her companions."',
+          '"No removing my blessings! The Millennium Castle endures!"'
+        ]
+      }
+    ],
+    passives: [
+      {
+        name: 'Territory Creation EX',
+        type: 'territory_creation',
+        value: 12,
+        rank: 'EX',
+        description: 'Increases own Arts performance by 12%.'
+      },
+      {
+        name: 'Ultimate One D',
+        type: 'ultimate_one',
+        value: 30,
+        rank: 'D',
+        description: 'When field is Millennium Castle Battlefield: Increases own Quick, Arts, and Buster card performance by 30%.'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Marble Phantasm: Fantasy Manifestation',
+      cardType: 'Buster',
+      chant: 'I shall reconstruct this celestial world... Awaken, True Ancestor Throne! MARBLE PHANTASM!',
+      description: 'Adds Millennium Castle Battlefield status to field for 3 turns (activates first). Deals damage (800% multiplier) to all enemies. Deals extra +200% damage to enemies with Chaotic Alignment. Overcharge: Charges the NP gauge of all allies except self by 40%.',
+      target: 'aoe',
+      multiplier: 800,
+      overchargeEffect: 'Charges the NP gauge of all allies except self by 40%. Adds Millennium Castle Battlefield for 3 turns.',
+      gifUrl: 'https://ella.janitorai.com/media-approved/_lDposzhmPLDeSsGf6k70.gif'
+    },
+    lore: `Archetype: EARTH (アーキタイプ：アース), Class Name MoonCancer (ムーン・キャンサー), is a 5★ SSR Servant.
+
+A being out of myth for the kin who dwell in the night.
+A lunar flower that blooms alone in the planet's inner sea. 
+Her name is Archetype: EARTH. In the world of magecraft, she is a form of life known as an Ultimate One. At times, she has been a terrifying overlord of all vampires, at times a vampire herself bounding about like a rabbit on the moon, and at times a sheltered princess who slipped in unannounced! Naturally oblivious and innocent to a fault, this sun-kissed vamp queen is here for the festivities!
+
+Personality (first Spirit Origin)
+Chaotic-Good.
+Outgoing, bright, and active.
+A cold and merciless True Ancestor royal who never displays any human emotions. Speaks and conducts herself more like a queen than a princess, and is ruthless towards those who offend her.
+Though she seems to look at human culture coldly, as though it were foolish and utterly beneath her, she actually doesn't mind it.
+"It is quite entertaining in its own way. At times, even complete farces can be beautiful."
+Lived in a world where nothing changed for thousands of years, making her highly susceptible to any novel forms of stimulus.
+A funny queen who may seem constantly sullen and unfeeling, but is actually greatly looking forward to the time when an unexpected coincidence will take place.
+
+Personality (second Spirit Origin)
+Neutral-Good.
+Introverted, bright, and active.
+A straightforward, easy-going person who doesn't sweat the small stuff. She became much more innocent and naive after a certain human killed her, but she still retains her wealth of knowledge and natural dryness (thanks to her True Ancestor rationality), which ultimately makes her both easygoing and intellectual.
+
+Proactive by nature, she loves to drag those she takes a liking to every which way. She is very single-minded, so much so that even she can't change her own mind once it's made up. She also wears her heart on her sleeve and sulks like a child if she loses an argument, though she doesn't let that get in the way of accepting valid positions. She generally enjoys conversation, but she's also respectful of others' privacy.
+
+Firmly results-oriented, if she believes the ends justify the means, she will push through any obstacle in her path, common sense and human ethics be damned. Tends to be very possessive (or controlling, if you prefer) of things she takes a liking to.
+
+Though she calls herself a vampire, she has never and will never drink anyone's blood. In fact, she hates blood, the person she becomes when she drinks blood, Roa, and everything that hurts her lover (though she has no issue with her lovers taking other lovers, as long as her lover remains happy. That said, there will occasionally be exceptions that she just can't tolerate for whatever reason).
+A funny vamp who can't wait to have her destined encounter.
+
+Personality (third Spirit Origin)
+Chaotic-Good.
+Introverted, bright, and passive.
+As a True Ancestor princess who doesn't yet know anything about the outside world, she is younger in this Spirit Origin than in her first. Though she is still lacking in human emotions, the seeds to grow them have definitely taken root.
+Thanks to her royal upbringing, she prefers to avoid talking with those from lower rungs on the social ladder (because she doesn't know how to make conversation). Although she too is ruthless towards those who offend her, she is not quite as aggressive as her first Spirit Origin. She possesses a gentle demeanor, and her conduct demonstrates (some) consideration for others.
+She doesn't care for life on the planet's surface, but it's also true that she truly doesn't understand much about human culture.
+A funny princess who will never meet her destiny.
+
+A royal Elemental known as a True Ancestor.
+Though she doesn't have any particular special abilities, she does have high stats across the board. As they say, simple is best.
+Unlike Dead Apostles, who used to be human before becoming vampires, her abilities were set in stone the moment she was born as a True Ancestor, and will never improve no matter how much blood she drinks. Fortunately for her, she has no need to improve them, as they are already exceptional even for a True Ancestor. Suffice to say, no ordinary vampire would ever stand a chance against her.
+
+However, since she is still a True Ancestor, she possesses a thirst for blood that can never be restrained. In fact, most of what she uses her great strength for (approximately seventy percent of it, by most estimates) is to keep those very vampiric impulses sealed away.
+
+In addition to matching her physical abilities to her opponent, she excels at using Mystic Eyes to mentally meddle with their mind, and reconstructing the world through her Marble Phantasm.
+
+Both immunity to sunlight and super healing are factors that come to her as natural as she breathes. In her first and third Spirit Origins, she considers battle as a competition to create, blend, and control the elements.
+
+In the world of "TSUKIHIME," the strongest being of any celestial body is called an Ultimate One or Original One, and Arcueid herself qualifies for this position at the time of her awakening. However, she is not the so-called One until she settles things with Altrouge, one who is also "that which forms the celestial body."
+
+　　　◆
+
+Though respected as a princess, this killer machine had only ever experienced combat, and knew nothing of the joys of so-called "pointless" things. However, that changed when she manifested in a Japanese city one day while pursuing a vampire targeted for elimination, and ended up getting killed by a lone human.
+Upon revival, she was bewildered by her newfound shock and anger. Over time, as she became familiar with obsession, admiration, and numerous other new experiences, she became the innocent vampire princess she is now.`,
+    summonQuote: '"Servant, MoonCancer. Archetype: Earth has answered your summon. ...Though calling me by that title feels a bit too formal, doesn\'t it? Just call me Arcueid! Now, Master, show me what kind of fun adventures we\'re going to have together!"',
+    battleStartQuote: '"The inner sea stirs. Allow me to reconstruct this stage."',
+    victoryQuote: '"That was quite amusing! See, Master? A princess can handle anything with style!"',
+    defeatQuote: '"Hmph... How insolent. I suppose I should take a nap beneath the moon..."',
+    avatarUrl: 'https://static.atlasacademy.io/JP/Faces/f_23005000.png',
+    cardArtUrl: 'https://static.atlasacademy.io/JP/CharaGraph/2300500/2300500a@1.png',
+    spriteUrl: 'https://static.atlasacademy.io/JP/CharaFigure/23005000/23005000_merged.png',
+    isCustomOrMeme: false,
+    matchupDialogues: {
+      artoria_pendragon: {
+        intro: "The Star’s sacred blade, wielded by a king who died upholding a tragic dream. Show me if that conviction can outshine the pulse of the celestial body itself.",
+        retort: "My sword was sworn to the land and its people, Archetype. Even before the soul of the planet, my vow remains unbroken.",
+        tag: "CELESTIAL PULSE VS HOLY OATH"
+      },
+      artoria_pendragon_alter: {
+        intro: "Drenched in mud and spite, yet you still cling to kingship. How unsightly, pale shadow of the holy sword.",
+        retort: "Spare me the royal condescension. Tyranny does not ask permission from the dirt it stands upon.",
+        tag: "CELESTIAL ROYALTY VS BLACKENED TYRANNY"
+      },
+      artoria_caster: {
+        intro: "Whoa, your bell has such an echoing resonance! But... why does your chest ache with so much gloom? Come on, smile a little!",
+        retort: "I—I'm fine, really! Just... please don’t look so closely at me! Why does the planet’s avatar have to be this pushy?!",
+        tag: "PILGRIM BELL VS PLANETARY AVATAR"
+      },
+      jeanne_alter: {
+        intro: "Fuming and burning again? You're like a dry brushfire! Don't you ever get tired of scorching your own feet?",
+        retort: "Shut up, you pampered moon tick! I don't need a lecture on burning from someone sitting pretty in a fantasy castle!",
+        tag: "MOON VAMP VS BRUSHFIRE WITCH"
+      },
+      gilgamesh_archer: {
+        intro: "The King of Uruk. You collect humanity’s toys and dare call this world your garden? The soil beneath you disagrees.",
+        retort: "Fuhahaha! The planet’s terminal comes to play court? Know your place, spirit—man’s sovereignty was carved from your silent clay!",
+        tag: "SOUL OF EARTH VS KING OF HEROES"
+      },
+      emiya_archer: {
+        intro: "Hahaha, you reek of rusted gears and stubborn iron! It’s such an unnatural scent—did someone forge a man out of regrets?",
+        retort: "A remarkably harsh critique from the spirit of the world. Forgive me, but clearing out unnatural pests happens to be my trade.",
+        tag: "MAN OF REGRETS VS SPIRIT OF WORLD"
+      },
+      cu_chulainn: {
+        intro: "A hound of the sun! You look like you'd run around until you dropped dead just for fun. Care to see how far this field stretches?",
+        retort: "Heh, playing tag with the planet's princess? Sounds like a one-way trip to the grave—count me in!",
+        tag: "HOUND OF CULANN VS PLANET PRINCESS"
+      },
+      scathach_lancer: {
+        intro: "Dweller of the Dun Scaith. Stepping beyond mortality has left you withered in purpose. Do you seek an end by my hand?",
+        retort: "A strike from the planet’s true executioner... delightful. Let us see if your authority can pierce the gate I guard.",
+        tag: "LAND OF SHADOWS VS PLANET EXECUTIONER"
+      },
+      heracles_berserker: {
+        intro: "Such agonizing, roiling fury... Is this the shape of a hero torn apart by mortal sorrow? Please, calm yourself...",
+        retort: "■■■■■■■■■—!! (A guttural, world-shaking roar that rattles the earth, defiant of all celestial order.)",
+        tag: "SHELTERED PRINCESS VS NEMEAN RAGE"
+      },
+      van_gogh: {
+        intro: "The scent of foreign stars clings to your flowers... It makes the soil cold. Who grafted such sorrow onto you?",
+        retort: "Ah, ehehe... de-despised by the world's soil itself... Just a failed yellow sunflower, rotting away in your garden...",
+        tag: "COLD SOIL VS ROTTING SUNFLOWER"
+      },
+      tamamo_no_mae: {
+        intro: "Golden fur hiding the visage of an incinerating star. Are you still playing maiden, division of Amaterasu?",
+        retort: "My, my, how dreadfully uncouth! A good wife keeps her claws tucked away—unlike a certain runaway vampire who forgot her manners!",
+        tag: "SUN GODDESS DIVESTMENT VS MOON ROYALTY"
+      },
+      altera: {
+        intro: "The White Titan’s lingering fragment. You were built to reduce my cradle to ash. I shall not permit a second descent.",
+        retort: "The breath of this world... It is vibrant. Yet if it resists... this sword will harvest it. Destruction is... bad civilization.",
+        tag: "CRADLE OF PLANET VS WHITE TITAN HARVEST"
+      },
+      hassan_i_sabbah_azrael: {
+        intro: "Grand Assassin. You bring the boundary of death to a garden without end. Whose head do you seek in my presence?",
+        retort: "Even the cradle of life cannot escape the evening bell. Bare thy neck, entity of the celestial sphere.",
+        tag: "EVENING BELL VS CELESTIAL CRADLE"
+      },
+      jeanne_darc_ruler: {
+        intro: "You hold no hatred for the flames that consumed you? Mortal faith is... confusing to comprehend.",
+        retort: "Hatred cannot restore the land, Princess. It is the Lord's love and the beauty of this world that I choose to remember.",
+        tag: "MORTAL FAITH VS PLANETARY WONDER"
+      },
+      mhx_alter: {
+        intro: "Darkness... but also the smell of sugar and fried dough? What strange corner of the universe spit you out?!",
+        retort: "Silence, local entity. My sweets ration is low and the dark side calls. Hand over the bean paste or face extinction.",
+        tag: "DARK MATTER SWEETS VS PLANETARY PRINCESS"
+      },
+      nero_claudius_saber: {
+        intro: "A singing rose of Rome. Loud, gaudy, and utterly inconsequential. Does all of mortal passion boil down to self-adulation?",
+        retort: "Inconsequential?! Umu! To deny Roma's splendor is to deny beauty itself! Gaze upon my brilliance and weep, Moon Queen!",
+        tag: "ROMAN SPLENDOR VS MOON QUEEN"
+      },
+      karna_lancer: {
+        intro: "Son of Surya, endowed with armor that wards off doom. Will you burn to cinders before the majesty of the genuine earth?",
+        retort: "Words are unnecessary. Whether you represent the world or the heavens, my spear strikes true for my Master.",
+        tag: "SON OF SURYA VS MAJESTY OF EARTH"
+      },
+      aoko_aozaki: {
+        intro: "Aoko! Hey, Aoko! What are you doing wandering around here?! Did you make another giant mess with your Fifth Magic?!",
+        retort: "Ugh, give me a break... Of all the troublemakers to run into, it had to be the True Ancestor princess. Don't look at me like that!",
+        tag: "TSUKIHIME ENCOUNTER: VAMPIRE PRINCESS VS FIFTH MAGICIAN"
+      },
+      typhon_ephemeros: {
+        intro: "A fleeting spark born of a divine dragon's calamity. Return to the vapor of the primordial sea, newborn wisp.",
+        retort: "A dragon's breath does not yield to planetary whims. I will consume your authority and make this sky mine!",
+        tag: "PRIMORDIAL SEA VS DRAGON STORM"
+      },
+      okita_souji: {
+        intro: "Such blazing speed! But your spiritual core is flickering like a guttering candle. Are you really okay to fight?",
+        retort: "Ha-haha! No need to worry, beautiful lady! The Shinsengumi's first unit captain is always at top—*cough, wheeze*—form!",
+        tag: "BLAZING SPEED VS FLICKERING CORE"
+      },
+      luvria_greenharte: {
+        intro: "You speak of negating concepts as if rewriting my world were child’s play. Let us see if your mortal hubris can snuff out the planet's breath.",
+        retort: "Hark, the sovereign speaks! Thou art a grand stage indeed, yet even the world bows when I sever the concept of victory from thy grasp.",
+        tag: "PLANET'S BREATH VS CONCEPT NEGATION"
+      },
+      lucia_lyozes: {
+        intro: "Your gaze peers five seconds into the future. Tell me, elf—do you see anything beyond your own destruction?",
+        retort: "I have witnessed the ruin of an entire continent, Queen of the Castle. Your overwhelming scale does not change my duty to strike.",
+        tag: "FIVE SECONDS FORESIGHT VS OBLIVION VERDICT"
+      },
+      adiosa_dragon_envoy: {
+        intro: "A parasite claiming planetary pruning, crushing life under sheer arrogance. This sphere answers to its soul, beast—not to ancient lizards.",
+        retort: "Drazk'hlor. Voth zul ruk'thar gath krav'nok. Nok zul kri.",
+        tag: "PLANETARY SOUL VS ANCIENT DRAGON ANNIHILATION"
+      },
+      amamiya_no_chihaya_tenkohime: {
+        intro: "A pink fox spirit?! Aww, you’re so cute and fluffy! Wait, why are your ears shaking so hard? I'm not gonna bite!",
+        retort: "Hiii! Kyuuu! Stay back, stay back ja nee! Washi doesn't like big scary vampires! Your castle is probably full of dust and cobwebs!",
+        tag: "FLUFFY FOX SPIRIT VS PRINCESS"
+      },
+      archetype_earth: {
+        intro: "To cast aside royal dignity to frolic in the mortal mud... How disgraceful. Have you forgotten your duty to the Crimson Moon?",
+        retort: "Oh, shut up, you stiff-faced shut-in! Sitting all alone on that freezing throne was the most boring eternity imaginable! I'd rather run free under the sun!",
+        tag: "TRUE ANCESTOR QUEEN VS FREELINE ARCUEID"
       }
     }
   }

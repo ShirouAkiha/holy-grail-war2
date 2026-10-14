@@ -829,6 +829,24 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     isBondCe: true,
     bondServantId: 'okita_souji',
     bondServantName: 'Okita Souji'
+  },
+  archetype_earth: {
+    id: 'ce_moon_margaret',
+    name: 'Moon Margaret',
+    rarity: 4,
+    description: 'A pure white Margaret blooming beneath the silvery moon. When equipped on Archetype: Earth: Increases party\'s NP damage by 25% while self is on the Millennium Castle Battlefield.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped on Archetype: Earth: Increases party\'s NP damage by 25% while self is on the Millennium Castle Battlefield.',
+    passiveType: 'np_damage',
+    passiveValue: 25,
+    artworkUrl: 'https://static.atlasacademy.io/JP/CharaGraph/9306960/9306960a.png',
+    isBondCe: true,
+    bondServantId: 'archetype_earth',
+    bondServantName: 'Archetype: Earth'
   }
 };
 
@@ -905,7 +923,13 @@ const CANONICAL_SERVANT_TO_BOND_KEY: Record<string, string> = {
   okita: 'okita_souji',
   souji_okita: 'okita_souji',
   saber_okita: 'okita_souji',
-  okita_saber: 'okita_souji'
+  okita_saber: 'okita_souji',
+  archetype_earth: 'archetype_earth',
+  archetype: 'archetype_earth',
+  archetype_earth_mooncancer: 'archetype_earth',
+  arcueid: 'archetype_earth',
+  arcueid_brunestud: 'archetype_earth',
+  earth: 'archetype_earth'
 };
 
 /**

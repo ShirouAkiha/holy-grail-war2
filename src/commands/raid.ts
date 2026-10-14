@@ -1430,10 +1430,22 @@ async function runRaidBattle(
       const totalStr = (baseStatsAtk.strength || 10) + Math.round((allocAtk.strength || 0) * strMult);
       const ceAtk = sAtk.equippedCe?.atkBonus || 0;
       const baseAtk = Math.round((tAtk.baseAtk || 10000) + totalStr * 80 + ceAtk);
+      const isCastleActive = Boolean(battleState.fieldStatus && battleState.fieldStatus.remainingTurns > 0);
+      const activePassives = active.servant.template?.passives || [];
+      const hasUltimateOne = isCastleActive && activePassives.some(p => p.type === 'ultimate_one');
+      const ultimateOneBonus = hasUltimateOne ? 30 : 0;
+
+      // Check Moon Margaret equipped on any party member while Millennium Castle is active
+      const hasPartyMoonMargaret = isCastleActive && battleState.participants.some(p => {
+        const ce = p.servant.equippedCe;
+        return ce && (ce.id === 'ce_moon_margaret' || ce.name?.toLowerCase().includes('moon margaret') || (ce as any).id === 'ce1671');
+      });
+      const moonMargaretNpDmgBonus = hasPartyMoonMargaret ? 25 : 0;
+
       const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up' || b.type === 'buff_atk').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const busterBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'buster_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const artsBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'arts_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const quickBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'quick_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
+      const busterBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'buster_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus) / 100);
+      const artsBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'arts_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus) / 100);
+      const quickBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'quick_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus) / 100);
       const critDmgBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'crit_dmg' || b.type === 'crit_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
 
       const isBossThreat = (boss.traits || []).some(t => ['threat_to_humanity', 'beast', 'demonic'].includes(t.toLowerCase()));
@@ -1902,12 +1914,43 @@ async function runRaidBattle(
               npEffectsHud.push('DEF -50% & Quick Res -30%');
             }
 
+            let archetypeChaoticRaidScale = 1.0;
+            const isArchetypeNp = active.servant.templateId === 'archetype_earth' || /marble phantasm/i.test(npName);
+            if (isArchetypeNp) {
+              battleState.fieldStatus = {
+                name: 'Millennium Castle Battlefield',
+                remainingTurns: 3,
+                backgroundUrl: 'https://ella.janitorai.com/media-approved/mOEhq2x9RkL0KU_fI1DZK.webp'
+              };
+              npEffectsLog.push('🏰 [Millennium Castle Manifestation: Field transformed for 3 turns!]');
+              npEffectsHud.push('🏰 Millennium Castle (3T)');
+
+              // Overcharge: Charges the NP gauge of all allies except self by 40%
+              battleState.participants.forEach(p => {
+                if (p && !p.isDead && p.userId !== active.userId) {
+                  p.npGauge = Math.min(300, (p.npGauge || 0) + 40);
+                }
+              });
+              npEffectsLog.push('🌙 [Lunar Overcharge: +40% NP Gauge to all Allies!]');
+
+              // Extra damage to enemies with Chaotic Alignment (+200%)
+              const bossAlignment = ((boss as any).alignment || (boss as any).description || (boss as any).lore || '').toLowerCase();
+              const isDarkSakuraBoss = boss.id === 'dark_sakura' || boss.name.toLowerCase().includes('dark sakura');
+              const isChaoticBoss = isDarkSakuraBoss || bossAlignment.includes('chaotic');
+              if (isChaoticBoss) {
+                archetypeChaoticRaidScale = 2.0;
+                npEffectsLog.push('✦ [Chaotic Alignment Purge: +200% Celestial Judgment DMG to Boss!]');
+                npEffectsHud.push('+200% Chaotic Purge');
+              }
+            }
+
             const effectiveBossDef = isIgnoreDef ? Math.max(0.2, 1 + bossDefDown) : bossDefFactor;
             const npOverrideBuff = active.activeBuffs?.find(b => b.type === 'np_card_override');
             const effectiveNpCardType = (npOverrideBuff as any)?.cardType || (active.servant.template?.noblePhantasm?.cardType === '???' ? 'Buster' : (active.servant.template?.noblePhantasm?.cardType || 'Buster'));
             const cardPerfMult = effectiveNpCardType === 'Arts' ? artsBuffMult : effectiveNpCardType === 'Quick' ? quickBuffMult : busterBuffMult;
+            const npCeDmgMult = 1.0 + (moonMargaretNpDmgBonus / 100);
 
-            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * cardPerfMult * typhonRaidDebuffScale * atkBuffMult * specialAtkMult * effectiveBossDef * npSpecialMult * (0.95 + Math.random() * 0.1));
+            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * cardPerfMult * typhonRaidDebuffScale * archetypeChaoticRaidScale * atkBuffMult * specialAtkMult * effectiveBossDef * npSpecialMult * npCeDmgMult * (0.95 + Math.random() * 0.1));
             if (effectiveNpCardType === 'Arts') {
               npGained += Math.round(25 * (1.0 + (artsBuffMult - 1.0)));
               starsGenerated += 5;
@@ -2147,6 +2190,14 @@ async function runRaidBattle(
             processCeTurnStartEffects(p);
           }
         });
+
+        if (battleState.fieldStatus && battleState.fieldStatus.remainingTurns > 0) {
+          battleState.fieldStatus.remainingTurns--;
+          if (battleState.fieldStatus.remainingTurns <= 0) {
+            delete battleState.fieldStatus;
+          }
+        }
+
         battleState.round++;
 
         // Keep Boss turn HUD action active so players see the Boss's damage & action on the new turn
@@ -2607,7 +2658,64 @@ async function runRaidBattle(
           const isGeneralDebuff = sType === 'debuff';
 
           let buffLog = '';
-          if (skillObj?.id === 'knight_of_utopia_ex' || /knight of utopia/i.test(sName)) {
+          if (skillObj?.id === 'rainbow_mystic_eyes_a' || /rainbow mystic eyes/i.test(sName)) {
+            // Archetype: Earth S1: Rainbow Mystic Eyes A
+            battleState.bossBuffs.push({
+              name: 'Rainbow Mystic Eyes (Skill Seal)',
+              type: 'skill_seal',
+              value: 100,
+              remainingTurns: 1
+            });
+            battleState.bossBuffs.push({
+              name: 'Rainbow Mystic Eyes (DEF Down)',
+              type: 'def_down',
+              value: 20,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: 'Rainbow Mystic Eyes (ATK Up)',
+              type: 'atk_up',
+              value: 30,
+              remainingTurns: 3
+            });
+            buffLog = `(👁️ Sealed Boss Skills [1T], -20% Boss DEF [3T], +30% Self ATK [3T]!)`;
+          } else if (skillObj?.id === 'breath_of_the_planet_c' || /breath of the planet/i.test(sName)) {
+            // Archetype: Earth S2: Breath of the Planet C (100% NP charge in raids!)
+            active.npGauge = Math.min(300, (active.npGauge || 0) + 100);
+            active.activeBuffs.push({
+              name: 'Breath of the Planet (NP DMG Up)',
+              type: 'np_damage_up',
+              value: 20,
+              remainingTurns: 3
+            });
+            buffLog = `(🌍 +100% NP Gauge [Raid Full Charge!], +20% NP Damage [3T]!)`;
+          } else if (skillObj?.id === 'funny_vamp_ex' || /funny vamp/i.test(sName)) {
+            // Archetype: Earth S3: Funny Vamp EX
+            const isCastleActive = Boolean(battleState.fieldStatus && battleState.fieldStatus.remainingTurns > 0);
+            battleState.participants.forEach(p => {
+              if (p && !p.isDead) {
+                p.activeBuffs = p.activeBuffs || [];
+                p.activeBuffs.push({
+                  name: 'Funny Vamp (Invincible)',
+                  type: 'invincible',
+                  value: 100,
+                  remainingTurns: 3,
+                  remainingHits: 1,
+                  isHitCount: true
+                } as any);
+                p.activeBuffs.push({
+                  name: 'Funny Vamp (Buff Removal Resistance)',
+                  type: 'buff_removal_res',
+                  value: 100,
+                  remainingTurns: 1
+                });
+                if (isCastleActive && p.userId !== active.userId) {
+                  p.npGauge = Math.min(300, (p.npGauge || 0) + 30);
+                }
+              }
+            });
+            buffLog = `(🦇 Party: Invincibility [1 Hit, 3T], +100% Buff Removal Resistance [1T]${isCastleActive ? ', +30% NP to Allies [Millennium Castle Bonus]' : ''}!)`;
+          } else if (skillObj?.id === 'knight_of_utopia_ex' || /knight of utopia/i.test(sName)) {
             // Artoria S1: Knight of Utopia EX
             participants.forEach(p => {
               p.activeBuffs = p.activeBuffs || [];

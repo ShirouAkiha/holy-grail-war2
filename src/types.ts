@@ -115,6 +115,7 @@ export interface NoblePhantasm {
   effect?: string;
   animationUrl?: string;
   gifUrl?: string;
+  chants?: string[];
 }
 
 export interface CraftEssence {
@@ -195,6 +196,10 @@ export interface ServantTemplate {
   isCustomOrMeme?: boolean;
   selectedAscensionStage?: 1 | 2 | 3 | 4 | 'costume' | string;
   matchupDialogues?: Record<string, MatchupQuoteEntry>;
+  battleStartQuotes?: string[];
+  victoryQuotes?: string[];
+  defeatQuotes?: string[];
+  attackQuotes?: string[];
   spriteConfig?: ServantSpriteConfig;
 }
 
@@ -270,6 +275,9 @@ export interface BondScene {
   id: string;
   speakerName?: string;
   speakerAvatarUrl?: string;
+  speakerSpriteUrl?: string;
+  speakerCardArtUrl?: string;
+  ascensionStage?: 1 | 2 | 3 | 4;
   backgroundTheme?: 'chaldea_room' | 'fuyuki_moonlight' | 'ebonwatch_realm' | 'dun_scaith' | 'camelot_court' | 'babylon_vault' | 'misaki_town' | string;
   dialogueText: string;
   choices?: BondChoice[];

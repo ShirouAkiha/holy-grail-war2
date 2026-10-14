@@ -326,6 +326,18 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
       stage3: 'https://static.atlasacademy.io/JP/CharaFigure/1027002/1027002_merged.png',
       stage4: 'https://static.atlasacademy.io/JP/CharaFigure/1027002/1027002_merged.png'
     }
+  },
+  archetype_earth: {
+    stage1: 'https://static.atlasacademy.io/JP/CharaGraph/2300500/2300500a@1.png',
+    stage2: 'https://static.atlasacademy.io/JP/CharaGraph/2300500/2300500a@2.png',
+    stage3: 'https://static.atlasacademy.io/JP/CharaGraph/2300500/2300500b@1.png',
+    stage4: 'https://static.atlasacademy.io/JP/CharaGraph/2300500/2300500b@2.png',
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/JP/CharaFigure/23005000/23005000_merged.png',
+      stage2: 'https://static.atlasacademy.io/JP/CharaFigure/23005001/23005001_merged.png',
+      stage3: 'https://static.atlasacademy.io/JP/CharaFigure/23005002/23005002_merged.png',
+      stage4: 'https://static.atlasacademy.io/JP/CharaFigure/23005002/23005002_merged.png'
+    }
   }
 };
 
@@ -411,7 +423,13 @@ export function findCanonicalAscensionData(identifier?: any): { key: string; dat
     okita: 'okita_souji',
     souji_okita: 'okita_souji',
     saber_okita: 'okita_souji',
-    okita_saber: 'okita_souji'
+    okita_saber: 'okita_souji',
+    archetype_earth: 'archetype_earth',
+    archetype: 'archetype_earth',
+    archetype_earth_mooncancer: 'archetype_earth',
+    arcueid: 'archetype_earth',
+    arcueid_brunestud: 'archetype_earth',
+    earth: 'archetype_earth'
   };
 
   if (ALIAS_MAP[raw] && CANONICAL_SERVANT_ASCENSIONS[ALIAS_MAP[raw]]) {

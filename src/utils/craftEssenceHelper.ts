@@ -66,7 +66,8 @@ const CANONICAL_SERVANT_ALIASES: Record<string, string[]> = {
   edmond: ['edmond', 'edmond_tank', 'shielder_edmond', 's-rank adventurer'],
   typhon_ephemeros: ['typhon_ephemeros', 'typhon', 'progenitor dragon'],
   van_gogh: ['van_gogh', 'gogh', 'clytie van gogh'],
-  tamamo_no_mae: ['tamamo_no_mae', 'tamamo', 'caster of extra', 'mikokon', 'fox wife', 'caster_tamamo']
+  tamamo_no_mae: ['tamamo_no_mae', 'tamamo', 'caster of extra', 'mikokon', 'fox wife', 'caster_tamamo'],
+  archetype_earth: ['archetype_earth', 'archetype: earth', 'archetype', 'arcueid', 'arcueid brunestud', 'true ancestor', 'funny vamp', 'earth']
 };
 
 /**
@@ -312,7 +313,7 @@ export function getCePassiveStats(ce: any, servant?: any): CePassiveSummary {
 /**
  * Returns party-wide aura bonuses granted by a Craft Essence (when equipped to its matching servant).
  */
-export function getCePartyPassiveStats(ce: any, servant?: any): CePartyPassiveSummary {
+export function getCePartyPassiveStats(ce: any, servant?: any, isFieldMillenniumCastle?: boolean): CePartyPassiveSummary {
   const partyStats: CePartyPassiveSummary = {
     partyAtkUp: 0,
     partyDefUp: 0,
@@ -394,6 +395,12 @@ export function getCePartyPassiveStats(ce: any, servant?: any): CePartyPassiveSu
   // Tamamo no Mae: Party Arts +15%
   if (ceId === 'ce_bond_tamamo_no_mae' || ceName.includes("tamamo's fan club") || ceName.includes('tamamo club') || ceName.includes('fan club')) {
     partyStats.partyArtsUp += 15;
+  }
+  // Moon Margaret (Archetype: Earth): Party NP Damage +25% while on Millennium Castle Battlefield
+  if (ceId === 'ce_moon_margaret' || ceName.includes('moon margaret') || ceName.includes('ce1671')) {
+    if (isFieldMillenniumCastle) {
+      partyStats.partyNpDmgUp += 25;
+    }
   }
 
   return partyStats;
@@ -554,13 +561,13 @@ export function applyCeInitialCombatantEffects(combatant: any, allAllies?: any[]
 /**
  * Distributes party-wide auras from equipped CEs across all allies in the battle.
  */
-export function applyCePartyAuras(combatants: any[]): void {
+export function applyCePartyAuras(combatants: any[], isFieldMillenniumCastle?: boolean): void {
   if (!Array.isArray(combatants) || combatants.length === 0) return;
 
   for (const combatant of combatants) {
     if (!combatant || combatant.isDead || !combatant.servant?.equippedCe) continue;
     const ce = combatant.servant.equippedCe;
-    const partyStats = getCePartyPassiveStats(ce, combatant.servant);
+    const partyStats = getCePartyPassiveStats(ce, combatant.servant, isFieldMillenniumCastle);
 
     // Distribute auras to all combatants
     for (const ally of combatants) {

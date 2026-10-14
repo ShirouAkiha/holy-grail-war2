@@ -72,15 +72,15 @@ function renderProgressBar(percent: number): string {
   return '🌸'.repeat(filled) + '░'.repeat(total - filled);
 }
 
-export function getResolvedServantCardProps(targetServant: any, sTemplate?: any) {
+export function getResolvedServantCardProps(targetServant: any, sTemplate?: any, scene?: any) {
   const tmpl = sTemplate || targetServant?.template || targetServant;
-  const stage = targetServant?.selectedAscensionStage;
+  const stage = scene?.ascensionStage ?? targetServant?.selectedAscensionStage;
   const lvl = targetServant?.level || 1;
   const bondLvl = targetServant?.bondLevel || 1;
-  const cardArtUrl = resolveAscensionArtwork(targetServant, stage, lvl, bondLvl, tmpl?.cardArtUrl || targetServant?.cardArtUrl);
-  const spriteUrl = resolveAscensionSprite(targetServant, stage, lvl, bondLvl, tmpl?.spriteUrl || targetServant?.spriteUrl);
+  const cardArtUrl = scene?.speakerCardArtUrl || resolveAscensionArtwork(targetServant, stage, lvl, bondLvl, tmpl?.cardArtUrl || targetServant?.cardArtUrl);
+  const spriteUrl = scene?.speakerSpriteUrl || resolveAscensionSprite(targetServant, stage, lvl, bondLvl, tmpl?.spriteUrl || targetServant?.spriteUrl);
   return {
-    servantAvatarUrl: targetServant?.avatarUrl || tmpl?.avatarUrl,
+    servantAvatarUrl: scene?.speakerAvatarUrl || targetServant?.avatarUrl || tmpl?.avatarUrl,
     servantCardArtUrl: cardArtUrl,
     servantSpriteUrl: spriteUrl,
   };
@@ -970,7 +970,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const imageBuffer = await renderVisualNovelCard({
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
-        ...getResolvedServantCardProps(targetServant, sTemplate),
+        ...getResolvedServantCardProps(targetServant, sTemplate, scene1),
         backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene1, event),
         speakerName: scene1.speakerName || servantName,
         dialogueText: currentChunk,
@@ -1656,7 +1656,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const imageBuffer = await renderVisualNovelCard({
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
-        ...getResolvedServantCardProps(targetServant, sTemplate),
+        ...getResolvedServantCardProps(targetServant, sTemplate, scene1),
         backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene1, event),
         speakerName: scene1.speakerName || servantName,
         dialogueText: currentChunk,
@@ -1771,7 +1771,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const imageBuffer = await renderVisualNovelCard({
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
-        ...getResolvedServantCardProps(targetServant, sTemplate),
+        ...getResolvedServantCardProps(targetServant, sTemplate, scene),
         backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
         speakerName: scene.speakerName || servantName,
         dialogueText: currentChunk,
@@ -1903,7 +1903,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         const imageBuffer = await renderVisualNovelCard({
           servantName,
           servantClass: sTemplate.servantClass || 'Saber',
-          ...getResolvedServantCardProps(targetServant, sTemplate),
+          ...getResolvedServantCardProps(targetServant, sTemplate, scene),
           backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
           speakerName: scene.speakerName || servantName,
           dialogueText: currentRespChunk,
@@ -1945,7 +1945,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         const imageBuffer = await renderVisualNovelCard({
           servantName,
           servantClass: sTemplate.servantClass || 'Saber',
-          ...getResolvedServantCardProps(targetServant, sTemplate),
+          ...getResolvedServantCardProps(targetServant, sTemplate, scene),
           backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
           speakerName: scene.speakerName || servantName,
           dialogueText: currentRespChunk,
@@ -2022,7 +2022,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const imageBuffer = await renderVisualNovelCard({
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
-        ...getResolvedServantCardProps(updatedServant, sTemplate),
+        ...getResolvedServantCardProps(updatedServant, sTemplate, scene),
         backgroundImageUrl: resolveInterludeBackgroundUrl(updatedServant, scene, event),
         speakerName: scene.speakerName || servantName,
         dialogueText: currentRespChunk,
@@ -2201,7 +2201,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const imageBuffer = await renderVisualNovelCard({
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
-        ...getResolvedServantCardProps(updatedServant, sTemplate),
+        ...getResolvedServantCardProps(updatedServant, sTemplate, lastScene),
         backgroundImageUrl: resolveInterludeBackgroundUrl(updatedServant, lastScene, event),
         speakerName: lastScene.speakerName || servantName,
         dialogueText: lastScene.dialogueText,
@@ -2352,7 +2352,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         const imageBuffer = await renderVisualNovelCard({
           servantName,
           servantClass: sTemplate.servantClass || 'Saber',
-          ...getResolvedServantCardProps(targetServant, sTemplate),
+          ...getResolvedServantCardProps(targetServant, sTemplate, scene),
           backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
           speakerName: scene.speakerName || servantName,
           dialogueText: currentRespChunk,
@@ -2394,7 +2394,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         const imageBuffer = await renderVisualNovelCard({
           servantName,
           servantClass: sTemplate.servantClass || 'Saber',
-          ...getResolvedServantCardProps(targetServant, sTemplate),
+          ...getResolvedServantCardProps(targetServant, sTemplate, scene),
           backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
           speakerName: scene.speakerName || servantName,
           dialogueText: currentRespChunk,
@@ -2472,7 +2472,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const imageBuffer = await renderVisualNovelCard({
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
-        ...getResolvedServantCardProps(updatedServant, sTemplate),
+        ...getResolvedServantCardProps(updatedServant, sTemplate, scene),
         backgroundImageUrl: resolveInterludeBackgroundUrl(updatedServant, scene, event),
         speakerName: scene.speakerName || servantName,
         dialogueText: servantResponse,
@@ -2631,7 +2631,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         const imageBuffer = await renderVisualNovelCard({
           servantName,
           servantClass: sTemplate.servantClass || 'Saber',
-          ...getResolvedServantCardProps(updatedServant, sTemplate),
+          ...getResolvedServantCardProps(updatedServant, sTemplate, lastScene),
           backgroundImageUrl: resolveInterludeBackgroundUrl(updatedServant, lastScene, event),
           speakerName: lastScene.speakerName || servantName,
           dialogueText: lastDialogue,
@@ -2724,7 +2724,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const imageBuffer = await renderVisualNovelCard({
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
-        ...getResolvedServantCardProps(targetServant, sTemplate),
+        ...getResolvedServantCardProps(targetServant, sTemplate, scene),
         backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
         speakerName: scene.speakerName || servantName,
         dialogueText: currentChunk,

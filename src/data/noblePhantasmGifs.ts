@@ -170,6 +170,11 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     gifUrl: 'https://ella.janitorai.com/media-approved/HQmlf5uAXpkxz6B93nmbS.gif',
     fallbackGif: 'https://ella.janitorai.com/media-approved/HQmlf5uAXpkxz6B93nmbS.gif',
     chant: 'One step, fleeting shadow. Two steps, peerless edge. Three steps, absolute thrust... Mumyō Sandan-Zuki!'
+  },
+  'Archetype: Earth': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/_lDposzhmPLDeSsGf6k70.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/_lDposzhmPLDeSsGf6k70.gif',
+    chant: 'I shall reconstruct this celestial world... Awaken, True Ancestor Throne! MARBLE PHANTASM!'
   }
 };
 
@@ -179,8 +184,35 @@ const DEFAULT_NP_FALLBACK = 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif';
 /**
  * Returns a high quality GIF / animation link for a Servant's Noble Phantasm
  */
-export function getNoblePhantasmGif(servantOrTemplate: any): string {
+export function getNoblePhantasmGif(servantOrTemplate: any, stage?: number): string {
   if (!servantOrTemplate) return DEFAULT_NP_GIF;
+
+  // Check stage-dependent NP animation for Archetype: Earth
+  const servantId = (
+    servantOrTemplate.templateId ||
+    servantOrTemplate.id ||
+    servantOrTemplate.servant?.templateId ||
+    servantOrTemplate.servant?.template?.id ||
+    servantOrTemplate.servant?.id ||
+    servantOrTemplate.template?.id ||
+    ''
+  ).toLowerCase();
+  const rawName = (
+    servantOrTemplate.name ||
+    servantOrTemplate.nickname ||
+    servantOrTemplate.servant?.nickname ||
+    servantOrTemplate.servant?.name ||
+    servantOrTemplate.servant?.template?.name ||
+    servantOrTemplate.template?.name ||
+    ''
+  ).toLowerCase();
+  if (servantId.includes('archetype') || rawName.includes('archetype') || rawName.includes('arcueid') || servantId.includes('earth')) {
+    const effectiveStage = stage ?? servantOrTemplate.selectedAscensionStage ?? servantOrTemplate.servant?.selectedAscensionStage ?? servantOrTemplate.ascensionStage ?? servantOrTemplate.servant?.ascensionStage ?? 1;
+    if (effectiveStage === 2) {
+      return normalizeMediaUrl('https://ella.janitorai.com/media-approved/gc_jc1p1H5Gj6NlUuDG1Y.gif');
+    }
+    return normalizeMediaUrl('https://ella.janitorai.com/media-approved/_lDposzhmPLDeSsGf6k70.gif');
+  }
 
   // 1. Check direct servant template configuration
   const np = servantOrTemplate.noblePhantasm || servantOrTemplate.template?.noblePhantasm;
@@ -188,8 +220,6 @@ export function getNoblePhantasmGif(servantOrTemplate: any): string {
   if (np?.animationUrl && np.animationUrl.trim()) return normalizeMediaUrl(np.animationUrl.trim());
 
   // 2. Check admin-configured custom NP animation registry
-  const servantId = (servantOrTemplate.id || servantOrTemplate.templateId || servantOrTemplate.template?.id || '').toLowerCase();
-  const rawName = (servantOrTemplate.name || servantOrTemplate.template?.name || '').toLowerCase();
   if (servantId && CUSTOM_NP_ANIMATIONS_REGISTRY[servantId]?.gifUrl) {
     return normalizeMediaUrl(CUSTOM_NP_ANIMATIONS_REGISTRY[servantId].gifUrl);
   }

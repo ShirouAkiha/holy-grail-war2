@@ -2154,6 +2154,29 @@ function drawMinimalClashBanner(
   ctx.textAlign = 'center';
   ctx.fillText(roundTag, tagX + tagW / 2, tagY + 12);
 
+  // Field Status Badge (Top Left - Millennium Castle Battlefield)
+  const isCastleField = Boolean(
+    (p1.activeBuffs && p1.activeBuffs.some(b => b.type === 'millennium_castle_field')) ||
+    (p2.activeBuffs && p2.activeBuffs.some(b => b.type === 'millennium_castle_field')) ||
+    (log as any).isCastleField
+  );
+
+  if (isCastleField) {
+    const fieldTag = '🏰 FIELD: MILLENNIUM CASTLE';
+    ctx.font = 'bold 9.5px sans-serif';
+    const fieldW = ctx.measureText(fieldTag).width + 12;
+    ctx.fillStyle = 'rgba(88, 28, 135, 0.75)';
+    drawRoundRect(ctx, x + 10, y + 8, fieldW, 16, 3);
+    ctx.fill();
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 0.8;
+    drawRoundRect(ctx, x + 10, y + 8, fieldW, 16, 3);
+    ctx.stroke();
+    ctx.fillStyle = '#f3e8ff';
+    ctx.textAlign = 'center';
+    ctx.fillText(fieldTag, x + 10 + fieldW / 2, y + 20);
+  }
+
   // ----------------------------------------------------
   // LINE 1: Combatant Action Line (Actor >> Target)
   // Large, bold 18.5px font, generous horizontal room, zero 12-char cutting off
@@ -6475,13 +6498,36 @@ export async function renderBattleTurnSummary(
     if (loadedBuffImgs && loadedBuffImgs[i]) buffImageMap.set(url, loadedBuffImgs[i]);
   });
 
-  // Background - Deep Mystic Slate War Canvas
-  const bgGrad = ctx.createLinearGradient(0, 0, 640, 700);
-  bgGrad.addColorStop(0, '#090d18');
-  bgGrad.addColorStop(0.5, '#05070f');
-  bgGrad.addColorStop(1, '#0c0b16');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 640, 700);
+  const allActiveUnits = [activeP1, activeP1Ally, activeP2, activeP2Ally, ...resolvedTeamSolo].filter(Boolean);
+  const isCastleField = allActiveUnits.some(u =>
+    u.activeBuffs && u.activeBuffs.some((b: any) =>
+      b.type === 'millennium_castle_field' || (typeof b.name === 'string' && b.name.includes('Millennium Castle'))
+    )
+  );
+
+  let castleBgImg: any = null;
+  if (isCastleField) {
+    try {
+      castleBgImg = await loadImage('https://ella.janitorai.com/media-approved/mOEhq2x9RkL0KU_fI1DZK.webp');
+    } catch {
+      castleBgImg = null;
+    }
+  }
+
+  // Background - Deep Mystic Slate War Canvas or Millennium Castle
+  if (castleBgImg) {
+    ctx.drawImage(castleBgImg, 0, 0, 640, 700);
+    // Dark moody overlay for contrast with HUD cards
+    ctx.fillStyle = 'rgba(10, 15, 29, 0.72)';
+    ctx.fillRect(0, 0, 640, 700);
+  } else {
+    const bgGrad = ctx.createLinearGradient(0, 0, 640, 700);
+    bgGrad.addColorStop(0, '#090d18');
+    bgGrad.addColorStop(0.5, '#05070f');
+    bgGrad.addColorStop(1, '#0c0b16');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 640, 700);
+  }
 
   // Subtle Matte Slate Frame
   ctx.strokeStyle = '#334155';
