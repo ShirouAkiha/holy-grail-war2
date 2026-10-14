@@ -362,7 +362,19 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
 
   // If the Master owns multiple servants, include an interactive select dropdown to switch instantly!
   if (master.servants && master.servants.length > 1) {
-    const servantOptions = master.servants.slice(0, 25).map((s: any) => {
+    const totalServants = master.servants.length;
+    const totalPages = Math.ceil(totalServants / 20) || 1;
+    const safePage = Math.max(1, Math.min(page, totalPages));
+    const pageStart = (safePage - 1) * 20;
+    const pageEnd = pageStart + 20;
+
+    let pagedServants = [...master.servants.slice(pageStart, pageEnd)];
+    if (targetServant && !pagedServants.some((s: any) => s.id === targetServant.id)) {
+      pagedServants.unshift(targetServant);
+      if (pagedServants.length > 25) pagedServants = pagedServants.slice(0, 25);
+    }
+
+    const servantOptions = pagedServants.map((s: any) => {
       const sTemp = s.template || s;
       const sN = s.nickname || sTemp.name || 'Heroic Spirit';
       const sCls = sTemp.servantClass || 'Saber';
@@ -383,11 +395,34 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
 
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('vn_select_servant')
-      .setPlaceholder('🔄 Switch to another contracted Servant...')
+      .setPlaceholder(totalServants > 20 ? `Selected: ${targetServant.nickname || targetServant.template?.name || 'Servant'} (Page ${safePage}/${totalPages})` : '🔄 Switch to another contracted Servant...')
       .addOptions(servantOptions);
 
     const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
     rows.push(selectRow);
+
+    if (totalServants > 20) {
+      const pageNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`vn_pagedrop_prev_${safePage}:${targetServant.id}`)
+          .setLabel('◀ Prev Page')
+          .setEmoji('⬅️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(safePage <= 1),
+        new ButtonBuilder()
+          .setCustomId('vn_pagedrop_badge')
+          .setLabel(`Roster Page ${safePage} / ${totalPages}`)
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(true),
+        new ButtonBuilder()
+          .setCustomId(`vn_pagedrop_next_${safePage}:${targetServant.id}`)
+          .setLabel('Next Page ▶')
+          .setEmoji('➡️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(safePage >= totalPages)
+      );
+      rows.push(pageNavRow);
+    }
   }
 
   return rows;
@@ -439,11 +474,19 @@ export function buildBondRosterEmbed(master: any) {
   return embed;
 }
 
-export function buildBondRosterActionRows(master: any): ActionRowBuilder<any>[] {
+export function buildBondRosterActionRows(master: any, page: number = 1): ActionRowBuilder<any>[] {
   const rows: ActionRowBuilder<any>[] = [];
 
   if (master.servants && master.servants.length > 0) {
-    const servantOptions = master.servants.slice(0, 25).map((s: any) => {
+    const totalServants = master.servants.length;
+    const totalPages = Math.ceil(totalServants / 20) || 1;
+    const safePage = Math.max(1, Math.min(page, totalPages));
+    const pageStart = (safePage - 1) * 20;
+    const pageEnd = pageStart + 20;
+
+    const pagedServants = master.servants.slice(pageStart, pageEnd);
+
+    const servantOptions = pagedServants.map((s: any) => {
       const sTemp = s.template || s;
       const sN = s.nickname || sTemp.name || 'Heroic Spirit';
       const sCls = sTemp.servantClass || 'Saber';
@@ -464,10 +507,33 @@ export function buildBondRosterActionRows(master: any): ActionRowBuilder<any>[] 
 
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('vn_select_servant')
-      .setPlaceholder('👉 Choose a Servant to open their Bond Sanctum...')
+      .setPlaceholder(totalServants > 20 ? `👉 Choose a Servant (Page ${safePage}/${totalPages})...` : '👉 Choose a Servant to open their Bond Sanctum...')
       .addOptions(servantOptions);
 
     rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu));
+
+    if (totalServants > 20) {
+      const pageNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`vn_roster_prev_${safePage}`)
+          .setLabel('◀ Prev Page')
+          .setEmoji('⬅️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(safePage <= 1),
+        new ButtonBuilder()
+          .setCustomId('vn_roster_badge')
+          .setLabel(`Roster Page ${safePage} / ${totalPages}`)
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(true),
+        new ButtonBuilder()
+          .setCustomId(`vn_roster_next_${safePage}`)
+          .setLabel('Next Page ▶')
+          .setEmoji('➡️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(safePage >= totalPages)
+      );
+      rows.push(pageNavRow);
+    }
   }
 
   const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
@@ -1185,6 +1251,38 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       await interaction.deferUpdate();
       const rosterEmbed = buildBondRosterEmbed(master);
       const rows = buildBondRosterActionRows(master);
+      return interaction.editReply({ embeds: [rosterEmbed], files: [], components: rows });
+    }
+
+    if (btnId.startsWith('vn_pagedrop_prev_') || btnId.startsWith('vn_pagedrop_next_')) {
+      await interaction.deferUpdate();
+      const parts = btnId.split('_');
+      const pageAndTarget = parts[3]; // "curPage:targetId" or "curPage"
+      const subParts = pageAndTarget.split(':');
+      const curPage = parseInt(subParts[0], 10) || 1;
+      const targetServantId = subParts[1];
+      const isPrev = btnId.includes('prev');
+      const totalPages = Math.ceil((master.servants?.length || 1) / 20) || 1;
+      const newPage = isPrev ? Math.max(1, curPage - 1) : Math.min(totalPages, curPage + 1);
+
+      const targetServant = resolveTargetServant(master, null, targetServantId) || master.servants?.[0];
+      const embed = buildBondStatusEmbed(master, targetServant?.id);
+      const rows = buildBondActionRow(master, targetServant?.id, newPage);
+
+      return interaction.editReply({ embeds: [embed], files: [], components: rows });
+    }
+
+    if (btnId.startsWith('vn_roster_prev_') || btnId.startsWith('vn_roster_next_')) {
+      await interaction.deferUpdate();
+      const parts = btnId.split('_');
+      const curPage = parseInt(parts[3], 10) || 1;
+      const isPrev = btnId.includes('prev');
+      const totalPages = Math.ceil((master.servants?.length || 1) / 20) || 1;
+      const newPage = isPrev ? Math.max(1, curPage - 1) : Math.min(totalPages, curPage + 1);
+
+      const rosterEmbed = buildBondRosterEmbed(master);
+      const rows = buildBondRosterActionRows(master, newPage);
+
       return interaction.editReply({ embeds: [rosterEmbed], files: [], components: rows });
     }
 

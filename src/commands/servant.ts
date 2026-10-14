@@ -293,7 +293,8 @@ export async function buildServantHub(
   selectedServantId?: string,
   actionOutcomeMsg?: string,
   currentStep: number = 1,
-  isUpdate: boolean = false
+  isUpdate: boolean = false,
+  servantPage: number = 1
 ) {
   const targetServant = (selectedServantId ? findServantInRoster(master.servants, selectedServantId) : null) || activeServant || master.servants[0];
   const templateId = targetServant.templateId || targetServant.template?.id || targetServant.id;
@@ -780,14 +781,24 @@ export async function buildServantHub(
 
   // Roster Dropdown if multiple servants
   if (master.servants.length > 1) {
-    const seenServantIds = new Set<string>();
-    
-    // Ensure targetServant is ALWAYS included even if master owns > 25 servants
-    let rosterListForSelect = [...master.servants.slice(0, 25)];
+    const totalServants = master.servants.length;
+    const totalServantPages = Math.ceil(totalServants / 20) || 1;
+    const safeServantPage = Math.max(1, Math.min(servantPage, totalServantPages));
+
+    // Get paginated slice for current page
+    const pageStart = (safeServantPage - 1) * 20;
+    const pageEnd = pageStart + 20;
+    let rosterListForSelect = [...master.servants.slice(pageStart, pageEnd)];
+
+    // Ensure targetServant is ALWAYS included in option list if outside current page
     if (targetServant && !rosterListForSelect.some((s: any) => s.id === targetServant.id)) {
-      rosterListForSelect = [targetServant, ...master.servants.slice(0, 24)];
+      rosterListForSelect.unshift(targetServant);
+      if (rosterListForSelect.length > 25) {
+        rosterListForSelect = rosterListForSelect.slice(0, 25);
+      }
     }
 
+    const seenServantIds = new Set<string>();
     const servantOptions = rosterListForSelect.map((s: any, sIdx: number) => {
       let val = s.id || `servant_${sIdx}`;
       if (seenServantIds.has(val)) {
@@ -804,9 +815,8 @@ export async function buildServantHub(
       };
     });
 
-    const totalCount = master.servants.length;
-    const placeholderText = totalCount > 25
-      ? `Selected: ${sName} (${totalCount} Total Servants)`
+    const placeholderText = totalServants > 20
+      ? `Selected: ${sName} (Page ${safeServantPage}/${totalServantPages} • ${totalServants} Servants)`
       : `Selected: ${sName} (Lv.${lvl})`;
 
     const selectMenu = new StringSelectMenuBuilder()
@@ -814,6 +824,30 @@ export async function buildServantHub(
       .setPlaceholder(placeholderText.slice(0, 150))
       .addOptions(servantOptions);
     components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu));
+
+    // Dropdown Page Navigation row if > 20 Servants
+    if (totalServants > 20) {
+      const pageNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`servant_pagedrop_prev_${safeServantPage}`)
+          .setLabel('◀ Prev Page')
+          .setEmoji('⬅️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(safeServantPage <= 1),
+        new ButtonBuilder()
+          .setCustomId(`servant_pagedrop_badge`)
+          .setLabel(`Roster Page ${safeServantPage} / ${totalServantPages}`)
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(true),
+        new ButtonBuilder()
+          .setCustomId(`servant_pagedrop_next_${safeServantPage}`)
+          .setLabel('Next Page ▶')
+          .setEmoji('➡️')
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(safeServantPage >= totalServantPages)
+      );
+      components.push(pageNavRow);
+    }
   }
 
   if (category === 'profile') {
@@ -1026,6 +1060,7 @@ export function attachServantCollector(
   let currentCategory = initialCategory;
   let currentServantId = initialServant.id;
   let currentStep = 1;
+  let servantPage = 1;
 
   const collector = message.createMessageComponentCollector({
     idle: 120000,
@@ -1045,6 +1080,16 @@ export function attachServantCollector(
       let targetServant = findServantInRoster(master.servants, currentServantId) || master.servants[0];
       const sName = targetServant?.nickname || targetServant?.template?.name || 'Servant';
       let actionOutcomeMsg = '';
+
+      // DROPDOWN PAGE NAVIGATION
+      if (i.customId.startsWith('servant_pagedrop_prev_')) {
+        const cur = parseInt(i.customId.split('_')[3], 10) || 1;
+        servantPage = Math.max(1, cur - 1);
+      } else if (i.customId.startsWith('servant_pagedrop_next_')) {
+        const cur = parseInt(i.customId.split('_')[3], 10) || 1;
+        const totalP = Math.ceil((master.servants?.length || 1) / 20) || 1;
+        servantPage = Math.min(totalP, cur + 1);
+      }
 
       // TAB NAVIGATION
       if (i.customId.startsWith('btn_talk_servant') || i.customId === 'servant_act_talk') {
@@ -1858,7 +1903,8 @@ export function attachServantCollector(
         currentServantId,
         actionOutcomeMsg,
         currentStep,
-        true // isUpdate = true prevents sending file attachments on updates which causes Discord 500 Internal Server Error
+        true, // isUpdate = true
+        servantPage
       );
 
       if (i.deferred || i.replied) {

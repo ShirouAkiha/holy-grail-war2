@@ -64,7 +64,7 @@ export function buildInventoryHub(
   let itemLines: string[] = [];
   let selectOptions: any[] = [];
   let totalItems = 0;
-  const itemsPerPage = 8;
+  const itemsPerPage = 20;
 
   if (category === 'ces') {
     title = `🛡️ ${master.username}'s Vault — Owned Craft Essences`;
@@ -105,6 +105,8 @@ export function buildInventoryHub(
     }
 
     totalItems = candidateCes.length;
+    const startIndex = (page - 1) * itemsPerPage;
+    const paginated = candidateCes.slice(startIndex, startIndex + itemsPerPage);
 
     if (totalItems === 0) {
       itemLines = [
@@ -112,9 +114,6 @@ export function buildInventoryHub(
         `• *Summon Craft Essences from Gacha (/gacha) or defeat Shadow Servants in Raids (/raid)!*`
       ];
     } else {
-      const startIndex = (page - 1) * itemsPerPage;
-      const paginated = candidateCes.slice(startIndex, startIndex + itemsPerPage);
-
       itemLines = paginated.map((ce: any) => {
         const isEq = activeServant?.equippedCeId === ce.id || activeServant?.equippedCe?.instanceId === ce.instanceId;
         const stars = '★'.repeat(ce.rarity || 5);
@@ -135,7 +134,14 @@ export function buildInventoryHub(
     const usedOptionValues = new Set<string>(['none']);
     let hasSetDefault = false;
 
-    for (const ce of candidateCes.slice(0, 24)) {
+    let ceSelectItems = [...paginated];
+    if (selectedItemId && selectedItemId !== 'none' && !ceSelectItems.some((c: any) => c.id === selectedItemId || c.instanceId === selectedItemId)) {
+      const selCe = candidateCes.find((c: any) => c.id === selectedItemId || c.instanceId === selectedItemId);
+      if (selCe) ceSelectItems.unshift(selCe);
+    }
+    if (ceSelectItems.length > 24) ceSelectItems = ceSelectItems.slice(0, 24);
+
+    for (const ce of ceSelectItems) {
       const lockSymbol = ce.locked ? '🔒 ' : '🔓 ';
       const stars = '★'.repeat(ce.rarity || 5);
       const baseVal = ce.instanceId || ce.id || `ce_item`;
