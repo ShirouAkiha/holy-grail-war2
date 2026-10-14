@@ -737,47 +737,18 @@ export async function buildServantHub(
       .setStyle(category === 'ascension' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('servant_tab_equip_ce')
-      .setLabel('Equip CE')
+      .setLabel('CE Vault')
       .setEmoji('👔')
-      .setStyle(category === 'equip_ce' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('servant_tab_feed_ce')
-      .setLabel('Feed CEs')
-      .setEmoji('🧪')
-      .setStyle(category === 'feed_ce' ? ButtonStyle.Primary : ButtonStyle.Secondary)
-  );
-
-  const subNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      .setStyle((category === 'equip_ce' || category === 'feed_ce') ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('servant_tab_dialogue')
-      .setLabel('Voice Lines')
+      .setLabel('Lore & Studio')
       .setEmoji('💬')
-      .setStyle(category === 'dialogue' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('servant_tab_np')
-      .setLabel('Noble Phantasm')
-      .setEmoji('💥')
-      .setStyle(category === 'np' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('servant_tab_roster')
-      .setLabel('Roster')
-      .setEmoji('📜')
-      .setStyle(category === 'roster' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('servant_act_set_active')
-      .setLabel('Set Active')
-      .setEmoji('👑')
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(master.activeServantId === targetServant.id),
-    new ButtonBuilder()
-      .setCustomId('servant_act_boast')
-      .setLabel('Boast Profile')
-      .setEmoji('📢')
-      .setStyle(ButtonStyle.Danger)
+      .setStyle((category === 'dialogue' || category === 'np' || category === 'roster') ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
   const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>();
-  let components: any[] = [categoryNavRow, subNavRow];
+  let components: any[] = [categoryNavRow];
 
   // Roster Dropdown if multiple servants
   if (master.servants.length > 1) {
@@ -851,6 +822,14 @@ export async function buildServantHub(
   }
 
   if (category === 'profile') {
+    const profileActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`btn_talk_servant:${targetServant.id}`).setLabel('Talk to Servant').setEmoji('💬').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('🔊').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('servant_act_set_active').setLabel('Set Active').setEmoji('👑').setStyle(ButtonStyle.Success).setDisabled(master.activeServantId === targetServant.id),
+      new ButtonBuilder().setCustomId('servant_act_boast').setLabel('Boast Profile').setEmoji('📢').setStyle(ButtonStyle.Danger)
+    );
+    components.push(profileActionRow);
+
     const titleSelect = new StringSelectMenuBuilder()
       .setCustomId('servant_sel_title_preset')
       .setPlaceholder('👑 Select Custom Title / Nickname Preset...')
@@ -861,35 +840,10 @@ export async function buildServantHub(
         { label: '🌟 Title: Grand Spirit of Legend', description: 'Sets title to Grand Spirit of Legend', value: 'title_grand_hero' },
         { label: '✨ Reset to True Name', description: 'Resets nickname back to canon True Name', value: 'title_reset' }
       ]);
-    components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(titleSelect));
 
-    actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId(`btn_talk_servant:${targetServant.id}`).setLabel('Talk to Servant').setEmoji('💬').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('🔊').setStyle(ButtonStyle.Primary)
-    );
-    components.push(actionButtonsRow);
-  } else if (category === 'dialogue') {
-    const voiceSelect = new StringSelectMenuBuilder()
-      .setCustomId('servant_sel_voice_preset')
-      .setPlaceholder('💬 Apply Voice Line Chants & Dialogue Preset...')
-      .addOptions([
-        { label: '👑 Artoria Pendragon (Fate Canon)', description: 'True lore-accurate Fate/stay night & FGO voice lines', value: 'preset_artoria_canon' },
-        { label: '🗡️ EMIYA (Unlimited Blade Works)', description: 'Tracing projection incantation and combat quotes', value: 'preset_emiya_ubw' },
-        { label: '🔥 Gilgamesh (King of Heroes)', description: 'Vault of Babylon & Gate of Heaven quotes', value: 'preset_gilgamesh_king' },
-        { label: '🔱 Cú Chulainn (Gáe Bolg Thrust)', description: 'Ulster Hound battle shouts & pierced heart quotes', value: 'preset_cu_lancer' },
-        { label: '🖤 Jeanne d\'Arc Alter (Dragon Witch)', description: 'Dark flames of vengeance & burning quotes', value: 'preset_jalter_avenger' },
-        { label: '✨ Reset to Pure Canon Defaults', description: 'Clears custom lines & uses exact database lore defaults', value: 'preset_reset_lore' }
-      ]);
-    components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(voiceSelect));
-
-    actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal_combat').setLabel('Combat & NP Studio').setEmoji('⚔️').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal_tactical').setLabel('Skills & Stances Studio').setEmoji('🔮').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal_faceoff').setLabel('Rival Face-Off Studio').setEmoji('🔥').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('servant_act_reset_dialogue').setLabel('Reset Defaults').setEmoji('✨').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Replay Cut-In').setEmoji('🎬').setStyle(ButtonStyle.Success)
-    );
-    components.push(actionButtonsRow);
+    if (components.length < 5) {
+      components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(titleSelect));
+    }
   } else if (category === 'stats') {
     const avail = targetServant.availableStatPoints || 0;
     const alloc = targetServant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
@@ -915,75 +869,94 @@ export async function buildServantHub(
     );
 
     components.push(paramRow, ctrlRow);
-  } else if (category === 'equip_ce') {
-    const ownedCes = (master.craftEssences || []).filter(Boolean);
-    const ceCounts = new Map<string, { ce: any; count: number }>();
-    for (const c of ownedCes) {
-      if (!c) continue;
-      const id = c.id || c.name;
-      if (!ceCounts.has(id)) {
-        ceCounts.set(id, { ce: c, count: 1 });
-      } else {
-        ceCounts.get(id)!.count++;
-      }
-    }
-    const uniqueCes = Array.from(ceCounts.values());
-    const ceOptions = uniqueCes.slice(0, 25).map(({ ce, count }) => ({
-      label: `★${ce.rarity || 3} ${ce.name}${count > 1 ? ` (x${count})` : ''}`.slice(0, 100),
-      description: (ce.effectText || 'Craft Essence').slice(0, 100),
-      value: ce.id || ce.name,
-      default: targetServant.equippedCeId === ce.id
-    }));
-    if (ceOptions.length > 0) {
-      const ceSelect = new StringSelectMenuBuilder()
-        .setCustomId('servant_sel_equip_ce')
-        .setPlaceholder('👔 Select Craft Essence to equip...')
-        .addOptions(ceOptions);
-      components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(ceSelect));
-    }
-    actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('servant_act_unequip_ce').setLabel('Unequip Current CE').setEmoji('🚫').setStyle(ButtonStyle.Danger).setDisabled(!targetServant.equippedCe)
+  } else if (category === 'equip_ce' || category === 'feed_ce') {
+    const ceSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('servant_tab_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(category === 'equip_ce' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_tab_feed_ce').setLabel('Feed CEs').setEmoji('🧪').setStyle(category === 'feed_ce' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_act_set_active').setLabel('Set Active').setEmoji('👑').setStyle(ButtonStyle.Secondary).setDisabled(master.activeServantId === targetServant.id)
     );
-    components.push(actionButtonsRow);
-  } else if (category === 'feed_ce') {
-    const ownedCes = [...((master.craftEssences || []).filter(Boolean))].sort((a: any, b: any) => {
-      const aEmber = a.isEmber ? 1 : 0;
-      const bEmber = b.isEmber ? 1 : 0;
-      return bEmber - aEmber;
-    });
-    const emberCount = ownedCes.filter((c: any) => c.isEmber).length;
+    components.push(ceSubTabRow);
 
-    const usedFeedValues = new Set<string>();
-    const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => {
-      let val = c.instanceId || c.id || String(idx);
-      if (usedFeedValues.has(val)) {
-        val = `ce_feed_${idx}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    if (category === 'equip_ce') {
+      const ownedCes = (master.craftEssences || []).filter(Boolean);
+      const ceCounts = new Map<string, { ce: any; count: number }>();
+      for (const c of ownedCes) {
+        if (!c) continue;
+        const id = c.id || c.name;
+        if (!ceCounts.has(id)) {
+          ceCounts.set(id, { ce: c, count: 1 });
+        } else {
+          ceCounts.get(id)!.count++;
+        }
       }
-      usedFeedValues.add(val);
-      return {
-        label: `${c.isEmber ? '✨ ' : ''}${c.locked ? '🔒 ' : ''}★${c.rarity || 3} ${c.name} (+${getCeExpValue(c).toLocaleString()} XP)`.slice(0, 100),
-        description: (c.effectText || c.description || 'Craft Essence').slice(0, 100),
-        value: val
-      };
-    });
-    if (ceOptions.length > 0) {
-      const feedSelect = new StringSelectMenuBuilder()
-        .setCustomId('servant_sel_feed_ce')
-        .setPlaceholder('🧪 Select Craft Essence(s) or EXP Embers to synthesize (+EXP)...')
-        .setMinValues(1)
-        .setMaxValues(Math.min(ceOptions.length, 25))
-        .addOptions(ceOptions);
-      components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(feedSelect));
+      const uniqueCes = Array.from(ceCounts.values());
+      const ceOptions = uniqueCes.slice(0, 25).map(({ ce, count }) => ({
+        label: `★${ce.rarity || 3} ${ce.name}${count > 1 ? ` (x${count})` : ''}`.slice(0, 100),
+        description: (ce.effectText || 'Craft Essence').slice(0, 100),
+        value: ce.id || ce.name,
+        default: targetServant.equippedCeId === ce.id
+      }));
+      if (ceOptions.length > 0) {
+        const ceSelect = new StringSelectMenuBuilder()
+          .setCustomId('servant_sel_equip_ce')
+          .setPlaceholder('👔 Select Craft Essence to equip...')
+          .addOptions(ceOptions);
+        components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(ceSelect));
+      }
+    } else {
+      const ownedCes = [...((master.craftEssences || []).filter(Boolean))].sort((a: any, b: any) => {
+        const aEmber = a.isEmber ? 1 : 0;
+        const bEmber = b.isEmber ? 1 : 0;
+        return bEmber - aEmber;
+      });
+      const usedFeedValues = new Set<string>();
+      const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => {
+        let val = c.instanceId || c.id || String(idx);
+        if (usedFeedValues.has(val)) {
+          val = `ce_feed_${idx}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        }
+        usedFeedValues.add(val);
+        return {
+          label: `${c.isEmber ? '✨ ' : ''}${c.locked ? '🔒 ' : ''}★${c.rarity || 3} ${c.name} (+${getCeExpValue(c).toLocaleString()} XP)`.slice(0, 100),
+          description: (c.effectText || c.description || 'Craft Essence').slice(0, 100),
+          value: val
+        };
+      });
+      if (ceOptions.length > 0) {
+        const feedSelect = new StringSelectMenuBuilder()
+          .setCustomId('servant_sel_feed_ce')
+          .setPlaceholder('🧪 Select Craft Essence(s) or EXP Embers to synthesize (+EXP)...')
+          .setMinValues(1)
+          .setMaxValues(Math.min(ceOptions.length, 25))
+          .addOptions(ceOptions);
+        components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(feedSelect));
+      }
     }
-    const canReclaim = (targetServant.level || 1) > 1 || (targetServant.experience || 0) > 0;
-    actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('servant_act_feed_embers').setLabel(`✨ Feed Embers (${emberCount})`).setStyle(ButtonStyle.Success).setDisabled(emberCount === 0),
-      new ButtonBuilder().setCustomId('servant_act_feed_3star').setLabel('Feed 1-3★ CEs').setEmoji('⚡').setStyle(ButtonStyle.Primary).setDisabled(ownedCes.length === 0),
-      new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Feed Dupes').setEmoji('🔥').setStyle(ButtonStyle.Secondary).setDisabled(ownedCes.length === 0),
-      new ButtonBuilder().setCustomId('servant_act_unlock_all_ces').setLabel('Unlock All CEs').setEmoji('🔓').setStyle(ButtonStyle.Success).setDisabled(ownedCes.length === 0),
-      new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('De-level & Reclaim').setEmoji('⚗️').setStyle(ButtonStyle.Danger).setDisabled(!canReclaim)
+  } else if (category === 'dialogue' || category === 'np' || category === 'roster') {
+    const loreSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('servant_tab_dialogue').setLabel('Voice Lines').setEmoji('💬').setStyle(category === 'dialogue' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_tab_np').setLabel('Noble Phantasm').setEmoji('💥').setStyle(category === 'np' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_tab_roster').setLabel('Roster').setEmoji('📜').setStyle(category === 'roster' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_act_set_active').setLabel('Set Active').setEmoji('👑').setStyle(ButtonStyle.Secondary).setDisabled(master.activeServantId === targetServant.id)
     );
-    components.push(actionButtonsRow);
+    components.push(loreSubTabRow);
+
+    if (category === 'dialogue') {
+      const voiceSelect = new StringSelectMenuBuilder()
+        .setCustomId('servant_sel_voice_preset')
+        .setPlaceholder('💬 Apply Voice Line Chants & Dialogue Preset...')
+        .addOptions([
+          { label: '👑 Artoria Pendragon (Fate Canon)', description: 'True lore-accurate Fate/stay night & FGO voice lines', value: 'preset_artoria_canon' },
+          { label: '🗡️ EMIYA (Unlimited Blade Works)', description: 'Tracing projection incantation and combat quotes', value: 'preset_emiya_ubw' },
+          { label: '🔥 Gilgamesh (King of Heroes)', description: 'Vault of Babylon & Gate of Heaven quotes', value: 'preset_gilgamesh_king' },
+          { label: '🔱 Cú Chulainn (Gáe Bolg Thrust)', description: 'Ulster Hound battle shouts & pierced heart quotes', value: 'preset_cu_lancer' },
+          { label: '🖤 Jeanne d\'Arc Alter (Dragon Witch)', description: 'Dark flames of vengeance & burning quotes', value: 'preset_jalter_avenger' },
+          { label: '✨ Reset to Pure Canon Defaults', description: 'Clears custom lines & uses exact database lore defaults', value: 'preset_reset_lore' }
+        ]);
+      if (components.length < 5) {
+        components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(voiceSelect));
+      }
+    }
   } else if (category === 'ascension') {
     const stages = getUnlockedAscensionStages(templateId, lvl, bondLevel);
     if (stages.length > 0) {
@@ -1000,30 +973,7 @@ export async function buildServantHub(
         .setPlaceholder('🎨 Select Spirit Origin Ascension Stage...')
         .addOptions(stageOptions);
       components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(stageSelect));
-
-      const stageBtns = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId('servant_set_stage_1').setLabel('Stage 1').setEmoji('🌟').setStyle(targetServant.selectedAscensionStage == 1 || !targetServant.selectedAscensionStage ? ButtonStyle.Success : ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('servant_set_stage_2').setLabel('Stage 2').setEmoji('⚔️').setStyle(targetServant.selectedAscensionStage == 2 ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(!isAscensionStageUnlocked(2, lvl, bondLevel)),
-        new ButtonBuilder().setCustomId('servant_set_stage_3').setLabel('Stage 3').setEmoji('🛡️').setStyle(targetServant.selectedAscensionStage == 3 ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(!isAscensionStageUnlocked(3, lvl, bondLevel)),
-        new ButtonBuilder().setCustomId('servant_set_stage_4').setLabel('Final Art').setEmoji('👑').setStyle(targetServant.selectedAscensionStage == 4 ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(!isAscensionStageUnlocked(4, lvl, bondLevel))
-      );
-      if (stages.some(s => s.stage === 'costume')) {
-        stageBtns.addComponents(
-          new ButtonBuilder().setCustomId('servant_set_stage_costume').setLabel('Costume').setEmoji('🎭').setStyle(targetServant.selectedAscensionStage === 'costume' ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(!isAscensionStageUnlocked('costume', lvl, bondLevel))
-        );
-      }
-      components.push(stageBtns);
-    } else {
-      actionButtonsRow.addComponents(
-        new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('💬').setStyle(ButtonStyle.Primary)
-      );
-      components.push(actionButtonsRow);
     }
-  } else {
-    actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('💬').setStyle(ButtonStyle.Primary)
-    );
-    components.push(actionButtonsRow);
   }
 
   const crossHubShortcutsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
