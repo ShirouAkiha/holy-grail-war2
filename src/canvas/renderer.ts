@@ -9,7 +9,6 @@ import {
 import { calculateRadarCoordinates, RadarPoint } from '../engine/customization';
 import { SERVANT_DATABASE, getServantAvatarAndCardArt, getServantSprite } from '../data/servants';
 import { resolveAscensionArtwork, resolveAscensionSprite } from '../data/servantAscensions';
-import { resolveStageExpressionConfig, ExpressionEmotion } from '../data/servantExpressions';
 import { getRandomBackgroundUrl, findBackgroundPreset } from '../data/backgrounds';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
@@ -7368,11 +7367,6 @@ export interface VisualNovelCardOptions {
   sqGained?: number;
   currentBondLevel?: number;
   isComplete?: boolean;
-  // Stage-Aware Expression Overlay Options
-  expressionStage?: number;
-  expressionEmotion?: ExpressionEmotion | string;
-  expressionOverlayUrl?: string;
-  expressionBox?: { x: number; y: number; w: number; h: number };
 }
 
 /**
@@ -7580,26 +7574,6 @@ export async function renderVisualNovelCard(
           ctx.drawImage(spriteImg, spriteX, spriteY, spriteW, spriteH);
         }
         ctx.restore();
-
-        // Stage-Aware Expression Overlay Compositing
-        if (opts.expressionOverlayUrl || opts.expressionEmotion) {
-          try {
-            const emotionKey = String(opts.expressionEmotion || 'smile').toLowerCase();
-            const overlayUrl = opts.expressionOverlayUrl;
-
-            if (overlayUrl) {
-              const expImg = await loadCanvasImage(overlayUrl);
-              const targetFaceX = opts.expressionBox?.x ?? (spriteX + spriteW * 0.42);
-              const targetFaceY = opts.expressionBox?.y ?? (spriteY + spriteH * 0.15);
-              const targetFaceW = opts.expressionBox?.w ?? (spriteW * 0.16);
-              const targetFaceH = opts.expressionBox?.h ?? (spriteH * 0.18);
-              ctx.drawImage(expImg, targetFaceX, targetFaceY, targetFaceW, targetFaceH);
-            }
-          } catch {
-            // Non-destructive fallback: keep base sprite untouched
-          }
-        }
-
         break; // Successfully rendered primary or fallback sprite
       }
     } catch {
