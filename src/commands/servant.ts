@@ -962,7 +962,8 @@ export async function buildServantHub(
           .addOptions(ceOptions);
         components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(feedSelect));
       }
-    } else if (category === 'dialogue' || category === 'np' || category === 'roster') {
+    }
+  } else if (category === 'dialogue' || category === 'np' || category === 'roster') {
     const loreSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('servant_tab_dialogue').setLabel('Voice Lines').setEmoji('💬').setStyle(category === 'dialogue' ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('servant_tab_np').setLabel('Noble Phantasm').setEmoji('💥').setStyle(category === 'np' ? ButtonStyle.Success : ButtonStyle.Secondary),

@@ -279,7 +279,7 @@ export function buildBondStatusEmbed(master: any, targetServantId?: string) {
   return embed;
 }
 
-export function buildBondActionRow(master: any, targetServantId?: string): ActionRowBuilder<any>[] {
+export function buildBondActionRow(master: any, targetServantId?: string, page: number = 1): ActionRowBuilder<any>[] {
   const targetServant = resolveTargetServant(master, null, targetServantId);
   if (!targetServant) return [];
 
