@@ -878,11 +878,19 @@ export async function buildServantHub(
     });
     const emberCount = ownedCes.filter((c: any) => c.isEmber).length;
 
-    const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => ({
-      label: `${c.isEmber ? '✨ ' : ''}${c.locked ? '🔒 ' : ''}★${c.rarity || 3} ${c.name} (+${getCeExpValue(c).toLocaleString()} XP)`.slice(0, 100),
-      description: (c.effectText || c.description || 'Craft Essence').slice(0, 100),
-      value: c.instanceId || String(idx)
-    }));
+    const usedFeedValues = new Set<string>();
+    const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => {
+      let val = c.instanceId || c.id || String(idx);
+      if (usedFeedValues.has(val)) {
+        val = `ce_feed_${idx}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      }
+      usedFeedValues.add(val);
+      return {
+        label: `${c.isEmber ? '✨ ' : ''}${c.locked ? '🔒 ' : ''}★${c.rarity || 3} ${c.name} (+${getCeExpValue(c).toLocaleString()} XP)`.slice(0, 100),
+        description: (c.effectText || c.description || 'Craft Essence').slice(0, 100),
+        value: val
+      };
+    });
     if (ceOptions.length > 0) {
       const feedSelect = new StringSelectMenuBuilder()
         .setCustomId('servant_sel_feed_ce')

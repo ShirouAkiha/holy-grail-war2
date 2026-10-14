@@ -1045,7 +1045,8 @@ export function checkPacifistMilestone(
  */
 function createDarkSakuraRibbonCe(): CraftEssence {
   return {
-    id: `ce_dark_sakura_ribbon_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    id: 'ce_dark_sakura_ribbon',
+    instanceId: `ce_inst_ribbon_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     name: 'Ribbon of the Hollow Night',
     title: 'Bond Relic of the Abyssal Maiden',
     rarity: 5,
@@ -1244,11 +1245,15 @@ export async function handleDarkSakuraClimax(
         }
 
         let ceDropNotice = '';
-        // 25% chance of rare CE drop
-        if (Math.random() < 0.25 || record.spares >= 20) {
+        const alreadyOwnsRibbon = master.craftEssences.some((c: any) => c.id === 'ce_dark_sakura_ribbon' || c.name === 'Ribbon of the Hollow Night');
+        
+        if (!alreadyOwnsRibbon) {
           const ribbonCe = createDarkSakuraRibbonCe();
           master.craftEssences.push(ribbonCe);
           ceDropNotice = `\n  └─ 🌸 **SPECIAL DROP:** Obtained ★5 CE **[Ribbon of the Hollow Night]**!`;
+        } else {
+          master.manaPrisms = (master.manaPrisms || 0) + 500;
+          ceDropNotice = `\n  └─ 🔵 **DUPLICATE BONUS:** Granted **+500 Mana Prisms** *(Ribbon of the Hollow Night already unlocked in Vault)*!`;
         }
 
         record.spares += 1;

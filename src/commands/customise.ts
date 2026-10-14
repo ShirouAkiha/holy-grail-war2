@@ -151,7 +151,7 @@ export function buildInventoryHub(
         const lockTag = count > 0 ? (isAnyLocked ? ' 🔒[Locked]' : ' 🔓[Unlocked]') : '';
         const bondTag = ce.isBondCe ? ` 🎖️[Bond: ${ce.bondServantName || 'Heroic Spirit'}]` : '';
         const emberTag = ce.isEmber ? ` ✨[EXP Ember: +${(ce.expValue || 1000).toLocaleString()} XP]` : '';
-        const isSel = (selectedItemId && (selectedItemId === ce.id || matchingOwned.some((c: any) => c.instanceId === selectedItemId)));
+        const isSel = Boolean(selectedItemId && (selectedItemId === ce.id || matchingOwned.some((c: any) => c.instanceId === selectedItemId)));
         const pointer = isSel ? '▶ ' : '• ';
 
         return `${pointer}**[${stars}]** **${ce.name}** ${ownBadge}${lockTag}${bondTag}${emberTag} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
@@ -161,21 +161,35 @@ export function buildInventoryHub(
     const selCe = candidateCes.find(c => c.id === selectedItemId) || (candidateCes.length > 0 ? candidateCes[0] : null);
 
     selectOptions = [
-      { label: 'Unequip Current Essence', value: 'none', description: 'Remove active Craft Essence from Servant' },
-      ...candidateCes.slice(0, 24).map((ce: any) => {
-        const matchingOwned = ownedCes.find((c: any) => c.id === ce.id || c.instanceId === ce.id || c.instanceId === selectedItemId);
-        const count = ownedCountMap.get(ce.id) || 0;
-        const lockSymbol = matchingOwned ? (matchingOwned.locked ? '🔒 ' : '🔓 ') : '';
-        const countStr = count > 0 ? ` (x${count})` : ' [Catalog]';
-        const stars = '★'.repeat(ce.rarity || 5);
-        return {
-          label: `${stars} ${lockSymbol}${ce.name}${countStr}`.slice(0, 100),
-          value: matchingOwned?.instanceId || ce.id,
-          description: `+${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP • ${(ce.effectText || 'Craft Essence').slice(0, 40)}`,
-          default: selectedItemId === ce.id || selectedItemId === matchingOwned?.instanceId
-        };
-      })
+      { label: 'Unequip Current Essence', value: 'none', description: 'Remove active Craft Essence from Servant' }
     ];
+    const usedOptionValues = new Set<string>(['none']);
+
+    for (const ce of candidateCes.slice(0, 24)) {
+      const matchingOwned = ownedCes.find((c: any) => c.id === ce.id || c.instanceId === ce.id);
+      const count = ownedCountMap.get(ce.id) || 0;
+      const lockSymbol = matchingOwned ? (matchingOwned.locked ? '🔒 ' : '🔓 ') : '';
+      const countStr = count > 0 ? ` (x${count})` : ' [Catalog]';
+      const stars = '★'.repeat(ce.rarity || 5);
+
+      let targetVal = matchingOwned?.instanceId || ce.id;
+      if (usedOptionValues.has(targetVal)) {
+        targetVal = ce.id;
+      }
+      if (usedOptionValues.has(targetVal)) {
+        targetVal = `${ce.id}_${Math.random().toString(36).substring(2, 6)}`;
+      }
+      usedOptionValues.add(targetVal);
+
+      const isDefault = selectedItemId === ce.id || selectedItemId === matchingOwned?.instanceId || selectedItemId === targetVal;
+
+      selectOptions.push({
+        label: `${stars} ${lockSymbol}${ce.name}${countStr}`.slice(0, 100),
+        value: targetVal,
+        description: `+${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP • ${(ce.effectText || 'Craft Essence').slice(0, 40)}`,
+        default: isDefault
+      });
+    }
   } else if (category === 'servants') {
     title = `⚔️ ${master.username}'s Inventory — Contracted Servants`;
     const sClass = activeServant?.template?.servantClass || 'Saber';
