@@ -1484,25 +1484,10 @@ export async function getOrCreateMaster(
       craftEssences: []
     };
     masterStore.set(discordId, master);
-    
-    // Auto-restore roster for Padoru River if account was freshly initialized
-    const isPadoru = (username && (username.toLowerCase().includes('padoru') || username.toLowerCase().includes('dharmender'))) ||
-                     (discordId && (discordId.toLowerCase().includes('padoru') || discordId.toLowerCase().includes('dharmender')));
-    if (isPadoru) {
-      restorePadoruRoster(master);
-    }
-
     saveMastersToDisk();
   } else {
     let changed = false;
 
-    // Auto-heal empty roster for Padoru River
-    const isPadoru = (username && (username.toLowerCase().includes('padoru') || username.toLowerCase().includes('dharmender'))) ||
-                     (discordId && (discordId.toLowerCase().includes('padoru') || discordId.toLowerCase().includes('dharmender')));
-    if (isPadoru && (!master.servants || master.servants.length === 0)) {
-      restorePadoruRoster(master);
-      changed = true;
-    }
     // Strip default NPC stock photos if previously assigned
     if (master.avatarUrl && master.avatarUrl.includes('unsplash.com')) {
       master.avatarUrl = (avatarUrl && !avatarUrl.includes('unsplash.com')) ? avatarUrl : undefined;
@@ -1527,6 +1512,38 @@ export async function getOrCreateMaster(
     if (changed) {
       saveMastersToDisk();
     }
+  }
+
+  hydrateMasterServants(master);
+  return master;
+}
+
+/**
+ * Hydrates every servant instance in a Master's roster with its full ServantTemplate definition.
+ * Prevents nameless or missing-template entries when rendering menus and selection dropdowns.
+ */
+export function hydrateMasterServants(master: MasterProfile): MasterProfile {
+  if (!master || !master.servants || master.servants.length === 0) return master;
+  
+  const allThrone = getAllThroneServants();
+  let changed = false;
+
+  for (const s of master.servants) {
+    if (!s.template || !s.template.name) {
+      const tId = s.templateId || s.id;
+      const found = allThrone.find(t => t.id === tId) ||
+                    allThrone.find(t => t.id.toLowerCase() === (tId || '').toLowerCase()) ||
+                    allThrone.find(t => t.name.toLowerCase() === (tId || '').toLowerCase());
+      if (found) {
+        s.template = { ...found };
+        if (!s.templateId) s.templateId = found.id;
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) {
+    saveMastersToDisk();
   }
 
   return master;
@@ -2744,96 +2761,6 @@ export async function recordGrailWarVictory(discordId: string): Promise<void> {
     master.grailWarWins = (master.grailWarWins || 0) + 1;
     await saveMaster(master);
   }
-}
-
-/**
- * Automatically restores Padoru River's Holy Grail War team lineup and stats.
- */
-export function restorePadoruRoster(master: MasterProfile): MasterProfile {
-  if (!master.servants) master.servants = [];
-  master.saintQuartz = Math.max(master.saintQuartz || 0, 300);
-  master.commandSeals = 3;
-  master.actionPoints = 100;
-  master.maxActionPoints = 100;
-
-  const rosterTemplates = [
-    { id: 'lucia_lyozes', bondExp: 6800, bondLevel: 10, npLevel: 5, active: true },
-    { id: 'cu_chulainn', bondExp: 6800, bondLevel: 10, npLevel: 5, active: false },
-    { id: 'scathach', bondExp: 6800, bondLevel: 10, npLevel: 5, active: false },
-    { id: 'jeanne_d_arc_alter', bondExp: 5400, bondLevel: 9, npLevel: 5, active: false },
-    { id: 'jeanne_d_arc', bondExp: 6800, bondLevel: 10, npLevel: 5, active: false },
-    { id: 'mhx_alter', bondExp: 53, bondLevel: 1, npLevel: 5, active: false }
-  ];
-
-  const doorCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === 'ce_bond_lucia_lyozes') || {
-    id: 'ce_bond_lucia_lyozes',
-    name: 'The Closed Door Insignia',
-    rarity: 4,
-    cost: 9,
-    hpBonus: 100,
-    atkBonus: 100,
-    isBondCe: true,
-    bondServantId: 'lucia_lyozes',
-    effectText: 'When equipped to Lucernalia Lyozes: Increases Critical Damage by 30% and Critical Star Gather Rate by 30% for all allies.'
-  };
-
-  if (!master.craftEssences) master.craftEssences = [];
-  let existingCe = master.craftEssences.find((c: any) => c.id === doorCe.id);
-  if (!existingCe) {
-    existingCe = {
-      ...doorCe,
-      instanceId: `ce_inst_${doorCe.id}_${Date.now()}`,
-      locked: true
-    } as CraftEssence;
-    master.craftEssences.push(existingCe);
-  }
-
-  for (const item of rosterTemplates) {
-    const canonServant = SERVANT_DATABASE.find(s => s.id === item.id) || 
-      customServants.find(s => s.id === item.id);
-    if (!canonServant) continue;
-
-    const existingIdx = master.servants.findIndex((s: any) => 
-      s.templateId === item.id || s.id === item.id || s.template?.id === item.id
-    );
-
-    const isLucia = item.id === 'lucia_lyozes';
-    const servantInst: MasterServantInstance = {
-      id: `contract_${item.id}_${master.discordId}`,
-      masterId: master.id,
-      templateId: canonServant.id,
-      level: 90,
-      experience: 50000,
-      allocatedStats: { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 },
-      availableStatPoints: 10,
-      skillLevels: [10, 10, 10],
-      npLevel: item.npLevel,
-      customQuotes: {
-        summon: canonServant.summonQuote,
-        battleStart: canonServant.battleStartQuote,
-        noblePhantasm: canonServant.noblePhantasm?.chant,
-        victory: canonServant.victoryQuote,
-        defeat: canonServant.defeatQuote
-      },
-      bondLevel: item.bondLevel,
-      bondExp: item.bondExp,
-      template: { ...canonServant },
-      equippedCeId: isLucia ? existingCe.id : undefined,
-      equippedCe: isLucia ? { ...existingCe } : undefined
-    };
-
-    if (existingIdx !== -1) {
-      master.servants[existingIdx] = servantInst;
-    } else {
-      master.servants.push(servantInst);
-    }
-
-    if (item.active) {
-      master.activeServantId = servantInst.id;
-    }
-  }
-
-  return master;
 }
 
 // Fallback compatibility proxy if standard ORM methods are invoked
