@@ -870,14 +870,19 @@ export async function buildServantHub(
 
     components.push(paramRow, ctrlRow);
   } else if (category === 'equip_ce' || category === 'feed_ce') {
-    const ceSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('servant_tab_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(category === 'equip_ce' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('servant_tab_feed_ce').setLabel('Feed CEs').setEmoji('🧪').setStyle(category === 'feed_ce' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('servant_act_set_active').setLabel('Set Active').setEmoji('👑').setStyle(ButtonStyle.Secondary).setDisabled(master.activeServantId === targetServant.id)
-    );
-    components.push(ceSubTabRow);
-
     if (category === 'equip_ce') {
+      const ceSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('servant_tab_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('servant_tab_feed_ce').setLabel('Feed CEs').setEmoji('🧪').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('servant_act_set_active').setLabel('Set Active').setEmoji('👑').setStyle(ButtonStyle.Secondary).setDisabled(master.activeServantId === targetServant.id)
+      );
+      if (targetServant.equippedCe || targetServant.equippedCeId) {
+        ceSubTabRow.addComponents(
+          new ButtonBuilder().setCustomId('servant_act_unequip_ce').setLabel('Unequip CE').setEmoji('🚫').setStyle(ButtonStyle.Danger)
+        );
+      }
+      components.push(ceSubTabRow);
+
       const ownedCes = (master.craftEssences || []).filter(Boolean);
       const ceCounts = new Map<string, { ce: any; count: number }>();
       for (const c of ownedCes) {
@@ -904,6 +909,32 @@ export async function buildServantHub(
         components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(ceSelect));
       }
     } else {
+      // Feed CEs category
+      const ceSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('servant_tab_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('servant_tab_feed_ce').setLabel('Feed CEs').setEmoji('🧪').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('Reclaim EXP').setEmoji('⚗️').setStyle(ButtonStyle.Danger)
+      );
+      components.push(ceSubTabRow);
+
+      // Quick Feed Buttons Row
+      const quickFeedRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('servant_act_feed_embers').setLabel('Feed Embers').setEmoji('✨').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_feed_3star').setLabel('Feed 1-3★').setEmoji('⚡').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Feed Dupes').setEmoji('🔥').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All').setEmoji('☣️').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('servant_act_unlock_all_ces').setLabel('Unlock All').setEmoji('🔓').setStyle(ButtonStyle.Secondary)
+      );
+
+      if (components.length < 4) {
+        components.push(quickFeedRow);
+      } else {
+        ceSubTabRow.addComponents(
+          new ButtonBuilder().setCustomId('servant_act_feed_embers').setLabel('Embers').setEmoji('✨').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All').setEmoji('☣️').setStyle(ButtonStyle.Danger)
+        );
+      }
+
       const ownedCes = [...((master.craftEssences || []).filter(Boolean))].sort((a: any, b: any) => {
         const aEmber = a.isEmber ? 1 : 0;
         const bEmber = b.isEmber ? 1 : 0;
@@ -922,7 +953,7 @@ export async function buildServantHub(
           value: val
         };
       });
-      if (ceOptions.length > 0) {
+      if (ceOptions.length > 0 && components.length < 5) {
         const feedSelect = new StringSelectMenuBuilder()
           .setCustomId('servant_sel_feed_ce')
           .setPlaceholder('🧪 Select Craft Essence(s) or EXP Embers to synthesize (+EXP)...')
@@ -931,8 +962,7 @@ export async function buildServantHub(
           .addOptions(ceOptions);
         components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(feedSelect));
       }
-    }
-  } else if (category === 'dialogue' || category === 'np' || category === 'roster') {
+    } else if (category === 'dialogue' || category === 'np' || category === 'roster') {
     const loreSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('servant_tab_dialogue').setLabel('Voice Lines').setEmoji('💬').setStyle(category === 'dialogue' ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('servant_tab_np').setLabel('Noble Phantasm').setEmoji('💥').setStyle(category === 'np' ? ButtonStyle.Success : ButtonStyle.Secondary),
