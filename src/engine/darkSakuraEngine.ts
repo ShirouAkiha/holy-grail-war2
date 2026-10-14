@@ -1247,13 +1247,16 @@ export async function handleDarkSakuraClimax(
         let ceDropNotice = '';
         const alreadyOwnsRibbon = master.craftEssences.some((c: any) => c.id === 'ce_dark_sakura_ribbon' || c.name === 'Ribbon of the Hollow Night');
         
-        if (!alreadyOwnsRibbon) {
+        // Guaranteed on first unlock; 20% rare chance on subsequent spares
+        const isCeDropRoll = !alreadyOwnsRibbon || Math.random() < 0.20;
+
+        if (isCeDropRoll) {
           const ribbonCe = createDarkSakuraRibbonCe();
           master.craftEssences.push(ribbonCe);
-          ceDropNotice = `\n  └─ 🌸 **SPECIAL DROP:** Obtained ★5 CE **[Ribbon of the Hollow Night]**!`;
+          ceDropNotice = `\n  └─ 🌸 **RARE DROP:** Obtained ★5 CE **[Ribbon of the Hollow Night]**!`;
         } else {
           master.manaPrisms = (master.manaPrisms || 0) + 500;
-          ceDropNotice = `\n  └─ 🔵 **DUPLICATE BONUS:** Granted **+500 Mana Prisms** *(Ribbon of the Hollow Night already unlocked in Vault)*!`;
+          ceDropNotice = `\n  └─ 🔵 **BOUNTY BONUS:** Granted **+500 Mana Prisms**!`;
         }
 
         record.spares += 1;

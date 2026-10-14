@@ -67,42 +67,17 @@ export function buildInventoryHub(
   const itemsPerPage = 8;
 
   if (category === 'ces') {
-    const isCatalog = ceViewMode === 'all';
-    title = isCatalog
-      ? `🛡️ Master Archive — All Craft Essences (Catalog & Inventory)`
-      : `🛡️ ${master.username}'s Vault — Owned Craft Essences`;
+    title = `🛡️ ${master.username}'s Vault — Owned Craft Essences`;
 
     const activeCeName = activeServant?.equippedCe?.name;
     const activeCeRarity = activeServant?.equippedCe?.rarity || 5;
     const filterText = ceRarityFilter === 'all' ? 'All Tiers' : ceRarityFilter === 'bond' ? '🎖️ Bond 10' : ceRarityFilter === 'embers' ? '✨ EXP Embers' : `★${ceRarityFilter}`;
     equippedBanner = activeCeName
-      ? `✅ Active Equipped: **${activeCeName}** (★${activeCeRarity}) on **${servantName}**.\n*Mode: **${isCatalog ? '📖 All Catalog (Archive)' : '💼 Owned Vault'}** | Filter: **${filterText}**${ceSearchQuery ? ` | Search: "${ceSearchQuery}"` : ''}*`
-      : `⚠️ **No Craft Essence equipped.** Select an item below and press **Equip**.\n*Mode: **${isCatalog ? '📖 All Catalog (Archive)' : '💼 Owned Vault'}** | Filter: **${filterText}**${ceSearchQuery ? ` | Search: "${ceSearchQuery}"` : ''}*`;
+      ? `✅ Active Equipped: **${activeCeName}** (★${activeCeRarity}) on **${servantName}**.\n*Mode: **💼 Vault (Owned CEs)** | Filter: **${filterText}**${ceSearchQuery ? ` | Search: "${ceSearchQuery}"` : ''}*`
+      : `⚠️ **No Craft Essence equipped.** Select an item below and press **Equip**.\n*Mode: **💼 Vault (Owned CEs)** | Filter: **${filterText}**${ceSearchQuery ? ` | Search: "${ceSearchQuery}"` : ''}*`;
 
-    // Map owned counts
-    const ownedCountMap = new Map<string, number>();
-    for (const c of ownedCes) {
-      if (!c || !c.id) continue;
-      ownedCountMap.set(c.id, (ownedCountMap.get(c.id) || 0) + 1);
-    }
-
-    // Build source list: combine CRAFT_ESSENCE_DATABASE + any custom owned CEs
-    const allKnownCesMap = new Map<string, any>();
-    for (const ce of CRAFT_ESSENCE_DATABASE) {
-      allKnownCesMap.set(ce.id, ce);
-    }
-    for (const c of ownedCes) {
-      if (c && c.id && !allKnownCesMap.has(c.id)) {
-        allKnownCesMap.set(c.id, c);
-      }
-    }
-
-    let candidateCes = Array.from(allKnownCesMap.values());
-
-    // Filter by view mode (all catalog vs owned only)
-    if (ceViewMode === 'owned') {
-      candidateCes = candidateCes.filter(c => (ownedCountMap.get(c.id) || 0) > 0);
-    }
+    // Filter candidate CEs strictly from owned CEs
+    let candidateCes = [...ownedCes];
 
     // Filter by rarity / bond / embers
     if (ceRarityFilter === 5) {
@@ -134,59 +109,54 @@ export function buildInventoryHub(
     if (totalItems === 0) {
       itemLines = [
         `• *No Craft Essences match your current filter (${ceSearchQuery ? `Search: "${ceSearchQuery}"` : ceRarityFilter}).*`,
-        `• *Try toggling to **[All CEs]** or clearing the search term!*`
+        `• *Summon Craft Essences from Gacha (/gacha) or defeat Shadow Servants in Raids (/raid)!*`
       ];
     } else {
       const startIndex = (page - 1) * itemsPerPage;
       const paginated = candidateCes.slice(startIndex, startIndex + itemsPerPage);
 
       itemLines = paginated.map((ce: any) => {
-        const matchingOwned = ownedCes.filter((c: any) => c.id === ce.id || c.instanceId === ce.id);
-        const count = ownedCountMap.get(ce.id) || 0;
-        const isEq = activeServant?.equippedCeId === ce.id;
+        const isEq = activeServant?.equippedCeId === ce.id || activeServant?.equippedCe?.instanceId === ce.instanceId;
         const stars = '★'.repeat(ce.rarity || 5);
         const eqBadge = isEq ? ' **[EQUIPPED]**' : '';
-        const ownBadge = count > 0 ? `\`[Owned ×${count}]\`` : `\`[Catalog]\``;
-        const isAnyLocked = matchingOwned.some((c: any) => c.locked);
-        const lockTag = count > 0 ? (isAnyLocked ? ' 🔒[Locked]' : ' 🔓[Unlocked]') : '';
+        const lockTag = ce.locked ? ' 🔒[Locked]' : ' 🔓[Unlocked]';
         const bondTag = ce.isBondCe ? ` 🎖️[Bond: ${ce.bondServantName || 'Heroic Spirit'}]` : '';
         const emberTag = ce.isEmber ? ` ✨[EXP Ember: +${(ce.expValue || 1000).toLocaleString()} XP]` : '';
-        const isSel = Boolean(selectedItemId && (selectedItemId === ce.id || matchingOwned.some((c: any) => c.instanceId === selectedItemId)));
+        const isSel = Boolean(selectedItemId && (selectedItemId === ce.id || selectedItemId === ce.instanceId));
         const pointer = isSel ? '▶ ' : '• ';
 
-        return `${pointer}**[${stars}]** **${ce.name}** ${ownBadge}${lockTag}${bondTag}${emberTag} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
+        return `${pointer}**[${stars}]** **${ce.name}**${lockTag}${bondTag}${emberTag} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
       });
     }
-
-    const selCe = candidateCes.find(c => c.id === selectedItemId) || (candidateCes.length > 0 ? candidateCes[0] : null);
 
     selectOptions = [
       { label: 'Unequip Current Essence', value: 'none', description: 'Remove active Craft Essence from Servant' }
     ];
     const usedOptionValues = new Set<string>(['none']);
+    let hasSetDefault = false;
 
     for (const ce of candidateCes.slice(0, 24)) {
-      const matchingOwned = ownedCes.find((c: any) => c.id === ce.id || c.instanceId === ce.id);
-      const count = ownedCountMap.get(ce.id) || 0;
-      const lockSymbol = matchingOwned ? (matchingOwned.locked ? '🔒 ' : '🔓 ') : '';
-      const countStr = count > 0 ? ` (x${count})` : ' [Catalog]';
+      const lockSymbol = ce.locked ? '🔒 ' : '🔓 ';
       const stars = '★'.repeat(ce.rarity || 5);
+      const baseVal = ce.instanceId || ce.id || `ce_item`;
 
-      let targetVal = matchingOwned?.instanceId || ce.id;
-      if (usedOptionValues.has(targetVal)) {
-        targetVal = ce.id;
-      }
-      if (usedOptionValues.has(targetVal)) {
-        targetVal = `${ce.id}_${Math.random().toString(36).substring(2, 6)}`;
+      let targetVal = baseVal;
+      let counter = 1;
+      while (usedOptionValues.has(targetVal)) {
+        targetVal = `${baseVal}_${counter++}`;
       }
       usedOptionValues.add(targetVal);
 
-      const isDefault = selectedItemId === ce.id || selectedItemId === matchingOwned?.instanceId || selectedItemId === targetVal;
+      let isDefault = false;
+      if (!hasSetDefault && selectedItemId && (selectedItemId === ce.id || selectedItemId === ce.instanceId || selectedItemId === targetVal)) {
+        isDefault = true;
+        hasSetDefault = true;
+      }
 
       selectOptions.push({
-        label: `${stars} ${lockSymbol}${ce.name}${countStr}`.slice(0, 100),
+        label: `${stars} ${lockSymbol}${ce.name}`.slice(0, 100),
         value: targetVal,
-        description: `+${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP • ${(ce.effectText || 'Craft Essence').slice(0, 40)}`,
+        description: `+${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP • ${(ce.effectText || ce.description || 'Craft Essence').slice(0, 40)}`,
         default: isDefault
       });
     }
@@ -307,10 +277,10 @@ export function buildInventoryHub(
   if (category === 'ces') {
     filterRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
-        .setCustomId('inv_toggle_ce_mode')
-        .setLabel(ceViewMode === 'all' ? 'Catalog (All CEs)' : 'Vault (Owned Only)')
-        .setStyle(ceViewMode === 'all' ? ButtonStyle.Primary : ButtonStyle.Secondary)
-        .setEmoji('📚'),
+        .setCustomId('inv_filter_ce_all')
+        .setLabel('All Vault CEs')
+        .setStyle(ceRarityFilter === 'all' ? ButtonStyle.Success : ButtonStyle.Secondary)
+        .setEmoji('💼'),
       new ButtonBuilder()
         .setCustomId('inv_filter_ce_5star')
         .setLabel('★5 SSR')
@@ -383,7 +353,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
   let currentCategory: 'ces' | 'servants' | 'seals' | 'items' = 'ces';
   let currentPage = 1;
   let selectedItemId: string | undefined = activeServant?.equippedCeId;
-  let ceViewMode: 'all' | 'owned' = 'all';
+  let ceViewMode: 'all' | 'owned' = 'owned';
   let ceRarityFilter: 'all' | 5 | 4 | 3 | 'bond' | 'embers' = 'all';
   let ceSearchQuery = '';
 
@@ -422,9 +392,9 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
         selectedItemId = 'item_sq';
       }
 
-      // CE View Mode Toggle
-      else if (customId === 'inv_toggle_ce_mode') {
-        ceViewMode = ceViewMode === 'all' ? 'owned' : 'all';
+      // CE Rarity Filters
+      else if (customId === 'inv_filter_ce_all') {
+        ceRarityFilter = 'all';
         currentPage = 1;
       }
 
@@ -461,7 +431,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
       // Action: Lock / Unlock Toggle
       else if (customId === 'inv_act_lock_toggle') {
         if (currentCategory === 'ces') {
-          const targetCe = ownedCes.find((c: any) => c.instanceId === selectedItemId || c.id === selectedItemId);
+          const targetCe = ownedCes.find((c: any) => c.instanceId === selectedItemId || c.id === selectedItemId || (c.instanceId && selectedItemId?.startsWith(c.instanceId)) || (c.id && selectedItemId?.startsWith(c.id)));
           if (targetCe) {
             targetCe.locked = !targetCe.locked;
             await saveMaster(master);
@@ -510,7 +480,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
               activeServant.equippedCe = undefined;
             }
           } else {
-            const picked = ownedCes.find((c: any) => c.instanceId === selectedItemId || c.id === selectedItemId) || CRAFT_ESSENCE_DATABASE.find(c => c.id === selectedItemId);
+            const picked = ownedCes.find((c: any) => c.instanceId === selectedItemId || c.id === selectedItemId || (c.instanceId && selectedItemId?.startsWith(c.instanceId)) || (c.id && selectedItemId?.startsWith(c.id))) || CRAFT_ESSENCE_DATABASE.find(c => c.id === selectedItemId);
             if (picked && activeServant) {
               activeServant.equippedCeId = picked.id;
               activeServant.equippedCe = picked;
