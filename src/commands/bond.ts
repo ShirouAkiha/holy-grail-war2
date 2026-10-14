@@ -36,7 +36,7 @@ import { renderVisualNovelCard } from '../canvas/renderer';
 import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
 import { BACKGROUND_PRESETS, findBackgroundPreset } from '../data/backgrounds';
 import { resolveAscensionArtwork, resolveAscensionSprite } from '../data/servantAscensions';
-import { resolveStageExpressionConfig, SERVANT_EXPRESSIONS, ExpressionEmotion } from '../data/servantExpressions';
+
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -56,7 +56,6 @@ export const data = new SlashCommandBuilder()
         { name: '🎁 Present Gifts & Afternoon Tea (Boost Bond EXP)', value: 'gift' },
         { name: '⚔️ Master-Servant Sparring & Drills (+80 Bond EXP)', value: 'spar' },
         { name: '🎙️ Voice Quotes & My Room Lines', value: 'quotes' },
-        { name: '🧪 Expression Testing Lab (Test stage sprites & expressions)', value: 'expression_lab' },
         { name: '❓ Ways to Gain Bond Guide', value: 'guide' }
       )
   )
@@ -331,10 +330,6 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
     new ButtonBuilder()
       .setCustomId(safeCustomId(`vn_view_quotes:${sKey}`))
       .setLabel('Voice Quotes 🎙️')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(safeCustomId(`vn_exp_lab:${sKey}`))
-      .setLabel('Expression Lab 🧪')
       .setStyle(ButtonStyle.Secondary)
   ];
 
@@ -735,87 +730,7 @@ export function buildBondGuideEmbed() {
     .setFooter({ text: 'Reach Bond Lv. 5 (1,400 EXP) for +10% Card Potency & Bond Lv. 10 (6,800 EXP) for Exclusive CE!' });
 }
 
-export async function handleExpressionLabView(
-  master: any,
-  targetServant: any,
-  stage: number = 1,
-  emotion: string = 'smile'
-) {
-  const sTemplate = targetServant.template || targetServant;
-  const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
-  const sKey = getServantCompactKey(targetServant, master);
-  const servantId = sTemplate.id || targetServant.templateId || targetServant.id;
 
-  const expConfig = resolveStageExpressionConfig(servantId, stage);
-  const spriteUrl = resolveAscensionSprite(servantId, stage) || targetServant.spriteUrl || sTemplate.spriteUrl;
-
-  const cardBuffer = await renderVisualNovelCard({
-    servantName: servantName,
-    servantClass: sTemplate.className || sTemplate.class || 'Saber',
-    servantSpriteUrl: spriteUrl,
-    title: 'Bond Sanctum Visual Novel Stage',
-    speakerName: servantName,
-    dialogueText: `[Expression Lab] Testing stage ${stage} with expression "${emotion.toUpperCase()}".`,
-    backgroundImageUrl: findBackgroundPreset(targetServant.selectedBackground || 'misaki_walkway')?.url,
-    expressionStage: stage,
-    expressionEmotion: emotion as ExpressionEmotion,
-    expressionOverlayUrl: expConfig ? (typeof expConfig.emotions[emotion] === 'string' ? expConfig.emotions[emotion] as string : expConfig.sheetUrl) : undefined,
-    expressionBox: expConfig?.baseFaceBox ? {
-      x: expConfig.baseFaceBox.x,
-      y: expConfig.baseFaceBox.y,
-      w: expConfig.baseFaceBox.w,
-      h: expConfig.baseFaceBox.h
-    } : undefined
-  });
-
-  const attachment = new AttachmentBuilder(cardBuffer, { name: 'expression_lab.png' });
-
-  const expEmbed = new EmbedBuilder()
-    .setTitle(`🧪 Expression Testing Lab — ${servantName}`)
-    .setDescription(
-      `Testing **Ascension Stage ${stage}** with expression **\`${emotion.toUpperCase()}\`**.\n\n` +
-      (expConfig
-        ? `✅ **Expression Config Found**: Stage ${expConfig.stage} (${expConfig.stageName})\n` +
-          `• **Available Emotions**: ${Object.keys(expConfig.emotions).map(e => `\`${e}\``).join(', ')}`
-        : `⚠️ *No custom expression sheet mapped for Stage ${stage} yet. Displaying base sprite.*`)
-    )
-    .setColor(0x9333ea)
-    .setImage('attachment://expression_lab.png')
-    .setFooter({ text: 'Use buttons below to switch expressions and ascension stages live!' });
-
-  const emotionList = ['smile', 'angry', 'blush', 'wink', 'shock'];
-  const emotionRowComponents = emotionList.map(emo => 
-    new ButtonBuilder()
-      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${stage}:${emo}`))
-      .setLabel(emo === 'smile' ? '😊 Smile' : emo === 'angry' ? '😠 Angry' : emo === 'blush' ? '😳 Blush' : emo === 'wink' ? '😉 Wink' : '😱 Shock')
-      .setStyle(emo === emotion ? ButtonStyle.Primary : ButtonStyle.Secondary)
-  );
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(emotionRowComponents);
-
-  const stageRowComponents: ButtonBuilder[] = [
-    new ButtonBuilder()
-      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${stage}:neutral`))
-      .setLabel('😐 Neutral')
-      .setStyle(emotion === 'neutral' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    ...([1, 2, 3].map(st => 
-      new ButtonBuilder()
-        .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${st}:${emotion}`))
-        .setLabel(`Stage ${st}`)
-        .setStyle(st === stage ? ButtonStyle.Success : ButtonStyle.Secondary)
-    )),
-    new ButtonBuilder()
-      .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
-      .setLabel('🔙 Back')
-      .setStyle(ButtonStyle.Danger)
-  ];
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(stageRowComponents);
-
-  return {
-    embeds: [expEmbed],
-    files: [attachment],
-    components: [row1, row2]
-  };
-}
 
 // ==========================================
 // 3. MAIN EXECUTE HANDLER
@@ -1123,10 +1038,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     }
 
-    if (viewOption === 'expression_lab') {
-      const view = await handleExpressionLabView(master, targetServant, 1, 'smile');
-      return interaction.editReply(view);
-    }
+
 
     const embed = buildBondStatusEmbed(master, targetServant.id);
     const rows = buildBondActionRow(master, targetServant.id);
@@ -1369,20 +1281,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     let servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
     let sKey = getServantCompactKey(targetServant, master);
 
-    if (btnId === 'vn_exp_lab' || btnId.startsWith('vn_exp_lab')) {
-      await interaction.deferUpdate();
-      const view = await handleExpressionLabView(master, targetServant, 1, 'smile');
-      return interaction.editReply(view);
-    }
 
-    if (btnId === 'vn_exp_set' || btnId.startsWith('vn_exp_set')) {
-      await interaction.deferUpdate();
-      const setParts = customId.split(':');
-      const setStage = parseInt(setParts[2] || '1', 10) || 1;
-      const setEmotion = setParts[3] || 'smile';
-      const view = await handleExpressionLabView(master, targetServant, setStage, setEmotion);
-      return interaction.editReply(view);
-    }
 
     if (btnId.startsWith('ce_art_bond')) {
       const bCe = getBondCraftEssenceForServant(targetServant.templateId || sTemplate.id || targetServant.id, servantName);
