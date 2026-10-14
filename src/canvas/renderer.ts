@@ -7368,11 +7368,11 @@ export interface VisualNovelCardOptions {
   sqGained?: number;
   currentBondLevel?: number;
   isComplete?: boolean;
-  // Stage-Aware Expression System
+  // Stage-Aware Expression Overlay Options
   expressionStage?: number;
   expressionEmotion?: ExpressionEmotion | string;
   expressionOverlayUrl?: string;
-  expressionBox?: { xPercent: number; yPercent: number; wPercent: number; hPercent: number };
+  expressionBox?: { x: number; y: number; w: number; h: number };
 }
 
 /**
@@ -7584,29 +7584,19 @@ export async function renderVisualNovelCard(
         // Stage-Aware Expression Overlay Compositing
         if (opts.expressionOverlayUrl || opts.expressionEmotion) {
           try {
-            const expConfig = resolveStageExpressionConfig(opts.servantName || opts.speakerName, opts.expressionStage || 1);
-            const emotionKey = (opts.expressionEmotion || 'neutral').toLowerCase();
-            const faceInfo = expConfig?.faces?.[emotionKey as any];
-            const overlayUrl = opts.expressionOverlayUrl || faceInfo?.customOverlayUrl;
-            const faceBox = opts.expressionBox || expConfig?.faceBox || { xPercent: 46, yPercent: 12, wPercent: 14, hPercent: 12 };
+            const emotionKey = String(opts.expressionEmotion || 'smile').toLowerCase();
+            const overlayUrl = opts.expressionOverlayUrl;
 
             if (overlayUrl) {
-              const faceImg = await loadImage(overlayUrl);
-              if (faceImg && faceImg.width && faceImg.height) {
-                const targetFx = spriteX + spriteW * (faceBox.xPercent / 100);
-                const targetFy = spriteY + spriteH * (faceBox.yPercent / 100);
-                const targetFw = spriteW * (faceBox.wPercent / 100);
-                const targetFh = spriteH * (faceBox.hPercent / 100);
-
-                ctx.save();
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-                ctx.shadowBlur = 10;
-                ctx.drawImage(faceImg, targetFx, targetFy, targetFw, targetFh);
-                ctx.restore();
-              }
+              const expImg = await loadCanvasImage(overlayUrl);
+              const targetFaceX = opts.expressionBox?.x ?? (spriteX + spriteW * 0.42);
+              const targetFaceY = opts.expressionBox?.y ?? (spriteY + spriteH * 0.15);
+              const targetFaceW = opts.expressionBox?.w ?? (spriteW * 0.16);
+              const targetFaceH = opts.expressionBox?.h ?? (spriteH * 0.18);
+              ctx.drawImage(expImg, targetFaceX, targetFaceY, targetFaceW, targetFaceH);
             }
           } catch {
-            // Expression overlay failure is safely ignored to preserve base sprite
+            // Non-destructive fallback: keep base sprite untouched
           }
         }
 

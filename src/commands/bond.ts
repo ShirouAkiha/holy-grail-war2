@@ -744,89 +744,73 @@ export async function handleExpressionLabView(
   const sTemplate = targetServant.template || targetServant;
   const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
   const sKey = getServantCompactKey(targetServant, master);
+  const servantId = sTemplate.id || targetServant.templateId || targetServant.id;
 
-  const activeStage = stage || targetServant.selectedAscensionStage || 1;
-  const currentEmotion = emotion || 'smile';
+  const expConfig = resolveStageExpressionConfig(servantId, stage);
+  const spriteUrl = resolveAscensionSprite(servantId, stage) || targetServant.spriteUrl || sTemplate.spriteUrl;
 
-  const expConfig = resolveStageExpressionConfig(servantName, activeStage);
-  const faceInfo = expConfig?.faces?.[currentEmotion as ExpressionEmotion];
-  const emotionLabel = faceInfo?.label || currentEmotion.toUpperCase();
-
-  const imageBuffer = await renderVisualNovelCard({
-    servantName,
-    servantClass: sTemplate.servantClass || 'Saber',
-    ...getResolvedServantCardProps(targetServant, sTemplate),
-    backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant),
+  const cardBuffer = await renderVisualNovelCard({
+    servantName: servantName,
+    servantClass: sTemplate.className || sTemplate.class || 'Saber',
+    servantSpriteUrl: spriteUrl,
+    title: 'Bond Sanctum Visual Novel Stage',
     speakerName: servantName,
-    dialogueText: `❝ Expression Test Mode: [${emotionLabel}] on Ascension Stage ${activeStage}! Testing facial sprite compositing and stage alignment. ❞`,
-    title: `🧪 Expression Testing Lab — ${servantName}`,
-    subtitle: `Stage ${activeStage} (${expConfig?.stageName || 'Ascension Sprite'}) • ${emotionLabel}`,
-    expressionStage: activeStage,
-    expressionEmotion: currentEmotion as ExpressionEmotion,
-    reactionEmotion: currentEmotion,
-    isComplete: true
+    dialogueText: `[Expression Lab] Testing stage ${stage} with expression "${emotion.toUpperCase()}".`,
+    backgroundImageUrl: findBackgroundPreset(targetServant.selectedBackground || 'misaki_walkway')?.url,
+    expressionStage: stage,
+    expressionEmotion: emotion as ExpressionEmotion,
+    expressionOverlayUrl: expConfig ? (typeof expConfig.emotions[emotion] === 'string' ? expConfig.emotions[emotion] as string : expConfig.sheetUrl) : undefined,
+    expressionBox: expConfig?.baseFaceBox ? {
+      x: expConfig.baseFaceBox.x,
+      y: expConfig.baseFaceBox.y,
+      w: expConfig.baseFaceBox.w,
+      h: expConfig.baseFaceBox.h
+    } : undefined
   });
 
-  const attachment = new AttachmentBuilder(imageBuffer, { name: 'expression_lab.png' });
+  const attachment = new AttachmentBuilder(cardBuffer, { name: 'expression_lab.png' });
 
-  const embed = new EmbedBuilder()
-    .setTitle(`🧪 Expression Testing Lab | ${servantName}`)
+  const expEmbed = new EmbedBuilder()
+    .setTitle(`🧪 Expression Testing Lab — ${servantName}`)
     .setDescription(
-      `Test stage-aware facial expressions and ascension sprites interactively!\n\n` +
-      `🎭 **Current Expression:** \`${emotionLabel}\`\n` +
-      `👑 **Active Stage:** \`Ascension Stage ${activeStage} (${expConfig?.stageName || 'Base Form'})\`\n\n` +
-      `*Click the expression buttons or stage selectors below to test facial overlays live!*`
+      `Testing **Ascension Stage ${stage}** with expression **\`${emotion.toUpperCase()}\`**.\n\n` +
+      (expConfig
+        ? `✅ **Expression Config Found**: Stage ${expConfig.stage} (${expConfig.stageName})\n` +
+          `• **Available Emotions**: ${Object.keys(expConfig.emotions).map(e => `\`${e}\``).join(', ')}`
+        : `⚠️ *No custom expression sheet mapped for Stage ${stage} yet. Displaying base sprite.*`)
     )
-    .setColor(0x8b5cf6)
-    .setImage('attachment://expression_lab.png');
+    .setColor(0x9333ea)
+    .setImage('attachment://expression_lab.png')
+    .setFooter({ text: 'Use buttons below to switch expressions and ascension stages live!' });
 
-  // Row 1: Emotion Buttons
-  const emotions: { id: ExpressionEmotion; label: string; emoji: string }[] = [
-    { id: 'smile', label: 'Smile', emoji: '😊' },
-    { id: 'angry', label: 'Angry', emoji: '😠' },
-    { id: 'blush', label: 'Blush', emoji: '😳' },
-    { id: 'wink', label: 'Wink', emoji: '😉' },
-    { id: 'shock', label: 'Shock', emoji: '😱' },
-  ];
-
-  const emotionButtons = emotions.map(e =>
+  const emotionList = ['smile', 'angry', 'blush', 'wink', 'shock', 'neutral'];
+  const emotionRowComponents = emotionList.map(emo => 
     new ButtonBuilder()
-      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${activeStage}:${e.id}`))
-      .setLabel(e.label)
-      .setEmoji(e.emoji)
-      .setStyle(currentEmotion === e.id ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${stage}:${emo}`))
+      .setLabel(emo === 'smile' ? '😊 Smile' : emo === 'angry' ? '😠 Angry' : emo === 'blush' ? '😳 Blush' : emo === 'wink' ? '😉 Wink' : emo === 'shock' ? '😱 Shock' : '😐 Neutral')
+      .setStyle(emo === emotion ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(emotionRowComponents);
 
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(emotionButtons);
-
-  // Row 2: Stage Selector Buttons + Neutral
-  const stageButtons = [1, 2, 3].map(stg =>
+  const stageRowComponents = [1, 2, 3].map(st => 
     new ButtonBuilder()
-      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${stg}:${currentEmotion}`))
-      .setLabel(`Stage ${stg}`)
-      .setEmoji('👑')
-      .setStyle(activeStage === stg ? ButtonStyle.Success : ButtonStyle.Secondary)
+      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${st}:${emotion}`))
+      .setLabel(`Stage ${st}`)
+      .setStyle(st === stage ? ButtonStyle.Success : ButtonStyle.Secondary)
   );
-
-  stageButtons.push(
-    new ButtonBuilder()
-      .setCustomId(safeCustomId(`vn_exp_set:${sKey}:${activeStage}:neutral`))
-      .setLabel('Neutral')
-      .setEmoji('😐')
-      .setStyle(currentEmotion === 'neutral' ? ButtonStyle.Primary : ButtonStyle.Secondary)
-  );
-
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(stageButtons);
-
-  // Row 3: Return to Sanctum
-  const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  stageRowComponents.push(
     new ButtonBuilder()
       .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
-      .setLabel('📊 Return to Bond Sanctum')
-      .setStyle(ButtonStyle.Secondary)
+      .setLabel('🔙 Back to Bond')
+      .setStyle(ButtonStyle.Danger)
   );
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(stageRowComponents);
 
-  return { embeds: [embed], files: [attachment], components: [row1, row2, row3] };
+  return {
+    embeds: [expEmbed],
+    files: [attachment],
+    components: [row1, row2]
+  };
 }
 
 // ==========================================
@@ -1052,16 +1036,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     }
 
-    if (viewOption === 'expression_lab') {
-      const view = await handleExpressionLabView(
-        master,
-        targetServant,
-        targetServant.selectedAscensionStage || 1,
-        'smile'
-      );
-      return interaction.editReply(view);
-    }
-
     if (viewOption === 'interlude') {
       const { event, isReplay, statusNote } = selectActiveInterludeForServant(targetServant);
       const scene1 = event.scenes[0];
@@ -1143,6 +1117,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         files: [attachment],
         components: [choicesRow]
       });
+    }
+
+    if (viewOption === 'expression_lab') {
+      const view = await handleExpressionLabView(master, targetServant, 1, 'smile');
+      return interaction.editReply(view);
     }
 
     const embed = buildBondStatusEmbed(master, targetServant.id);
@@ -1271,31 +1250,6 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       return interaction.editReply({ embeds: [rosterEmbed], files: [], components: rows });
     }
 
-    if (btnId.startsWith('vn_exp_lab:')) {
-      await interaction.deferUpdate();
-      const sKey = btnId.split(':')[1];
-      const chosen = resolveTargetServant(master, null, sKey);
-      if (!chosen) {
-        return interaction.followUp({ flags: MessageFlags.Ephemeral, content: '❌ Selected Servant is not contracted.' });
-      }
-      const view = await handleExpressionLabView(master, chosen, chosen.selectedAscensionStage || 1, 'smile');
-      return interaction.editReply(view);
-    }
-
-    if (btnId.startsWith('vn_exp_set:')) {
-      await interaction.deferUpdate();
-      const parts = btnId.split(':');
-      const sKey = parts[1];
-      const targetStage = parseInt(parts[2] || '1', 10);
-      const targetEmotion = parts[3] || 'smile';
-      const chosen = resolveTargetServant(master, null, sKey);
-      if (!chosen) {
-        return interaction.followUp({ flags: MessageFlags.Ephemeral, content: '❌ Selected Servant is not contracted.' });
-      }
-      const view = await handleExpressionLabView(master, chosen, targetStage, targetEmotion);
-      return interaction.editReply(view);
-    }
-
     if (btnId.startsWith('vn_set_active:')) {
       await interaction.deferUpdate();
       const servantId = btnId.split(':')[1];
@@ -1410,6 +1364,21 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     let sTemplate = targetServant.template || targetServant;
     let servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
     let sKey = getServantCompactKey(targetServant, master);
+
+    if (btnId === 'vn_exp_lab' || btnId.startsWith('vn_exp_lab')) {
+      await interaction.deferUpdate();
+      const view = await handleExpressionLabView(master, targetServant, 1, 'smile');
+      return interaction.editReply(view);
+    }
+
+    if (btnId === 'vn_exp_set' || btnId.startsWith('vn_exp_set')) {
+      await interaction.deferUpdate();
+      const setParts = customId.split(':');
+      const setStage = parseInt(setParts[2] || '1', 10) || 1;
+      const setEmotion = setParts[3] || 'smile';
+      const view = await handleExpressionLabView(master, targetServant, setStage, setEmotion);
+      return interaction.editReply(view);
+    }
 
     if (btnId.startsWith('ce_art_bond')) {
       const bCe = getBondCraftEssenceForServant(targetServant.templateId || sTemplate.id || targetServant.id, servantName);
