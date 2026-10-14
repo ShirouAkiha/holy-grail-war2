@@ -181,14 +181,23 @@ export function buildInventoryHub(
       return `${arrow}**[${sCls}]** — **${sN}** — Lv.${s.level || 1}${actBadge}`;
     });
 
-    selectOptions = ownedServants.length > 0 
-      ? ownedServants.map((s: any) => {
+    let selectServants = [...paginated];
+    if (selectedItemId && !selectServants.some((s: any) => s.id === selectedItemId)) {
+      const selectedObj = ownedServants.find((s: any) => s.id === selectedItemId);
+      if (selectedObj) selectServants.unshift(selectedObj);
+    }
+    if (selectServants.length > 25) {
+      selectServants = selectServants.slice(0, 25);
+    }
+
+    selectOptions = selectServants.length > 0 
+      ? selectServants.map((s: any) => {
           const sN = s.nickname || s.template?.name || 'Heroic Spirit';
           const sCls = s.template?.servantClass || 'Saber';
           return {
-            label: `${sN} (Lv.${s.level || 1} ${sCls})`,
+            label: `${sN} (Lv.${s.level || 1} ${sCls})`.slice(0, 100),
             value: s.id,
-            description: `Bond Lv.${s.bondLevel || 1} • Stat Points: ${s.availableStatPoints || 0}`,
+            description: `Bond Lv.${s.bondLevel || 1} • Stat Points: ${s.availableStatPoints || 0}`.slice(0, 100),
             default: selectedItemId === s.id
           };
         })

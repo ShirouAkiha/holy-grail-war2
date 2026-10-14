@@ -422,26 +422,34 @@ export async function buildServantHub(
     const expStatus = calculateLevelFromExp(currentTotalExp);
     const expNeeded = expStatus.level >= 500 ? 0 : Math.max(0, expStatus.nextLevelExp - expStatus.currentLevelExp);
 
+    const rawLore = t.lore || 'A legendary heroic soul recorded in the Throne of Heroes, bound to fight in the Holy Grail War.';
+    const displayLore = rawLore.length > 350 ? rawLore.slice(0, 350) + '...' : rawLore;
+
+    let profileDesc = 
+      (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+      `*${t.title}* • **Master:** ${master.username}\n` +
+      `🌟 **Class:** ${t.servantClass} | **Status:** ⚖️ Balanced Parity | **Bond Lv:** ${bondLevel}/10 ♥ | **Level:** Lv.${expStatus.level}/500\n` +
+      `🔮 **Level Progress:** \`${expStatus.currentLevelExp.toLocaleString()} / ${expStatus.nextLevelExp.toLocaleString()} XP\` (${expStatus.progressPercent}%) • \`${expNeeded.toLocaleString()} XP to Lv.${Math.min(500, expStatus.level + 1)}\`\n` +
+      `❤️ **HP:** \`${currentHp.toLocaleString()} / ${totalHp.toLocaleString()}\` (${hpPercent}%) | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${targetServant.availableStatPoints || 0} pts**\n\n` +
+      `📜 **Historical Legend & Lore:**\n> *${displayLore}*\n\n` +
+      `📊 **Battle Parameters:**\n` +
+      `• **Strength (STR):** \`${strTotal}\` [**Rank ${strRank}**] • *(+${getGrowthAptitudeText(strRank)} Aptitude)* | **Endurance (END):** \`${endTotal}\` [**Rank ${endRank}**] • *(+${getGrowthAptitudeText(endRank)} Aptitude)*\n` +
+      `• **Agility (AGI):** \`${agiTotal}\` [**Rank ${agiRank}**] • *(+${getGrowthAptitudeText(agiRank)} Aptitude)* | **Mana (MNA):** \`${mnaTotal}\` [**Rank ${mnaRank}**] • *(+${getGrowthAptitudeText(mnaRank)} Aptitude)* | **Luck (LCK):** \`${lckTotal}\` [**Rank ${lckRank}**] • *(+${getGrowthAptitudeText(lckRank)} Aptitude)*\n\n` +
+      `🃏 **Command Deck:** ${deckStr}`;
+
+    if (profileDesc.length > 3900) {
+      profileDesc = profileDesc.slice(0, 3895) + '...';
+    }
+
     const embed = new EmbedBuilder()
       .setTitle(`⚔️ Servant Workshop — Profile Card: ${sName}`)
-      .setDescription(
-        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
-        `*${t.title}* • **Master:** ${master.username}\n` +
-        `🌟 **Class:** ${t.servantClass} | **Status:** ⚖️ Balanced Parity | **Bond Lv:** ${bondLevel}/10 ♥ | **Level:** Lv.${expStatus.level}/500\n` +
-        `🔮 **Level Progress:** \`${expStatus.currentLevelExp.toLocaleString()} / ${expStatus.nextLevelExp.toLocaleString()} XP\` (${expStatus.progressPercent}%) • \`${expNeeded.toLocaleString()} XP to Lv.${Math.min(500, expStatus.level + 1)}\`\n` +
-        `❤️ **HP:** \`${currentHp.toLocaleString()} / ${totalHp.toLocaleString()}\` (${hpPercent}%) | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${targetServant.availableStatPoints || 0} pts**\n\n` +
-        `📜 **Historical Legend & Lore:**\n> *${t.lore || 'A legendary heroic soul recorded in the Throne of Heroes, bound to fight in the Holy Grail War.'}*\n\n` +
-        `📊 **Battle Parameters:**\n` +
-        `• **Strength (STR):** \`${strTotal}\` [**Rank ${strRank}**] • *(+${getGrowthAptitudeText(strRank)} Aptitude)* | **Endurance (END):** \`${endTotal}\` [**Rank ${endRank}**] • *(+${getGrowthAptitudeText(endRank)} Aptitude)*\n` +
-        `• **Agility (AGI):** \`${agiTotal}\` [**Rank ${agiRank}**] • *(+${getGrowthAptitudeText(agiRank)} Aptitude)* | **Mana (MNA):** \`${mnaTotal}\` [**Rank ${mnaRank}**] • *(+${getGrowthAptitudeText(mnaRank)} Aptitude)* | **Luck (LCK):** \`${lckTotal}\` [**Rank ${lckRank}**] • *(+${getGrowthAptitudeText(lckRank)} Aptitude)*\n\n` +
-        `🃏 **Command Deck:** ${deckStr}`
-      )
+      .setDescription(profileDesc)
       .addFields(
-        { name: '⚡ Active Personal Skills', value: activeSkillsText },
-        { name: '💥 Noble Phantasm', value: npText },
-        { name: '🛡️ Class Passive Skills', value: passiveText },
-        { name: '👔 Equipped Craft Essence', value: ceText },
-        { name: '💬 Master Combat Invocations', value: quotesText }
+        { name: '⚡ Active Personal Skills', value: activeSkillsText.slice(0, 1000) },
+        { name: '💥 Noble Phantasm', value: npText.slice(0, 1000) },
+        { name: '🛡️ Class Passive Skills', value: passiveText.slice(0, 1000) },
+        { name: '👔 Equipped Craft Essence', value: ceText.slice(0, 1000) },
+        { name: '💬 Master Combat Invocations', value: quotesText.slice(0, 1000) }
       )
       .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
 
