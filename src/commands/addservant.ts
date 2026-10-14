@@ -21,8 +21,11 @@ import {
   getDuelNpSettings,
   setDuelNpSettings,
   findServantInPool,
-  matchServantSearch
+  matchServantSearch,
+  getOrCreateMaster,
+  saveMaster
 } from '../database/service';
+import { createProjectedServantInstance } from '../engine/saintGraphProjection';
 import { ServantClass, ServantTemplate, CardType } from '../types';
 import { normalizeMediaUrl, isDirectEmbeddableMedia } from '../utils/mediaResolver';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
@@ -314,6 +317,24 @@ export const data = new SlashCommandBuilder()
           .setDescription('Search or select custom servant to delete (use "all" to wipe custom spirits)')
           .setRequired(true)
           .setAutocomplete(true)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('contract')
+      .setDescription('Contract a Heroic Spirit directly into a Master profile roster')
+      .addStringOption(opt =>
+        opt
+          .setName('servant')
+          .setDescription('Name or ID of Servant to contract (e.g. Archetype: Earth, Arcueid, Artoria)')
+          .setRequired(true)
+          .setAutocomplete(true)
+      )
+      .addUserOption(opt =>
+        opt
+          .setName('target')
+          .setDescription('Target Master user (defaults to command caller)')
+          .setRequired(false)
       )
   );
 
@@ -748,6 +769,61 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       )
       .setColor(0x3b82f6)
       .setFooter({ text: `Updated by Admin ${interaction.user.username}` });
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
+  // ------------------------------------------
+  // SUBCOMMAND G: DIRECT SERVANT CONTRACT
+  // ------------------------------------------
+  if (subcommand === 'contract') {
+    const servantQuery = interaction.options.getString('servant', true);
+    const targetUser = interaction.options.getUser('target') || interaction.user;
+    
+    const master = await getOrCreateMaster(targetUser.id, targetUser.username);
+    const servant = findServantInPool(servantQuery);
+
+    if (!servant) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: `❌ Servant matching "${servantQuery}" not found in the Throne of Heroes.`
+      });
+      return;
+    }
+
+    const owned = (master.servants || []).find(s => (s.templateId || s.id) === servant.id);
+    if (owned) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: `⚠️ Master **${master.username}** already has a contract with **${servant.name}** (${servant.servantClass}) [Lv.${owned.level || 1}]. Use \`/switch\` to make her your active combat partner!`
+      });
+      return;
+    }
+
+    const newInst = createProjectedServantInstance(master, servant);
+    master.servants = master.servants || [];
+    master.servants.push(newInst);
+    if (!master.activeServantId) {
+      master.activeServantId = newInst.id;
+    }
+    await saveMaster(master);
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🌟 Sacred Covenant Formed: ${servant.name}!`)
+      .setDescription(
+        `A permanent spiritual contract has been forged for Master **${master.username}**!\n\n` +
+        `⚔️ **Heroic Spirit:** **${servant.name}** (\`${servant.servantClass}\`)\n` +
+        `👑 **Title:** *${servant.title}*\n` +
+        `⭐ **Rarity:** ★${servant.rarity || 5} SSR\n` +
+        `💥 **Noble Phantasm:** **${servant.noblePhantasm?.name || 'Phantasm'}** (${servant.noblePhantasm?.cardType || 'Buster'})\n\n` +
+        `🗣️ *" ${servant.summonQuote || 'Ready for battle, Master.'} "*\n\n` +
+        `Use \`/servant\` to view her parameters, or \`/switch\` to designate her as your active combat partner!`
+      )
+      .setColor(0xf59e0b);
+
+    safeSetEmbedThumbnail(embed, servant.avatarUrl);
+    safeSetEmbedImage(embed, servant.cardArtUrl || servant.avatarUrl);
 
     await interaction.reply({ embeds: [embed] });
     return;

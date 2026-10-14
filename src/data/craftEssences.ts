@@ -1124,10 +1124,10 @@ CRAFT_ESSENCE_DATABASE.push(...EXP_EMBER_TEMPLATES);
 export const CE_GACHA_BANNERS: GachaBanner[] = [
   {
     id: 'ce_banner_fuyuki_relics',
-    title: 'Greater Grail Sanctum: Heroic Spirits & Mystic Codes',
-    subtitle: 'Featured Heroic Spirit: ★5 Altera (Saber Rate-Up) • 50% Servants & 50% CEs',
-    description: 'Channel your Saint Quartz into the Greater Grail Altar to summon Heroic Spirits (Featuring ★5 Altera) and forge legendary Craft Essences in equal measure!',
-    featuredServantIds: ['altera'],
+    title: 'Greater Grail Sanctum: ★5 Archetype: Earth Invocation',
+    subtitle: 'Featured Heroic Spirit: ★5 Archetype: Earth (MoonCancer Rate-Up) • 50% Servants & 50% CEs',
+    description: 'Channel your Saint Quartz into the Greater Grail Altar to summon Heroic Spirits (Featuring ★5 MoonCancer Archetype: Earth - Arcueid Brunestud on 70% Rate-Up) and forge legendary Craft Essences!',
+    featuredServantIds: ['archetype_earth', 'altera'],
     featuredCeIds: ['ce_kaleidoscope', 'ce_black_grail', 'ce_formal_craft'],
     bannerType: 'standard',
     costPerPull: 3,

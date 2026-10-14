@@ -66,6 +66,18 @@ export function findServantInRoster(servants: any[], query?: string): any {
   );
   if (found) return found;
 
+  // 5. Archetype Earth & Arcueid Alias match
+  const arcueidKeywords = ['arcueid', 'archetype', 'earth', 'funny vamp', 'mooncancer', 'true ancestor', 'lunar flower'];
+  if (arcueidKeywords.some(k => clean.includes(k) || k.includes(clean))) {
+    found = servants.find((s: any) => 
+      s.templateId === 'archetype_earth' || 
+      s.template?.id === 'archetype_earth' || 
+      s.id === 'archetype_earth' ||
+      s.template?.name?.toLowerCase().includes('archetype')
+    );
+    if (found) return found;
+  }
+
   return undefined;
 }
 
@@ -145,12 +157,18 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
         const sName = s.nickname || s.template?.name || s.name || 'Heroic Spirit';
         const sCls = s.template?.servantClass || s.servantClass || 'Saber';
         const isAct = master.activeServantId === s.id;
+        const aliases = (s.templateId === 'archetype_earth' || s.template?.id === 'archetype_earth' || s.id === 'archetype_earth')
+          ? ' arcueid archetype earth funny vamp mooncancer true ancestor'
+          : '';
+        const searchable = `${sName} ${sCls} ${s.id || ''} ${s.templateId || ''}${aliases}`.toLowerCase();
         return {
-          name: `${idx + 1}. [${sCls}] ${sName} (Lv.${s.level || 1})${isAct ? ' ⭐ [ACTIVE]' : ''}`.slice(0, 100),
-          value: s.id
+          label: `${idx + 1}. [${sCls}] ${sName} (Lv.${s.level || 1})${isAct ? ' ⭐ [ACTIVE]' : ''}`.slice(0, 100),
+          value: s.id,
+          searchable
         };
       })
-      .filter(c => c.name.toLowerCase().includes(focusedValue))
+      .filter(c => c.searchable.includes(focusedValue))
+      .map(c => ({ name: c.label, value: c.value }))
       .slice(0, 25);
 
     await interaction.respond(choices);

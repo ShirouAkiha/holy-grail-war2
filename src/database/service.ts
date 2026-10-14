@@ -916,7 +916,8 @@ const ALIAS_MAP: Record<string, string[]> = {
   sasaki_kojirou: ['kojirou', 'fake assassin', 'swallow slayer', 'gatekeeper', 'tsubame gaeshi'],
   hassan_of_cursed_arm: ['cursed arm', 'true assassin', 'zabaniya', 'hassan'],
   king_hassan: ['first hassan', 'grand assassin', 'old man of the mountain'],
-  kama: ['goddess of love', 'mara', 'beast iii']
+  kama: ['goddess of love', 'mara', 'beast iii'],
+  archetype_earth: ['archetype earth', 'archetype', 'arcueid', 'arcueid brunestud', 'true ancestor', 'funny vamp', 'earth', 'mooncancer']
 };
 
 /**
@@ -1530,10 +1531,12 @@ export function hydrateMasterServants(master: MasterProfile): MasterProfile {
 
   for (const s of master.servants) {
     if (!s.template || !s.template.name) {
-      const tId = s.templateId || s.id;
+      const tId = s.templateId || s.id || '';
       const found = allThrone.find(t => t.id === tId) ||
-                    allThrone.find(t => t.id.toLowerCase() === (tId || '').toLowerCase()) ||
-                    allThrone.find(t => t.name.toLowerCase() === (tId || '').toLowerCase());
+                    allThrone.find(t => t.id.toLowerCase() === tId.toLowerCase()) ||
+                    allThrone.find(t => t.name.toLowerCase() === tId.toLowerCase()) ||
+                    allThrone.find(t => tId.includes(t.id)) ||
+                    allThrone.find(t => t.id === 'archetype_earth' && (tId.includes('arcueid') || tId.includes('archetype') || tId.includes('earth')));
       if (found) {
         s.template = { ...found };
         if (!s.templateId) s.templateId = found.id;

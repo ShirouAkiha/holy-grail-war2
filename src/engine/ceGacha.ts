@@ -100,10 +100,26 @@ export function executeUnifiedGachaRoll({
 
   const pullServant = (): UnifiedGachaResultItem => {
     servantsPulled++;
-    let randomTemplate = allServants[Math.floor(Math.random() * allServants.length)];
+    
+    // Check for featured Rate-Up Servants on active banner
+    const featuredIds = banner.featuredServantIds || [];
+    const featuredInPool = allServants.filter(s => featuredIds.includes(s.id));
+    
+    let randomTemplate: ServantTemplate;
+    if (featuredInPool.length > 0 && Math.random() < 0.70) {
+      // 70% Rate-Up chance for featured 5★ Heroic Spirit (e.g. Archetype: Earth)
+      randomTemplate = featuredInPool[Math.floor(Math.random() * featuredInPool.length)];
+    } else {
+      randomTemplate = allServants[Math.floor(Math.random() * allServants.length)];
+    }
+
     let attempts = 0;
     while (pulledServantsInThisRoll.has(randomTemplate.id) && attempts < 10) {
-      randomTemplate = allServants[Math.floor(Math.random() * allServants.length)];
+      if (featuredInPool.length > 0 && Math.random() < 0.70) {
+        randomTemplate = featuredInPool[Math.floor(Math.random() * featuredInPool.length)];
+      } else {
+        randomTemplate = allServants[Math.floor(Math.random() * allServants.length)];
+      }
       attempts++;
     }
     pulledServantsInThisRoll.add(randomTemplate.id);
