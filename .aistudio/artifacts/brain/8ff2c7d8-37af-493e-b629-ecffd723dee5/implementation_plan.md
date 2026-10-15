@@ -1,114 +1,81 @@
-# Paginated Dropdown Selection Architecture for Large Collections
+# Implementation Plan: CE Vault, Lore Studio & Multi-Command Pagination Audit
 
-Universal paginated dropdown selection system across all major Discord RPG command hubs (`/servant`, `/inventory`, `/customise`, `/bond`, `/gacha`). Resolves Discord's hard 25-option select menu limit by pairing paginated 20-item dropdown menus with dedicated `◀ Prev Page` and `▶ Next Page` navigation controls.
+Restore full CE Vault and Lore Studio workshop functionality in `/servant`, ensure Discord 5-action-row compliance across all states, and audit `/servant`, `/inventory`, `/bond`, and `/customise` for pagination and UI control integrity.
 
----
+## Problem Analysis & Root Cause
 
-## User Review & Critical Decisions
+1. **CE Vault Component Overflow & Truncation in `/servant`**:
+   - When Masters have >20 servants, `/servant` renders:
+     1. Top Category Navigation Bar (`categoryNavRow`)
+     2. Roster Select Dropdown (`servant_sel_switch`)
+     3. Roster Dropdown Pagination Controls (`servant_pagedrop_prev / next`)
+   - This already consumes 3 rows. Adding CE sub-tabs, quick feed rows, CE select menus, and cross-hub shortcuts pushes total rows to 6–7.
+   - Discord enforces a strict maximum of **5 action rows** per message. The engine’s safety slicing (`components.slice(0, 5)`) causes quick feed buttons, CE menus, or shortcut rows to be dropped.
+   - In `feed_ce` category, the condition `if (components.length < 4)` fails when roster pagination is present, causing quick feed controls to be missing or cramped.
 
-> [!IMPORTANT]
-> The confirmed choices from the Phase 1 questionnaire are integrated below:
+2. **Lore Studio Modal Triggers Missing in `/servant`**:
+   - The backend modal handlers for `servant_act_open_dialogue_modal_combat`, `servant_act_open_dialogue_modal_tactical`, and `servant_act_open_dialogue_modal_faceoff` are fully implemented in `src/commands/servant.ts`.
+   - However, the action row with the buttons triggering these three modals (Combat, Tactical, Face-Off) and Reset Defaults was omitted from `buildServantHub()` when rendering the `dialogue` tab.
 
-- **Confirmed Decision 1: Paginated Dropdowns with Prev/Next Buttons**
-  - Select menus will display up to **20 items per page** (leaving room for quick-action items), accompanied by `◀ Prev Page` and `▶ Next Page` button controls to seamlessly scroll through large rosters, CEs, and inventory items.
-- **Confirmed Decision 2: Universal Upgrade Across Major Hubs**
-  - Upgrades selection UI in `/servant`, `/inventory`, `/customise`, `/bond`, and `/gacha`.
-
----
-
-## 1. Overview & Core Concept
-
-Discord enforces a strict limit of **25 choices per `StringSelectMenuBuilder`**. When a player contracts 26+ Servants or holds 30+ Craft Essences, unpaginated select menus drop options past index 25 or throw API validation errors.
-
-This architectural update introduces a standardized **Dropdown Pagination Pattern**:
-1. **Paginated Items Window**: Select menus display a window of 20 items for the current page (`Page X of Y`).
-2. **Page Navigation Row**: Action row below the select menu containing `◀ Prev Page` and `▶ Next Page` buttons with current page indicator badge (`Page X / Total Y`).
-3. **Smart Target Retention**: When selecting a specific Servant or Craft Essence (e.g. via command parameter or active contract), that item is guaranteed to stay highlighted and selectable regardless of page index.
+3. **Cross-Command Pagination Audit (`/servant`, `/inventory`, `/bond`, `/customise`)**:
+   - Verify pagination bounds, empty state fallbacks, button state synchronization (`disabled` states), and 5-row limit compliance across all views and sub-views.
 
 ---
 
-## 2. User Experience & Visual Design
+## Proposed Changes & Architecture
 
-### Key User Flows
+### 1. `src/commands/servant.ts` — CE Vault Architecture & 5-Row Harmony
+- **Adaptive Row Budgeting**:
+  - Keep Discord's 5-row ceiling strictly respected in all scenarios (≤20 servants and >20 servants).
+  - When in `equip_ce` view:
+    - **Row 1**: Top Category Tabs (Parameters, Stat Points, Ascension, CE Vault, Lore & Studio)
+    - **Row 2**: Servant Switcher Menu (with inline page indicator in placeholder)
+    - **Row 3**: CE Vault Sub-Tab Row: `Equip CE` (active) | `Feed CEs` | `Unequip CE` (if equipped) | `Set Active`
+    - **Row 4**: CE Select Menu (`servant_sel_equip_ce`) with pagination/filtering info
+    - **Row 5**: Contextual action row: Roster Prev/Next buttons (if >20 servants) AND Cross-hub shortcut buttons, consolidated so it never exceeds 5 buttons per row.
+  - When in `feed_ce` view:
+    - **Row 1**: Top Category Tabs
+    - **Row 2**: Servant Switcher Menu
+    - **Row 3**: Sub-Tabs: `Equip CE` | `Feed CEs` (active) | `Reclaim EXP`
+    - **Row 4**: Quick Feed Actions: `Feed Embers` (✨) | `Feed 1-3★` (⚡) | `Feed Dupes` (🔥) | `Feed All` (☣️) | `Unlock All` (🔓)
+    - **Row 5**: Synthesis Multi-Select Menu (`servant_sel_feed_ce`) for targeted CE synthesis. (If roster pagination is needed, integrate compact page buttons into the action layout seamlessly).
 
-1. **Viewing Workshop or Roster (`/servant`)**:
-   - Master opens `/servant`. The dropdown displays `1. [MoonCancer] Archetype: Earth (Lv.1)` through `20. [Saber] Artoria Pendragon`.
-   - Below the dropdown, navigation buttons read: `◀ Prev Page (Disabled)` | `Page 1 / 3` | `▶ Next Page`.
-   - Clicking `▶ Next Page` advances the dropdown to items 21–40, preserving the active selection state and updating the embed roster list.
+### 2. `src/commands/servant.ts` — Lore Studio Modal Buttons Restoration
+- In `category === 'dialogue'`:
+  - Add the Lore Studio Modal Action Row:
+    - `Combat Lines` (🔴 / `servant_act_open_dialogue_modal_combat`)
+    - `Tactical & Stances` (⚔️ / `servant_act_open_dialogue_modal_tactical`)
+    - `Rival Face-Off` (🔥 / `servant_act_open_dialogue_modal_faceoff`)
+    - `Reset Lore` (✨ / `servant_act_reset_dialogue`)
+  - Ensure the voice line preset select menu (`servant_sel_voice_preset`) and sub-tabs (`Voice Lines` | `Noble Phantasm` | `Roster`) stay within the 5-row limit.
 
-2. **Equipping & Feeding Craft Essences (`/inventory` & `/customise`)**:
-   - Master views Owned CEs in `/inventory`.
-   - The dropdown displays 20 CEs on Page 1.
-   - Clicking `▶ Next Page` displays CEs 21–40.
-   - Master picks a CE from Page 2 and clicks `Equip / Set Active`.
+### 3. `src/commands/customise.ts` & `/inventory` — CE Vault & Inventory Audit
+- Audit `buildInventoryHub` and `attachInventoryCollector`:
+  - Verify that `inv_page_prev` and `inv_page_next` correctly paginate all categories: CEs (all/owned/rarity), Servants, Seals, and Vault Items.
+  - Check that the 5-row limit is strictly preserved when filter pills are present (Row 1: Categories, Row 2: Filter Pills, Row 3: Select Menu, Row 4: Page Prev/Next + Equip + Lore, Row 5: Secondary Actions).
+  - Verify that unlocking, equipping, and viewing art work reliably without breaking collector state.
 
-3. **Bond Sanctum Interludes & Gifts (`/bond`)**:
-   - Master views Bond Roster in `/bond`.
-   - Dropdown lists contracted Servants 20 at a time with page navigation.
-   - Master selects Archetype: Earth on Page 2 to open her My Room Interludes and Gift Menu.
-
----
-
-## 3. Technical Architecture & Data Strategy
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        DISCORD UI INTERACTION                          │
-│                                                                        │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │   Embed Header: Master Inventory / Servant Workshop               │  │
-│  │   Page X / Total Y • Total Items: N                              │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-│                                                                        │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │   StringSelectMenuBuilder (Max 20 Items for Page X)              │  │
-│  │   [ 1. Servant A (Lv.1) ] [ 2. Servant B (Lv.80) ] ...            │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-│                                                                        │
-│  ┌─────────────────────────┬───────────────────┬───────────────────┐  │
-│  │ ◀ Prev Page             │ Page X / Y        │ ▶ Next Page       │  │
-│  └─────────────────────────┴───────────────────┴───────────────────┘  │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                   STATE ENGINE & HANDLER PIPELINE                      │
-│                                                                        │
-│  1. Extract State: pageIndex, totalPages, targetId                     │
-│  2. Slice Window: items.slice((page - 1) * 20, page * 20)              │
-│  3. Ensure Active/Target Item is Injected                              │
-│  4. Render Embed & ActionRows atomically                               │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-### Affected Files & Component Upgrades
-
-1. **`src/commands/servant.ts`**:
-   - Add page state tracking (`pageIndex`) to `buildServantHub` and `attachServantCollector`.
-   - Add pagination navigation row for `servant_sel_switch` select menu when `master.servants.length > 20`.
-
-2. **`src/commands/customise.ts`**:
-   - Update `buildInventoryHub` and `handleGlobalInventoryInteraction` so `category === 'servants'` and `category === 'ces'` use paginated select menus with Prev/Next buttons.
-
-3. **`src/commands/bond.ts`**:
-   - Update `buildBondRosterActionRows` and `handleBondSelectInteraction` to support paginated Servant selection for Bond Interludes and Gifts.
-
-4. **`src/commands/gacha.ts`**:
-   - Update CE/Servant Shop dropdowns to paginate if custom admin lists exceed 20 items.
+### 4. `src/commands/bond.ts` — Bond Sanctum Roster & Visual Novel Pagination Audit
+- Audit `buildBondRosterActionRows` and `buildBondSanctumActionRows`:
+  - Ensure `vn_roster_prev_*` and `vn_roster_next_*` correctly cycle through contracted servants.
+  - Ensure Visual Novel scene chunks and interlude choices do not exceed action row limits or Discord payload size.
 
 ---
 
 ## Verification Plan
 
-### Automated Tests
-- Run `lint_applet` (`npm run lint`) to ensure ESLint passes with 0 errors.
-- Run `tsc --noEmit` to verify 100% clean TypeScript compilation.
+1. **Compilation & Syntax Validation**:
+   - Run `compile_applet` to ensure TypeScript builds cleanly with zero errors.
+   - Run `lint_applet` to confirm clean imports, typing, and absence of syntax issues.
 
-### Manual Verification Scenarios
-1. **Roster > 20 Servants**:
-   - Verify that `/servant` displays Page 1 (items 1–20) with active `▶ Next Page` button.
-   - Click `▶ Next Page` and verify items 21–26 (including Archetype: Earth) appear in the dropdown.
-   - Select Archetype: Earth and confirm her profile card loads cleanly.
-2. **Inventory CEs > 20 CEs**:
-   - Open `/inventory category: ces`.
-   - Verify page navigation buttons cycle through CE pages in both the embed and dropdown.
+2. **Functional UI Matrix Checks**:
+   - **`/servant` CE Vault**:
+     - Check `equip_ce` tab: Confirm `Equip CE` and `Feed CEs` sub-tab buttons render, CE select menu opens, equipping/unequipping updates servant embed.
+     - Check `feed_ce` tab: Confirm Quick Feed buttons (`Feed Embers`, `Feed 1-3★`, `Feed Dupes`, `Feed All`, `Unlock All`, `Reclaim EXP`) and the multi-select menu all display and function without exceeding 5 rows.
+   - **`/servant` Lore Studio**:
+     - Check `dialogue` tab: Confirm buttons for `Combat Lines`, `Tactical & Stances`, and `Rival Face-Off` render properly and open their respective Discord modals (`modal_quotes_combat`, `modal_quotes_tactical`, `modal_quotes_faceoff`).
+     - Test submitting each modal to verify custom quotes persist to database.
+   - **Pagination Checks**:
+     - Test roster navigation with 1, 5, 21+ servants to confirm previous/next controls stay within 5 rows and never push out essential gameplay buttons.
+     - Test `/inventory` pagination across all tabs (CEs, Servants, Seals, Items).
+     - Test `/bond` roster pagination and sanctum switching.

@@ -874,11 +874,15 @@ export async function buildServantHub(
       const ceSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId('servant_tab_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('servant_tab_feed_ce').setLabel('Feed CEs').setEmoji('🧪').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('servant_act_set_active').setLabel('Set Active').setEmoji('👑').setStyle(ButtonStyle.Secondary).setDisabled(master.activeServantId === targetServant.id)
+        new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('Reclaim EXP').setEmoji('⚗️').setStyle(ButtonStyle.Danger)
       );
       if (targetServant.equippedCe || targetServant.equippedCeId) {
         ceSubTabRow.addComponents(
           new ButtonBuilder().setCustomId('servant_act_unequip_ce').setLabel('Unequip CE').setEmoji('🚫').setStyle(ButtonStyle.Danger)
+        );
+      } else {
+        ceSubTabRow.addComponents(
+          new ButtonBuilder().setCustomId('servant_act_set_active').setLabel('Set Active').setEmoji('👑').setStyle(ButtonStyle.Secondary).setDisabled(master.activeServantId === targetServant.id)
         );
       }
       components.push(ceSubTabRow);
@@ -901,7 +905,7 @@ export async function buildServantHub(
         value: ce.id || ce.name,
         default: targetServant.equippedCeId === ce.id
       }));
-      if (ceOptions.length > 0) {
+      if (ceOptions.length > 0 && components.length < 5) {
         const ceSelect = new StringSelectMenuBuilder()
           .setCustomId('servant_sel_equip_ce')
           .setPlaceholder('👔 Select Craft Essence to equip...')
@@ -910,49 +914,50 @@ export async function buildServantHub(
       }
     } else {
       // Feed CEs category
+      const ownedCes = [...((master.craftEssences || []).filter(Boolean))].sort((a: any, b: any) => {
+        const aEmber = a.isEmber ? 1 : 0;
+        const bEmber = b.isEmber ? 1 : 0;
+        if (bEmber !== aEmber) return bEmber - aEmber;
+        return (a.rarity || 3) - (b.rarity || 3);
+      });
+
       const ceSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId('servant_tab_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('servant_tab_feed_ce').setLabel('Feed CEs').setEmoji('🧪').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('Reclaim EXP').setEmoji('⚗️').setStyle(ButtonStyle.Danger)
+        new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('Reclaim EXP').setEmoji('⚗️').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('servant_act_unlock_all_ces').setLabel('Unlock All').setEmoji('🔓').setStyle(ButtonStyle.Secondary)
       );
-      components.push(ceSubTabRow);
 
       // Quick Feed Buttons Row
       const quickFeedRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId('servant_act_feed_embers').setLabel('Feed Embers').setEmoji('✨').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('servant_act_feed_3star').setLabel('Feed 1-3★').setEmoji('⚡').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Feed Dupes').setEmoji('🔥').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All').setEmoji('☣️').setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId('servant_act_unlock_all_ces').setLabel('Unlock All').setEmoji('🔓').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All').setEmoji('☣️').setStyle(ButtonStyle.Danger)
       );
 
-      if (components.length < 4) {
-        components.push(quickFeedRow);
+      // Compact row for high roster size (>20 Servants, where pageNavRow takes a row)
+      const compactFeedRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('servant_tab_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('servant_act_feed_embers').setLabel('Embers').setEmoji('✨').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_feed_3star').setLabel('1-3★').setEmoji('⚡').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Dupes').setEmoji('🔥').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All').setEmoji('☣️').setStyle(ButtonStyle.Danger)
+      );
+
+      // Check available rows:
+      if (components.length <= 2) {
+        components.push(ceSubTabRow, quickFeedRow);
       } else {
-        ceSubTabRow.addComponents(
-          new ButtonBuilder().setCustomId('servant_act_feed_embers').setLabel('Embers').setEmoji('✨').setStyle(ButtonStyle.Primary),
-          new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All').setEmoji('☣️').setStyle(ButtonStyle.Danger)
-        );
+        components.push(compactFeedRow);
       }
 
-      const ownedCes = [...((master.craftEssences || []).filter(Boolean))].sort((a: any, b: any) => {
-        const aEmber = a.isEmber ? 1 : 0;
-        const bEmber = b.isEmber ? 1 : 0;
-        return bEmber - aEmber;
-      });
-      const usedFeedValues = new Set<string>();
-      const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => {
-        let val = c.instanceId || c.id || String(idx);
-        if (usedFeedValues.has(val)) {
-          val = `ce_feed_${idx}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-        }
-        usedFeedValues.add(val);
-        return {
-          label: `${c.isEmber ? '✨ ' : ''}${c.locked ? '🔒 ' : ''}★${c.rarity || 3} ${c.name} (+${getCeExpValue(c).toLocaleString()} XP)`.slice(0, 100),
-          description: (c.effectText || c.description || 'Craft Essence').slice(0, 100),
-          value: val
-        };
-      });
+      const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => ({
+        label: `${c.isEmber ? '✨ ' : ''}${c.locked ? '🔒 ' : ''}★${c.rarity || 3} ${c.name} (+${getCeExpValue(c).toLocaleString()} XP)`.slice(0, 100),
+        description: (c.effectText || c.description || 'Craft Essence').slice(0, 100),
+        value: String(idx)
+      }));
+
       if (ceOptions.length > 0 && components.length < 5) {
         const feedSelect = new StringSelectMenuBuilder()
           .setCustomId('servant_sel_feed_ce')
@@ -973,6 +978,17 @@ export async function buildServantHub(
     components.push(loreSubTabRow);
 
     if (category === 'dialogue') {
+      const modalButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal_combat').setLabel('Combat Lines').setEmoji('⚔️').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal_tactical').setLabel('Tactical Lines').setEmoji('🛡️').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal_faceoff').setLabel('Rival Face-Off').setEmoji('🔥').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_reset_dialogue').setLabel('Reset Lore').setEmoji('✨').setStyle(ButtonStyle.Danger)
+      );
+
+      if (components.length < 5) {
+        components.push(modalButtonsRow);
+      }
+
       const voiceSelect = new StringSelectMenuBuilder()
         .setCustomId('servant_sel_voice_preset')
         .setPlaceholder('💬 Apply Voice Line Chants & Dialogue Preset...')
@@ -1520,7 +1536,8 @@ export function attachServantCollector(
         const owned = [...((master.craftEssences || []).filter(Boolean))].sort((a: any, b: any) => {
           const aEmber = a.isEmber ? 1 : 0;
           const bEmber = b.isEmber ? 1 : 0;
-          return bEmber - aEmber;
+          if (bEmber !== aEmber) return bEmber - aEmber;
+          return (a.rarity || 3) - (b.rarity || 3);
         });
         const result = feedCraftEssences(targetServant, ceIndices, owned);
         
