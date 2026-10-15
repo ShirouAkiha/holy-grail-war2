@@ -360,6 +360,8 @@ export async function buildServantHub(
   const hpPercent = totalHp > 0 ? Math.round((currentHp / totalHp) * 100) : 100;
   targetServant.currentHp = currentHp;
 
+  const ownedCesList = (master.craftEssences || []).filter(Boolean);
+
   let embeds: EmbedBuilder[] = [];
   let files: AttachmentBuilder[] = [];
 
@@ -536,8 +538,9 @@ export async function buildServantHub(
     embeds = [embed];
 
   } else if (category === 'equip_ce') {
-    const ownedCes = (master.craftEssences || []).filter(Boolean);
-    const currentEq = targetServant.equippedCe;
+    const currentEq = (typeof targetServant.equippedCe === 'object' && targetServant.equippedCe !== null ? targetServant.equippedCe : null)
+      || (targetServant.equippedCeId ? master.craftEssences?.find((c: any) => c.id === targetServant.equippedCeId) : null)
+      || (targetServant.equippedCeId ? CRAFT_ESSENCE_DATABASE.find(c => c.id === targetServant.equippedCeId) : null);
 
     const embed = new EmbedBuilder()
       .setTitle(`👔 Craft Essence Equipment Studio: ${sName}`)
@@ -545,7 +548,7 @@ export async function buildServantHub(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** Lv.${lvl}/500\n` +
         `🛡️ **Currently Equipped:** ${currentEq ? `**${currentEq.name}** (★${currentEq.rarity}) — *${currentEq.effectText || 'Stat Boost'}*` : 'None (No Essence Equipped)'}\n\n` +
-        `📦 **Inventory Collection:** You own **${ownedCes.length} Craft Essences**.\n` +
+        `📦 **Inventory Collection:** You own **${ownedCesList.length} Craft Essences**.\n` +
         `*Equipping a Craft Essence grants ATK (+1,000–3,000) & HP (+1,000–3,000) bonuses plus unique passives in combat!*\n\n` +
         `*Select an essence from the dropdown menu below to equip or click Unequip.*`
       )
@@ -555,7 +558,7 @@ export async function buildServantHub(
     embeds = [embed];
 
   } else if (category === 'feed_ce') {
-    const ownedCes = [...((master.craftEssences || []).filter(Boolean))].sort((a: any, b: any) => {
+    const ownedCes = [...ownedCesList].sort((a: any, b: any) => {
       const aEmber = a.isEmber ? 1 : 0;
       const bEmber = b.isEmber ? 1 : 0;
       return bEmber - aEmber;
@@ -597,18 +600,18 @@ export async function buildServantHub(
 
   } else if (category === 'np') {
     const gifUrl = getNoblePhantasmGif(t);
-    const chant = targetServant.customQuotes?.noblePhantasm || getNoblePhantasmChant(t);
-    const np = t.noblePhantasm;
+    const chant = targetServant.customQuotes?.noblePhantasm || getNoblePhantasmChant(t) || t.noblePhantasm?.chant || 'True Name Unleashed!';
+    const np = t.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', target: 'all', multiplier: 300, description: 'Noble Phantasm' };
     const color = np.cardType === 'Buster' ? 0xef4444 : np.cardType === 'Arts' ? 0x3b82f6 : 0x10b981;
 
     const npEmbed = new EmbedBuilder()
       .setTitle(`💥 NOBLE PHANTASM: ${np.name}`)
       .setDescription(
         `> *"${chant || np.chant || 'True Name Unleashed!'}"*\n\n` +
-        `• **Heroic Spirit:** **${t.name}** — *${t.title}* [\`${t.servantClass}\`]\n` +
-        `• **Card Type & Target:** **${np.cardType}** • **${np.target.toUpperCase()}**\n` +
-        `• **Damage Multiplier:** \`${np.multiplier}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
-        `• **True Name Power:** ${np.description}\n\n` +
+        `• **Heroic Spirit:** **${t.name || sName}** — *${t.title || 'Heroic Spirit'}* [\`${t.servantClass || 'Saber'}\`]\n` +
+        `• **Card Type & Target:** **${np.cardType || 'Buster'}** • **${(np.target || 'all').toUpperCase()}**\n` +
+        `• **Damage Multiplier:** \`${np.multiplier || 300}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
+        `• **True Name Power:** ${np.description || 'Devastating Noble Phantasm strike.'}\n\n` +
         `🎬 *Cinematic Noble Phantasm Execution*`
       )
       .setColor(color)
@@ -636,6 +639,12 @@ export async function buildServantHub(
       matchupsSection = `\n🔥 **ACTIVE RIVAL BANTER (${matchupsCount}):**\n${sampleMatchups}\n`;
     }
 
+    const npChant = quotes.noblePhantasm || t.noblePhantasm?.chant || t.noblePhantasm?.name || 'True Name Unleashed!';
+    const battleStartQuote = quotes.battleStart || t.battleStartQuote || 'The battle begins! Stand firm, Master!';
+    const victoryQuote = quotes.victory || t.victoryQuote || 'Victory is ours! Honor to our bond.';
+    const defeatQuote = quotes.defeat || t.defeatQuote || 'Forgive me, Master... My duty... remains unfulfilled...';
+    const summonQuote = quotes.summon || t.summonQuote || 'I ask of you: Are you my Master?';
+
     const embed = new EmbedBuilder()
       .setTitle(`💬 Master Dialogue Studio: ${sName}`)
       .setDescription(
@@ -644,16 +653,16 @@ export async function buildServantHub(
         `• 🔴 **Buster Brave:** *" ${quotes.busterChain || busterDef} "*\n` +
         `• 🔵 **Arts Mana:** *" ${quotes.artsChain || artsDef} "*\n` +
         `• 🟢 **Quick Star:** *" ${quotes.quickChain || quickDef} "*\n` +
-        `• 🌟 **Noble Phantasm:** *" ${quotes.noblePhantasm || t.noblePhantasm.chant} "*\n` +
+        `• 🌟 **Noble Phantasm:** *" ${npChant} "*\n` +
         `• ⚡ **Critical Strike:** *" ${quotes.critHit || 'Direct hit! Piercing the heart of fate!'} "*\n\n` +
         `🔮 **TACTICAL & COMMAND SEALS:**\n` +
         `• ✨ **Skill Activation:** *" ${quotes.skill || 'Unleashing arcane technique!'} "*\n` +
         `• 🔱 **Command Seal:** *" ${quotes.commandSeal || 'By my Command Seal, shatter all opposition!'} "*\n\n` +
         `📜 **INVOCATIONS & STANCES:**\n` +
-        `• ⚔️ **Battle Start:** *" ${quotes.battleStart || t.battleStartQuote} "*\n` +
-        `• 🏆 **Victory:** *" ${quotes.victory || t.victoryQuote} "*\n` +
-        `• 💀 **Defeat:** *" ${quotes.defeat || t.defeatQuote || 'Forgive me, Master... My duty... remains unfulfilled...'} "*\n` +
-        `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n` +
+        `• ⚔️ **Battle Start:** *" ${battleStartQuote} "*\n` +
+        `• 🏆 **Victory:** *" ${victoryQuote} "*\n` +
+        `• 💀 **Defeat:** *" ${defeatQuote} "*\n` +
+        `• 🕯️ **Summon:** *" ${summonQuote} "*\n` +
         matchupsSection +
         `\n💡 *Set lines with \`/customise quote\`, \`/customise faceoff\`, click the Studio buttons below, or choose a Preset!*`
       )
@@ -887,8 +896,8 @@ export async function buildServantHub(
   } else if (category === 'equip_ce' || category === 'feed_ce') {
     if (category === 'equip_ce') {
       const ceSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId('servant_tab_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('servant_tab_feed_ce').setLabel('Feed CEs').setEmoji('🧪').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('servant_sub_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('servant_sub_feed_ce').setLabel('Feed CEs').setEmoji('🧪').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('Reclaim EXP').setEmoji('⚗️').setStyle(ButtonStyle.Danger)
       );
       if (targetServant.equippedCe || targetServant.equippedCeId) {
@@ -937,8 +946,8 @@ export async function buildServantHub(
       });
 
       const ceSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId('servant_tab_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('servant_tab_feed_ce').setLabel('Feed CEs').setEmoji('🧪').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('servant_sub_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('servant_sub_feed_ce').setLabel('Feed CEs').setEmoji('🧪').setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('Reclaim EXP').setEmoji('⚗️').setStyle(ButtonStyle.Danger),
         new ButtonBuilder().setCustomId('servant_act_unlock_all_ces').setLabel('Unlock All').setEmoji('🔓').setStyle(ButtonStyle.Secondary)
       );
@@ -953,7 +962,7 @@ export async function buildServantHub(
 
       // Compact row for high roster size (>20 Servants, where pageNavRow takes a row)
       const compactFeedRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId('servant_tab_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('servant_sub_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('servant_act_feed_embers').setLabel('Embers').setEmoji('✨').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('servant_act_feed_3star').setLabel('1-3★').setEmoji('⚡').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Dupes').setEmoji('🔥').setStyle(ButtonStyle.Primary),
@@ -985,9 +994,9 @@ export async function buildServantHub(
     }
   } else if (category === 'dialogue' || category === 'np' || category === 'roster') {
     const loreSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('servant_tab_dialogue').setLabel('Voice Lines').setEmoji('💬').setStyle(category === 'dialogue' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('servant_tab_np').setLabel('Noble Phantasm').setEmoji('💥').setStyle(category === 'np' ? ButtonStyle.Success : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('servant_tab_roster').setLabel('Roster').setEmoji('📜').setStyle(category === 'roster' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_sub_dialogue').setLabel('Voice Lines').setEmoji('💬').setStyle(category === 'dialogue' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_sub_np').setLabel('Noble Phantasm').setEmoji('💥').setStyle(category === 'np' ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_sub_roster').setLabel('Roster').setEmoji('📜').setStyle(category === 'roster' ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('servant_act_set_active').setLabel('Set Active').setEmoji('👑').setStyle(ButtonStyle.Secondary).setDisabled(master.activeServantId === targetServant.id)
     );
     components.push(loreSubTabRow);
@@ -1115,21 +1124,21 @@ export async function handleGlobalServantInteraction(i: any) {
         await i.showModal(modal);
         return;
       }
-      else if (i.customId === 'servant_tab_profile') {
+      else if (i.customId === 'servant_tab_profile' || i.customId === 'servant_sub_profile') {
         currentCategory = 'profile';
-      } else if (i.customId === 'servant_tab_stats') {
+      } else if (i.customId === 'servant_tab_stats' || i.customId === 'servant_sub_stats') {
         currentCategory = 'stats';
-      } else if (i.customId === 'servant_tab_ascension') {
+      } else if (i.customId === 'servant_tab_ascension' || i.customId === 'servant_sub_ascension') {
         currentCategory = 'ascension';
-      } else if (i.customId === 'servant_tab_equip_ce') {
+      } else if (i.customId === 'servant_tab_equip_ce' || i.customId === 'servant_sub_equip_ce') {
         currentCategory = 'equip_ce';
-      } else if (i.customId === 'servant_tab_feed_ce') {
+      } else if (i.customId === 'servant_tab_feed_ce' || i.customId === 'servant_sub_feed_ce') {
         currentCategory = 'feed_ce';
-      } else if (i.customId === 'servant_tab_np') {
+      } else if (i.customId === 'servant_tab_np' || i.customId === 'servant_sub_np') {
         currentCategory = 'np';
-      } else if (i.customId === 'servant_tab_dialogue') {
+      } else if (i.customId === 'servant_tab_dialogue' || i.customId === 'servant_sub_dialogue') {
         currentCategory = 'dialogue';
-      } else if (i.customId === 'servant_tab_roster') {
+      } else if (i.customId === 'servant_tab_roster' || i.customId === 'servant_sub_roster') {
         currentCategory = 'roster';
       }
       // ROSTER DROPDOWN
@@ -1924,12 +1933,19 @@ export async function handleGlobalServantInteraction(i: any) {
         await i.editReply({
           embeds: hub.embeds,
           components: hub.components
-        }).catch(() => {});
+        }).catch((err: any) => {
+          if (err.code !== 10062 && err.code !== 40060) {
+            console.error('Failed to editReply in servant hub:', err);
+          }
+        });
       } else {
         await i.update({
           embeds: hub.embeds,
           components: hub.components
-        }).catch(async () => {
+        }).catch(async (err: any) => {
+          if (err.code !== 10062 && err.code !== 40060) {
+            console.error('Failed to update in servant hub, attempting fallback:', err);
+          }
           if (i.deferred || i.replied) {
             await i.editReply({
               embeds: hub.embeds,

@@ -1221,6 +1221,12 @@ client.on(Events.InteractionCreate, async interaction => {
 
       const btnId = interaction.customId;
 
+      // Servant Workshop Buttons & Tab Navigation
+      if (btnId.startsWith('servant_') && !btnId.startsWith('servant_list_')) {
+        await handleGlobalServantInteraction(interaction);
+        return;
+      }
+
       // Holy Grail War Recruitment Proclamation Buttons
       if (btnId.startsWith('war_call_')) {
         await handleRecruitmentInteraction(interaction, client);
@@ -1429,11 +1435,6 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      // Universal Servant Workshop Buttons & Tab Navigation
-      if (btnId.startsWith('servant_')) {
-        await handleGlobalServantInteraction(interaction);
-        return;
-      }
 
       // Universal Gacha & Invocation Sanctum Handler (10x multi, 1x single, tickets, tabs, shop, shortcuts)
       if (await handleGlobalGachaInteraction(interaction)) {
