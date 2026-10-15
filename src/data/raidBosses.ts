@@ -7,6 +7,10 @@ export interface RaidBossPhaseConfig {
   baseHp: number;
   maxCharge: number;
   spriteUrl: string;
+  npName?: string;
+  npChant?: string;
+  npDesc?: string;
+  npAssetUrl?: string;
   drawBox: {
     destX: number;
     destY: number;
@@ -120,7 +124,7 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
     title: 'Beast II • Primordial Mother of Genesis',
     servantClass: 'Beast',
     level: 95,
-    baseHp: 3_500_000,
+    baseHp: 14_000_000,
     maxCharge: 5,
     totalPhases: 3,
     traits: ['threat_to_humanity', 'beast', 'demonic', 'giant', 'super_large', 'divine', 'female', 'dragon'],
@@ -138,9 +142,13 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
         phaseNumber: 1,
         name: 'Tiamat',
         title: 'Beast II • Primordial Mother (Limiter State)',
-        baseHp: 3_500_000,
+        baseHp: 14_000_000,
         maxCharge: 5,
         spriteUrl: 'https://ella.janitorai.com/media-approved/vIAH9W2EA76dznj4sTQP5.webp',
+        npName: 'PRIMORDIAL MURMUR (CHAOS TIDE CRADLE)',
+        npChant: '“...Aaaaa...”',
+        npDesc: 'Tiamat weeps as waves of primordial black mud crash over the entire party, dealing heavy AoE damage and inflicting a 3-turn persistent Chaos Curse!',
+        npAssetUrl: 'https://ella.janitorai.com/media-approved/xpD_kMhfXNT1T0MtyF4DX.webp',
         drawBox: {
           destX: 80,
           destY: 90,
@@ -158,9 +166,13 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
         phaseNumber: 2,
         name: 'Tiamat (Titan)',
         title: 'Beast II • The Marching Calamity',
-        baseHp: 5_500_000,
+        baseHp: 22_000_000,
         maxCharge: 4,
         spriteUrl: 'https://ella.janitorai.com/media-approved/WaKYI0RR-_UhcLwjF4Fbu.webp',
+        npName: 'CHAOS SURGE (CRUSHING TITAN GESTATION)',
+        npChant: '“...GAAAAAH... AAAAAHHH!”',
+        npDesc: 'Tiamat Titan surges forward, unleashing a tidal wave of primordial prana that batters all Servants with massive AoE damage and persistent curse!',
+        npAssetUrl: 'https://ella.janitorai.com/media-approved/kQ23vRCI41AnKDMw9RHcW.webp',
         drawBox: {
           destX: 100,
           destY: 30,
@@ -178,9 +190,13 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
         phaseNumber: 3,
         name: 'Beast II / Tiamat',
         title: 'Beast of Calamity • Primeval Sea Dragon',
-        baseHp: 8_000_000,
+        baseHp: 182_000_000,
         maxCharge: 3,
         spriteUrl: 'https://ella.janitorai.com/media-approved/0e2G0RijgX5dnEjjuZPBm.webp',
+        npName: 'PRIMORDIAL ROAR (NEGA-GENESIS ANNIHILATION)',
+        npChant: '“...AAAAAA—!”',
+        npDesc: 'Beast II spreads her titanic draconic wings, releasing a deafening roar of absolute genesis annihilation that ignores all evasion and invulnerability!',
+        npAssetUrl: 'https://ella.janitorai.com/media-approved/tiZM7h03gIQkcvsJEwEYd.webp',
         drawBox: {
           destX: -140,
           destY: -20,
@@ -243,10 +259,10 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
       damageMultiplier: 2.5
     },
     drops: {
-      minSq: 20,
-      maxSq: 35,
-      servantExp: 60_000,
-      emberCount: 5
+      minSq: 50,
+      maxSq: 50,
+      servantExp: 200_000,
+      emberCount: 30
     }
   },
   dark_sakura: {

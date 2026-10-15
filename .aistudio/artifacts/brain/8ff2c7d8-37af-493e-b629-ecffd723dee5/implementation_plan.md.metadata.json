@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan to restore CE Vault (Equip & Feed sub-views, quick feed actions, select menus), restore Lore Studio custom line modals (Combat, Tactical, Face-Off, and Reset), and conduct a full audit across /servant, /inventory, /bond, and /customise to guarantee Discord 5-row limit compliance and responsive pagination.",
-  "updatedAt": "2026-10-15T07:09:56.321403961Z",
+  "summary": "Implementation plan for Tiamat Raid enhancements: 2x attack & phase HP scaling (Phase 1: 7M, Phase 2: 11M, Phase 3: 66M HP), distinct Noble Phantasms and cut-in visual assets for each phase, 35% chance +2 NP gauge charge acceleration, and updated raid spoils of war (200,000 EXP, 30 Embers, 1,000 Bond EXP, 50 Saint Quartz).",
+  "updatedAt": "2026-10-15T10:27:28.037377397Z",
   "requestFeedback": true,
   "userFacing": true
 }

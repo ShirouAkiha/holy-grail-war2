@@ -16,6 +16,7 @@ import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantas
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
 import { addServantBattleExp, createExpEmberCraftEssence } from '../engine/customization';
+import { addBondExpToServant } from '../../lib/engine/bondEvents';
 import { calculateServantMaxHp, getParameterRankMultiplier, getEnduranceDamageReductionPercent } from '../engine/statSystem';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
@@ -138,10 +139,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `• **Karma Memory:** Tracks kills vs spares over time • Unlocks double rewards & Pacifist Headpat!\n` +
         `• **Victory Drops:** 💎 \`16–28 SQ (Doubled on Sparing!)\` • ⚔️ \`+45,000 EXP\` • ✨ \`4x Embers\` • ★5 Ribbon CE\n\n` +
         `🌊 **3. BEAST II / PRIMORDIAL MOTHER TIAMAT** — *Chaos Sea of Genesis*\n` +
-        `• **Class:** \`Beast\` • **Level:** \`95\` • **HP:** \`17,000,000\` (**3 Break Gauges**)\n` +
-        `• **Phases:** Limiter (3.5M HP) ➔ Titan (5.5M HP) ➔ Primeval Dragon (8M HP)\n` +
-        `• **Mechanics:** Sea of Life (-2,000 HP/T), Self-Limitation, Nega-Genesis (-50% card DMG, NP True DMG)\n` +
-        `• **Victory Drops:** 💎 \`20–35 SQ\` • ⚔️ \`+60,000 EXP\` • 💖 \`+5,000 Bond\` • ✨ \`5x Embers\`\n\n` +
+        `• **Class:** \`Beast\` • **Level:** \`95\` • **HP:** \`84,000,000 Total\` (**3 Break Gauges**)\n` +
+        `• **Phases:** Limiter (7M HP) ➔ Titan (11M HP) ➔ Primeval Dragon (66M HP)\n` +
+        `• **Mechanics:** 2x Calamity Damage, Primordial Pulse (+2 NP Diamonds), Nega-Genesis (-50% card DMG)\n` +
+        `• **Victory Drops:** 💎 \`50 SQ\` • ⚔️ \`+200,000 EXP\` • 💖 \`+1,000 Bond\` • ✨ \`30x Embers\`\n\n` +
         `👉 *Select a Raid Boss below to establish your co-op incursion lobby:*`
       )
       .setColor(0xd946ef)
@@ -204,11 +205,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             `• Class: \`Avenger\` • Total HP: \`4,500,000\` (2 Break Gauges)\n` +
             `• Traits: Threat to Humanity, Humanoid, Demonic, Shadow, Female\n` +
             `• Special: Dynamic Encounter Dialogue, Sparing/Execution Climax Dilemma\n` +
-            `• Drops: 16–28 SQ (Doubled on Sparing!), 45k EXP, 4x Embers, ★5 Ribbon of the Hollow Night CE\n\n` +
             `**3. Beast II / Tiamat (Chaos Sea)**\n` +
-            `• Class: \`Beast\` • Total HP: \`17,000,000\` (3 Break Gauges)\n` +
+            `• Class: \`Beast\` • Total HP: \`84,000,000\` (3 Break Gauges: 7M ➔ 11M ➔ 66M)\n` +
             `• Traits: Beast, Divine, Dragon, Super Large, Female\n` +
-            `• Drops: 20–35 SQ, 60k EXP, 5,000 Bond, 5x Embers`
+            `• Special: 2x Calamity DMG, 35% Chance +2 NP Charge Diamonds, Phase-Specific NPs\n` +
+            `• Drops: 50 SQ, 200,000 EXP, 1,000 Bond EXP, 30x Embers`
           )
           .setColor(0x38bdf8);
 
@@ -965,32 +966,38 @@ async function runRaidBattle(
     await cleanupNpGif();
     const isTiamat = boss.id === 'tiamat';
     const isDarkSakura = boss.id === 'dark_sakura';
-    const isPhase3 = battleState.currentPhase === 3;
-    let npName = isTiamat
-      ? (isPhase3 ? 'PRIMORDIAL ROAR' : 'PRIMORDIAL MURMUR')
-      : isDarkSakura
-      ? 'THE SHADOW: ALL THE WORLD’S EVIL'
-      : boss.chargeAttack.name.toUpperCase();
-    let chant = isTiamat
-      ? (isPhase3
-        ? '“...AAAAAA—! (The primordial cry of genesis that birthed and swallowed the gods!)”'
-        : '“...Aaaaa... (The sorrowful murmur of the abandoned mother echoes through the dark sea...)”')
-      : isDarkSakura
-      ? '“The darkness runs deep... Let the black mud drink everything you hold dear!”'
-      : '“O Solomon, look upon our despair! From the cradle of incinerated time, we offer your demise!”';
-    let desc = isTiamat
-      ? (isPhase3
-        ? 'Beast II spreads her titanic draconic wings, releasing a deafening roar of absolute annihilation that ignores all evasion and invulnerability!'
-        : 'Tiamat weeps as waves of primordial black mud crash over the entire party!')
-      : isDarkSakura
-      ? 'Dark Sakura summons the boundless corrupting mud of Angra Mainyu, drowning the cavern in an apocalyptic vortex of shadow jaws!'
-      : 'Barbatos opens all 72 crimson eyes of the Solomon Spire, unleashing an apocalyptic wave of cursed demon god mana across the entire battlefield!';
+    const phaseIdx = (battleState.currentPhase || 1) - 1;
+    const currentPhaseConfig = boss.phases?.[phaseIdx];
 
-    const bossImage = isDarkSakura
-      ? DARK_SAKURA_ASSETS.ultimateGif
-      : boss.phases && battleState.currentPhase
-      ? boss.phases[battleState.currentPhase - 1]?.spriteUrl || boss.avatarUrl
-      : boss.avatarUrl;
+    let npName: string;
+    let chant: string;
+    let desc: string;
+    let bossImage: string;
+
+    if (isTiamat) {
+      npName = currentPhaseConfig?.npName || (battleState.currentPhase === 3 ? 'PRIMORDIAL ROAR (NEGA-GENESIS ANNIHILATION)' : battleState.currentPhase === 2 ? 'CHAOS SURGE (CRUSHING TITAN GESTATION)' : 'PRIMORDIAL MURMUR (CHAOS TIDE CRADLE)');
+      chant = currentPhaseConfig?.npChant || (battleState.currentPhase === 3
+        ? '“...AAAAAA—!”'
+        : battleState.currentPhase === 2
+        ? '“...GAAAAAH... AAAAAHHH!”'
+        : '“...Aaaaa...”');
+      desc = currentPhaseConfig?.npDesc || (battleState.currentPhase === 3
+        ? 'Beast II spreads her titanic draconic wings, releasing a deafening roar of absolute genesis annihilation that ignores all evasion and invulnerability!'
+        : battleState.currentPhase === 2
+        ? 'Tiamat Titan surges forward, unleashing a tidal wave of primordial prana that batters all Servants with massive AoE damage and persistent curse!'
+        : 'Tiamat weeps as waves of primordial black mud crash over the entire party, dealing heavy AoE damage and inflicting a 3-turn persistent Chaos Curse!');
+      bossImage = currentPhaseConfig?.npAssetUrl || currentPhaseConfig?.spriteUrl || boss.avatarUrl;
+    } else if (isDarkSakura) {
+      npName = 'THE SHADOW: ALL THE WORLD’S EVIL';
+      chant = '“The darkness runs deep... Let the black mud drink everything you hold dear!”';
+      desc = 'Dark Sakura summons the boundless corrupting mud of Angra Mainyu, drowning the cavern in an apocalyptic vortex of shadow jaws!';
+      bossImage = DARK_SAKURA_ASSETS.ultimateGif;
+    } else {
+      npName = boss.chargeAttack.name.toUpperCase();
+      chant = '“O Solomon, look upon our despair! From the cradle of incinerated time, we offer your demise!”';
+      desc = 'Barbatos opens all 72 crimson eyes of the Solomon Spire, unleashing an apocalyptic wave of cursed demon god mana across the entire battlefield!';
+      bossImage = currentPhaseConfig?.spriteUrl || boss.avatarUrl;
+    }
 
     const bossEmbed = new EmbedBuilder()
       .setTitle(`🔥 APOCALYPTIC NOBLE PHANTASM: ${npName}`)
@@ -2077,8 +2084,7 @@ async function runRaidBattle(
           battleState.breakGaugesRemaining--;
           battleState.currentPhase = (battleState.currentPhase || 1) + 1;
           const phaseIdx = battleState.currentPhase - 1;
-          const nextPhase = boss.phases?.[phaseIdx];
-          const newBase = nextPhase?.baseHp || (battleState.currentPhase === 2 ? 5_500_000 : 8_000_000);
+          const newBase = nextPhase?.baseHp || (battleState.currentPhase === 2 ? (boss.id === 'tiamat' ? 22_000_000 : 5_500_000) : (boss.id === 'tiamat' ? 182_000_000 : 8_000_000));
           const scaledNewHp = Math.round(newBase * hpMultiplier);
 
           battleState.bossCurrentHp = scaledNewHp;
@@ -4210,10 +4216,16 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
     }
   }
 
-  // Charge progression (+1 normal charge; +2 if enraged)
+  // Charge progression (+1 normal charge; +2 if enraged; 35% chance +2 for Tiamat)
   const isNpSealed = state.bossBuffs.some(b => b.type === 'np_seal');
   if (!isNpSealed) {
-    state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + (isEnraged ? 2 : 1));
+    let chargeIncrement = isEnraged ? 2 : 1;
+    if (isTiamat && !isEnraged && Math.random() < 0.35) {
+      chargeIncrement = 2;
+      state.recentLogs.push(`🌊 **[Primordial Pulse]** Tiamat's draconic core surges! NP gauge charged by **+2 diamonds**!`);
+      enemyPhase.specialEvents.push(`🌊 **[Primordial Pulse]** Tiamat accelerated her NP charge by +2 diamonds!`);
+    }
+    state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + chargeIncrement);
   } else {
     state.recentLogs.push(`🔒 **[NP SEALED!] ${state.boss.name} is sealed and cannot charge its NP!**`);
     enemyPhase.specialEvents.push(`🔒 **[NP SEALED]** ${state.boss.name} was sealed and could not charge its NP diamond!`);
@@ -4233,10 +4245,10 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         const isEnrageWipe = state.phaseUltsUsed >= 3 || state.round >= 20;
         enemyPhase.actionName = isEnrageWipe
           ? 'ENRAGE WIPE: Primordial Roar (Absolute Calamity)'
-          : 'NOBLE PHANTASM: Primordial Roar (True Genesis Annihilation)';
+          : 'NOBLE PHANTASM: Primordial Roar (Nega-Genesis Annihilation)';
         enemyPhase.actionTarget = 'ALL Servants (Ignores Evade & Invincible!)';
 
-        const baseAoeDamage = isEnrageWipe ? 99_999 : Math.round((22000 + Math.random() * 6000) * totalBossAtkMult);
+        const baseAoeDamage = isEnrageWipe ? 99_999 : Math.round((88000 + Math.random() * 24000) * totalBossAtkMult);
         let antiPurgeCount = 0;
 
         state.participants.forEach(p => {
@@ -4262,10 +4274,58 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
             ? `💀 **[ENRAGE WIPE!]** Beast II unleashes 3rd Primordial Roar—shattering the reality of the Holy Grail War!`
             : `💥 **NOBLE PHANTASM: PRIMORDIAL ROAR!** Beast II spreads her wings and screams with true genesis mana for **${baseAoeDamage.toLocaleString()} True AoE DMG**! *(Ignores Evade/Invincibility!)*${apNotice}`
         );
-      } else {
-        enemyPhase.actionName = 'NOBLE PHANTASM: Primordial Murmur';
+      } else if (state.currentPhase === 2) {
+        enemyPhase.actionName = 'NOBLE PHANTASM: Chaos Surge (Crushing Titan Gestation)';
         enemyPhase.actionTarget = 'ALL Servants';
-        const baseAoeDamage = Math.round((14500 + Math.random() * 3500) * totalBossAtkMult);
+        const baseAoeDamage = Math.round((68000 + Math.random() * 16000) * totalBossAtkMult);
+        let evadesCount = 0;
+
+        state.participants.forEach(p => {
+          if (!p.isDead) {
+            const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge' || b.type === 'evade' || b.type === 'invincible') : -1;
+            if (evIdx >= 0 && p.activeBuffs) {
+              const bType = p.activeBuffs[evIdx].type;
+              p.activeBuffs.splice(evIdx, 1);
+              evadesCount++;
+              const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+              if (bType === 'anti_purge_defense' || bType === 'anti_purge') {
+                enemyPhase.specialEvents.push(`👑 **${pName}** completely BLOCKED Chaos Surge with Anti-Purge Defense!`);
+              } else {
+                enemyPhase.specialEvents.push(`🛡️ **${pName}** completely EVADED Chaos Surge!`);
+              }
+              return;
+            }
+
+            const dmgCut = p.activeBuffs?.filter(b => b.type === 'damage_cut').reduce((acc, b) => acc + b.value, 0) || 0;
+            const defDown = p.activeBuffs?.filter(b => b.type === 'def_down').reduce((acc, b) => acc + b.value, 0) || 0;
+            const defUp = p.activeBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0;
+            const defFactor = Math.max(0.4, 1 + (defDown - defUp) / 100);
+
+            const finalAoe = Math.max(2500, Math.round((baseAoeDamage * defFactor) - dmgCut));
+            enemyPhase.strikeDamage += finalAoe;
+
+            const res = applyDamageToRaidParticipant(p, finalAoe, state);
+            if (res.gutsLog) enemyPhase.specialEvents.push(res.gutsLog);
+
+            p.activeBuffs = p.activeBuffs || [];
+            p.activeBuffs.push({
+              name: 'Chaos Curse',
+              type: 'curse',
+              value: 2000,
+              remainingTurns: 3,
+              appliedRound: state.round
+            });
+          }
+        });
+
+        const evadeNotice = evadesCount > 0 ? ` 🛡️ (${evadesCount} Servant(s) EVADED!)` : '';
+        state.recentLogs.push(
+          `💥 **NOBLE PHANTASM: CHAOS SURGE!** Tiamat Titan unleashes crushing primordial prana for **${baseAoeDamage.toLocaleString()} AoE DMG** & Curse!${evadeNotice}`
+        );
+      } else {
+        enemyPhase.actionName = 'NOBLE PHANTASM: Primordial Murmur (Chaos Tide Cradle)';
+        enemyPhase.actionTarget = 'ALL Servants';
+        const baseAoeDamage = Math.round((58000 + Math.random() * 14000) * totalBossAtkMult);
         let evadesCount = 0;
 
         state.participants.forEach(p => {
@@ -4289,7 +4349,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
             const defUp = p.activeBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0;
             const defFactor = Math.max(0.4, 1 + (defDown - defUp) / 100);
 
-            const finalAoe = Math.max(1500, Math.round((baseAoeDamage * defFactor) - dmgCut));
+            const finalAoe = Math.max(2000, Math.round((baseAoeDamage * defFactor) - dmgCut));
             enemyPhase.strikeDamage += finalAoe;
 
             const res = applyDamageToRaidParticipant(p, finalAoe, state);
@@ -4460,7 +4520,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       const defFactor = Math.max(0.4, 1 + (defDown - defUp) / 100);
 
       const baseCritMult = isPhase3Beast ? 1.6 : 1.0;
-      const baseSingle = Math.round((5000 + Math.random() * 2800) * totalBossAtkMult * baseCritMult);
+      const tiamatAtkMult = isTiamat ? 4.0 : 1.0;
+      const baseSingle = Math.round((5000 + Math.random() * 2800) * totalBossAtkMult * baseCritMult * tiamatAtkMult);
       const finalDmg = Math.max(800, Math.round((baseSingle * defFactor) - dmgCut));
       enemyPhase.strikeDamage += finalDmg;
 
@@ -4697,9 +4758,12 @@ async function concludeRaidVictory(
     return;
   }
 
+  const isTiamat = boss.id === 'tiamat';
   const participants = battleState.participants;
-  const sqReward = Math.floor(boss.drops.minSq + Math.random() * (boss.drops.maxSq - boss.drops.minSq + 1));
-  const servantExpReward = boss.drops.servantExp || 25_000;
+  const sqReward = isTiamat ? 50 : Math.floor(boss.drops.minSq + Math.random() * (boss.drops.maxSq - boss.drops.minSq + 1));
+  const servantExpReward = isTiamat ? 200_000 : (boss.drops.servantExp || 25_000);
+  const emberCount = isTiamat ? 30 : 3;
+  const bondExpReward = isTiamat ? 1000 : 300;
 
   const progressionReports: string[] = [];
 
@@ -4722,15 +4786,36 @@ async function concludeRaidVictory(
         lvlDetail += ` *(+${expResult.levelsGained} Level-Up! +${expResult.statPointsGained} Stat Points)*`;
       }
 
-      sReport += `\n  └─ ⚔️ **Level:** \`${lvlDetail}\``;
+      sReport += `\n  ├─ ⚔️ **Level:** \`${lvlDetail}\``;
+
+      // 2. Servant Bond EXP & Bond Level-Up
+      const bondResult = addBondExpToServant(s, bondExpReward);
+      s.bondExp = bondResult.updatedServant.bondExp;
+      s.bondLevel = bondResult.updatedServant.bondLevel;
+      let bondDetail = `Bond Lv. ${bondResult.newLevel}`;
+      if (bondResult.didLevelUp) {
+        bondDetail += ` *(🌸 BOND LEVEL UP! Bond Lv. ${bondResult.newLevel})*`;
+      }
+      if (bondResult.unlockedBondCe) {
+        master.craftEssences = master.craftEssences || [];
+        master.craftEssences.push(bondResult.unlockedBondCe);
+        bondDetail += ` *(👑 UNLOCKED BOND 10 CE: **${bondResult.unlockedBondCe.name}**!)*`;
+      }
+      sReport += `\n  └─ 🌸 **Bond:** \`${bondDetail}\` (+${bondExpReward.toLocaleString()} Bond EXP)`;
     }
 
-    // 2. Universal EXP Embers (Blaze of Wisdom) deposited directly to Master inventory
+    // 3. Universal EXP Embers (Blaze of Wisdom) deposited directly to Master inventory
     master.craftEssences = master.craftEssences || [];
-    const emberSSR = createExpEmberCraftEssence(5, 1);
-    const emberSR1 = createExpEmberCraftEssence(4, 2);
-    const emberSR2 = createExpEmberCraftEssence(4, 3);
-    master.craftEssences.push(emberSSR, emberSR1, emberSR2);
+    if (isTiamat) {
+      for (let i = 0; i < 30; i++) {
+        master.craftEssences.push(createExpEmberCraftEssence(5, i + 1));
+      }
+    } else {
+      const emberSSR = createExpEmberCraftEssence(5, 1);
+      const emberSR1 = createExpEmberCraftEssence(4, 2);
+      const emberSR2 = createExpEmberCraftEssence(4, 3);
+      master.craftEssences.push(emberSSR, emberSR1, emberSR2);
+    }
 
     progressionReports.push(sReport);
     await saveMaster(master);
@@ -4757,7 +4842,6 @@ async function concludeRaidVictory(
   // Recent Combat Log Summary
   const recentCombatLogText = (battleState.fullCombatLog || []).slice(-6).join('\n');
 
-  const isTiamat = boss.id === 'tiamat';
   const victoryTitle = isTiamat
     ? '🏆 BEAST II TIAMAT VANQUISHED — RAID COMPLETE!'
     : '🏆 DEMON GOD PILLAR VANQUISHED — RAID COMPLETE!';
@@ -4774,7 +4858,8 @@ async function concludeRaidVictory(
       `💎 **Spoils of War (Distributed to all Masters):**\n` +
       `• **+${sqReward} Saint Quartz** 💎\n` +
       `• **+${servantExpReward.toLocaleString()} Servant Battle EXP** ⚔️ *(Levels up Servant & awards unspent Stat Points)*\n` +
-      `• **+3 Universal EXP Embers** ✨ *(1x ★5 SSR + 2x ★4 SR Blaze of Wisdom synthesized to inventory for \`/feed\`)*\n\n` +
+      `• **+${emberCount} Universal EXP Embers** ✨ *(★5 SSR Blaze of Wisdom synthesized to inventory for \`/feed\`)*\n` +
+      `• **+${bondExpReward.toLocaleString()} Bond EXP** 🌸 *(Advances Servant Bond Level)*\n\n` +
       `👑 **Victorious Masters & Progression:**\n` +
       progressionReports.join('\n') + `\n\n` +
       `📜 **Recent Battle Log:**\n${recentCombatLogText}`
