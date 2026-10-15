@@ -10,6 +10,7 @@ import {
   TurnActionChoice
 } from '../types/index';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
+import { getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 
 // Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
 export const PVP_DAMAGE_MODIFIER = 0.35;
@@ -2049,7 +2050,7 @@ export function generateTurnDialogueQuote(
   }
 
   if (choice.useNoblePhantasm && actor.npGauge >= 100) {
-    const chant = actor.customQuotes?.noblePhantasm || actor.noblePhantasm?.chant || `Sword of Promised Victory... EXCALIBUR!`;
+    const chant = actor.customQuotes?.noblePhantasm || actor.noblePhantasm?.chant || getNoblePhantasmChant(actor);
     return {
       speakerName: servantName,
       speakerTitle: `${servantClass} • ${actor.noblePhantasm?.name || 'Noble Phantasm'}`,

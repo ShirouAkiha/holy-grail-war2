@@ -1758,98 +1758,100 @@ const GENERIC_PROFILE: ServantDialogueProfile = {
  */
 export function getServantProfile(servantName?: string): ServantDialogueProfile {
   if (!servantName) return GENERIC_PROFILE;
-  const n = servantName.toLowerCase();
+  const cleanName = servantName.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
+  const rawLower = servantName.toLowerCase();
 
-  if (n.includes('archetype') || n.includes('arcueid') || n.includes('brunestud') || n.includes('funny vamp') || (n.includes('earth') && (n.includes('moon') || n.includes('proto')))) {
+  if (cleanName.includes('archetype') || cleanName.includes('arcueid') || cleanName.includes('brunestud') || cleanName.includes('funny vamp') || (cleanName.includes('earth') && (cleanName.includes('moon') || cleanName.includes('proto')))) {
     return SERVANT_COMBAT_DIALOGUES.archetype_earth;
   }
-  if (n.includes('okita') || n.includes('souji') || n.includes('shinsengumi') || n.includes('sandan-zuki')) {
+  if (cleanName.includes('okita') || cleanName.includes('souji') || cleanName.includes('shinsengumi') || cleanName.includes('sandan-zuki')) {
     return SERVANT_COMBAT_DIALOGUES.okita_souji;
   }
-  if (n.includes('nero') || n.includes('claudius') || n.includes('red saber')) {
+  if (cleanName.includes('nero') || cleanName.includes('claudius') || cleanName.includes('red saber')) {
     return SERVANT_COMBAT_DIALOGUES.nero;
   }
-  if (n.includes('alter') && (n.includes('heroine') || n.includes('mhx') || n.includes('ecchan'))) {
+  if (cleanName.includes('heroine') || cleanName.includes('mhx') || cleanName.includes('ecchan') || (cleanName.includes('alter') && cleanName.includes('x'))) {
     return SERVANT_COMBAT_DIALOGUES.mhx_alter;
   }
-  if ((n.includes('artoria') || n.includes('altria') || n.includes('saber')) && (n.includes('alter') || n.includes('salter'))) {
+  if ((cleanName.includes('artoria') || cleanName.includes('altria')) && cleanName.includes('alter')) {
     return SERVANT_COMBAT_DIALOGUES.artoria_pendragon_alter;
   }
-  if (n.includes('altera') || n.includes('attila') || n.includes('etzel') || n.includes('destroyer of civilization')) {
-    return SERVANT_COMBAT_DIALOGUES.altera;
-  }
-  if (n.includes('artoria') || n.includes('arthur') || n.includes('saber')) {
-    return SERVANT_COMBAT_DIALOGUES.artoria;
-  }
-  if (n.includes('gilgamesh') || n.includes('king of heroes')) {
-    return SERVANT_COMBAT_DIALOGUES.gilgamesh;
-  }
-  if (n.includes('scáthach') || n.includes('scathach')) {
-    return SERVANT_COMBAT_DIALOGUES.scathach;
-  }
-  if (n.includes('cú') || n.includes('cu') || n.includes('chulainn')) {
-    return SERVANT_COMBAT_DIALOGUES.cu_chulainn;
-  }
-  if (n.includes('emiya') || n.includes('archer') || n.includes('nameless')) {
-    return SERVANT_COMBAT_DIALOGUES.emiya;
-  }
-  if ((n.includes('jeanne') && n.includes('alter')) || n.includes('jalter')) {
-    return SERVANT_COMBAT_DIALOGUES.jeanne_alter;
-  }
-  if (n.includes('jeanne') || n.includes('ruler')) {
-    return SERVANT_COMBAT_DIALOGUES.jeanne_darc_ruler;
-  }
-  if (n.includes('mordred')) {
-    return SERVANT_COMBAT_DIALOGUES.mordred;
-  }
-  if (n.includes('nero') || n.includes('claudius')) {
-    return SERVANT_COMBAT_DIALOGUES.nero;
-  }
-  if (n.includes('karna')) {
-    return SERVANT_COMBAT_DIALOGUES.karna;
-  }
-  if (n.includes('heracles') || n.includes('berserker') || n.includes('hercules')) {
-    return SERVANT_COMBAT_DIALOGUES.heracles;
-  }
-  if (n.includes('mash') || n.includes('shielder')) {
-    return SERVANT_COMBAT_DIALOGUES.mash;
-  }
-  if (n.includes('adiosa') || n.includes('world-pruner') || n.includes('world pruner') || n.includes('dragon envoy') || n.includes('aethelian') || n.includes('ixenor')) {
-    return SERVANT_COMBAT_DIALOGUES.adiosa;
-  }
-  if (n.includes('aoko') || n.includes('fifth magician') || n.includes('magic gunner') || n.includes('super aoko')) {
-    return SERVANT_COMBAT_DIALOGUES.aoko_aozaki;
-  }
-  if (n.includes('lucia') || n.includes('lucernalia') || n.includes('lyozes') || n.includes('high elf') || n.includes('black lance')) {
-    return SERVANT_COMBAT_DIALOGUES.lucia_lyozes;
-  }
-  if (n.includes('luvria') || n.includes('greenharte') || n.includes('strongest mage') || n.includes('concept nullification')) {
-    return SERVANT_COMBAT_DIALOGUES.luvria_greenharte;
-  }
-  if (n.includes('artoria caster') || n.includes('castoria') || n.includes('altria caster') || n.includes('child of prophecy') || n.includes('round of avalon')) {
+  if (cleanName.includes('castoria') || ((cleanName.includes('artoria') || cleanName.includes('altria')) && cleanName.includes('caster')) || cleanName.includes('child of prophecy')) {
     return SERVANT_COMBAT_DIALOGUES.artoria_caster;
   }
-  if (n.includes('edmond') || n.includes('tiger-kin') || n.includes('tigris redoubt') || n.includes('red scarf') || n.includes('earth-wrought')) {
+  if (cleanName.includes('artoria') || cleanName.includes('altria') || cleanName.includes('arthur')) {
+    return SERVANT_COMBAT_DIALOGUES.artoria;
+  }
+  if (cleanName.includes('altera') || cleanName.includes('attila') || cleanName.includes('etzel') || cleanName.includes('destroyer of civilization')) {
+    return SERVANT_COMBAT_DIALOGUES.altera;
+  }
+  if (cleanName.includes('gilgamesh') || cleanName.includes('king of heroes')) {
+    return SERVANT_COMBAT_DIALOGUES.gilgamesh;
+  }
+  if (cleanName.includes('scáthach') || cleanName.includes('scathach')) {
+    return SERVANT_COMBAT_DIALOGUES.scathach;
+  }
+  if (cleanName.includes('cú') || cleanName.includes('cu chulainn') || cleanName.includes('chulainn')) {
+    return SERVANT_COMBAT_DIALOGUES.cu_chulainn;
+  }
+  if (cleanName.includes('emiya') || cleanName.includes('nameless')) {
+    return SERVANT_COMBAT_DIALOGUES.emiya;
+  }
+  if ((cleanName.includes('jeanne') && cleanName.includes('alter')) || cleanName.includes('jalter')) {
+    return SERVANT_COMBAT_DIALOGUES.jeanne_alter;
+  }
+  if (cleanName.includes('jeanne')) {
+    return SERVANT_COMBAT_DIALOGUES.jeanne_darc_ruler;
+  }
+  if (cleanName.includes('mordred')) {
+    return SERVANT_COMBAT_DIALOGUES.mordred;
+  }
+  if (cleanName.includes('karna')) {
+    return SERVANT_COMBAT_DIALOGUES.karna;
+  }
+  if (cleanName.includes('heracles') || cleanName.includes('hercules')) {
+    return SERVANT_COMBAT_DIALOGUES.heracles;
+  }
+  if (cleanName.includes('mash')) {
+    return SERVANT_COMBAT_DIALOGUES.mash;
+  }
+  if (cleanName.includes('adiosa') || cleanName.includes('world-pruner') || cleanName.includes('dragon envoy') || cleanName.includes('aethelian') || cleanName.includes('ixenor')) {
+    return SERVANT_COMBAT_DIALOGUES.adiosa;
+  }
+  if (cleanName.includes('aoko') || cleanName.includes('fifth magician') || cleanName.includes('magic gunner') || cleanName.includes('super aoko')) {
+    return SERVANT_COMBAT_DIALOGUES.aoko_aozaki;
+  }
+  if (cleanName.includes('lucia') || cleanName.includes('lucernalia') || cleanName.includes('lyozes') || cleanName.includes('high elf') || cleanName.includes('black lance')) {
+    return SERVANT_COMBAT_DIALOGUES.lucia_lyozes;
+  }
+  if (cleanName.includes('luvria') || cleanName.includes('greenharte') || cleanName.includes('strongest mage') || cleanName.includes('concept nullification')) {
+    return SERVANT_COMBAT_DIALOGUES.luvria_greenharte;
+  }
+  if (cleanName.includes('edmond') || cleanName.includes('tiger-kin') || cleanName.includes('tigris redoubt')) {
     return SERVANT_COMBAT_DIALOGUES.edmond;
   }
-  if (n.includes('amamiya') || n.includes('chihaya') || n.includes('tenkohime') || n.includes('kyubi') || n.includes('kyūbi') || n.includes('amazakura')) {
+  if (cleanName.includes('amamiya') || cleanName.includes('chihaya') || cleanName.includes('tenkohime') || cleanName.includes('kyubi') || cleanName.includes('kyūbi') || cleanName.includes('amazakura')) {
     return SERVANT_COMBAT_DIALOGUES.amamiya_no_chihaya_tenkohime;
   }
-  if (n.includes('typhon') || n.includes('ephemeros') || n.includes('progenitor dragon') || n.includes('ephemeral fruit')) {
+  if (cleanName.includes('typhon') || cleanName.includes('ephemeros') || cleanName.includes('progenitor dragon') || cleanName.includes('ephemeral fruit')) {
     return SERVANT_COMBAT_DIALOGUES.typhon_ephemeros;
   }
-  if (n.includes('gogh') || n.includes('clytie') || n.includes('sunflower') || n.includes('starry night')) {
+  if (cleanName.includes('gogh') || cleanName.includes('clytie') || cleanName.includes('sunflower') || cleanName.includes('starry night')) {
     return SERVANT_COMBAT_DIALOGUES.van_gogh;
   }
-  if (n.includes('tamamo') || n.includes('mikokon') || n.includes('fox wife') || n.includes('amaterasu')) {
+  if (cleanName.includes('tamamo') || cleanName.includes('mikokon') || cleanName.includes('fox wife') || cleanName.includes('amaterasu')) {
     return SERVANT_COMBAT_DIALOGUES.tamamo_no_mae;
   }
-  if (n.includes('azrael') || n.includes('hassan') || n.includes('pale angel') || n.includes('grand assassin') || n.includes('audit')) {
+  if (cleanName.includes('azrael') || cleanName.includes('hassan') || cleanName.includes('pale angel') || cleanName.includes('grand assassin')) {
     return SERVANT_COMBAT_DIALOGUES.hassan_i_sabbah_azrael;
   }
-  if (n.includes('okita') || n.includes('souji') || n.includes('shinsengumi') || n.includes('sandan-zuki')) {
-    return SERVANT_COMBAT_DIALOGUES.okita_souji;
-  }
+
+  // Class fallback only if no specific servant matched
+  if (rawLower.includes('saber')) return SERVANT_COMBAT_DIALOGUES.artoria;
+  if (rawLower.includes('archer')) return SERVANT_COMBAT_DIALOGUES.emiya;
+  if (rawLower.includes('berserker')) return SERVANT_COMBAT_DIALOGUES.heracles;
+  if (rawLower.includes('ruler')) return SERVANT_COMBAT_DIALOGUES.jeanne_darc_ruler;
+  if (rawLower.includes('shielder')) return SERVANT_COMBAT_DIALOGUES.mash;
 
   return GENERIC_PROFILE;
 }

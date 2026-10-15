@@ -13,7 +13,6 @@ import {
 import { getOrCreateMaster, saveMaster, getAllThroneServants } from '../database/service';
 import { buildServantsListUI } from './servants';
 import { SERVANT_DATABASE, getDefaultClassPassives, getServantAvatarAndCardArt } from '../data/servants';
-import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { 
   CANONICAL_SERVANT_ASCENSIONS, 
   getUnlockedAscensionStages, 
@@ -408,15 +407,15 @@ export async function buildServantHub(
 
     // Noble Phantasm
     const np = t.noblePhantasm || {
-      name: 'Excalibur',
-      cardType: 'Buster',
-      chant: 'Sword of Promised Victory!',
-      target: 'single',
-      multiplier: 600,
-      description: 'Deals massive damage to a single enemy.'
+      name: t.noblePhantasm?.name || 'Noble Phantasm',
+      cardType: t.noblePhantasm?.cardType || 'Buster',
+      chant: getNoblePhantasmChant(t),
+      target: t.noblePhantasm?.target || 'single',
+      multiplier: t.noblePhantasm?.multiplier || 600,
+      description: t.noblePhantasm?.description || 'Deals massive damage.'
     };
     const npCardEmoji = np.cardType === 'Buster' ? '🔴' : np.cardType === 'Arts' ? '🔵' : np.cardType === 'Quick' ? '🟢' : '❓';
-    const npChant = targetServant.customQuotes?.noblePhantasm || np.chant || 'True Name Release!';
+    const npChant = targetServant.customQuotes?.noblePhantasm || getNoblePhantasmChant(targetServant) || np.chant || 'True Name Release!';
 
     const npText = 
       `• **True Name:** **${np.name}** (${npCardEmoji} ${np.cardType} • ${np.target ? np.target.toUpperCase() : 'SINGLE'})\n` +
@@ -541,7 +540,7 @@ export async function buildServantHub(
   } else if (category === 'equip_ce') {
     const currentEq = (typeof targetServant.equippedCe === 'object' && targetServant.equippedCe !== null ? targetServant.equippedCe : null)
       || (targetServant.equippedCeId ? master.craftEssences?.find((c: any) => c.id === targetServant.equippedCeId) : null)
-      || (targetServant.equippedCeId ? CRAFT_ESSENCE_DATABASE.find((c: any) => c.id === targetServant.equippedCeId) : null);
+      || (targetServant.equippedCeId ? CRAFT_ESSENCE_DATABASE.find(c => c.id === targetServant.equippedCeId) : null);
 
     const embed = new EmbedBuilder()
       .setTitle(`👔 Craft Essence Equipment Studio: ${sName}`)
@@ -602,7 +601,7 @@ export async function buildServantHub(
   } else if (category === 'np') {
     const gifUrl = getNoblePhantasmGif(t);
     const chant = targetServant.customQuotes?.noblePhantasm || getNoblePhantasmChant(t) || t.noblePhantasm?.chant || 'True Name Unleashed!';
-    const np = t.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', target: 'all', multiplier: 300, description: 'Noble Phantasm' };
+    const np = t.noblePhantasm || { name: t.name || 'Noble Phantasm', cardType: 'Buster', target: 'all', multiplier: 300, description: 'Noble Phantasm' };
     const color = np.cardType === 'Buster' ? 0xef4444 : np.cardType === 'Arts' ? 0x3b82f6 : 0x10b981;
 
     const npEmbed = new EmbedBuilder()

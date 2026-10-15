@@ -198,16 +198,21 @@ export function getNoblePhantasmGif(servantOrTemplate: any, stage?: number): str
     ''
   ).toLowerCase();
   const rawName = (
-    servantOrTemplate.name ||
-    servantOrTemplate.nickname ||
-    servantOrTemplate.servant?.nickname ||
-    servantOrTemplate.servant?.name ||
-    servantOrTemplate.servant?.template?.name ||
-    servantOrTemplate.template?.name ||
-    ''
+    typeof servantOrTemplate === 'string'
+      ? servantOrTemplate
+      : servantOrTemplate.name ||
+        servantOrTemplate.nickname ||
+        servantOrTemplate.servant?.nickname ||
+        servantOrTemplate.servant?.name ||
+        servantOrTemplate.servant?.template?.name ||
+        servantOrTemplate.template?.name ||
+        ''
   ).toLowerCase();
-  if (servantId.includes('archetype') || rawName.includes('archetype') || rawName.includes('arcueid') || servantId.includes('earth')) {
-    const effectiveStage = stage ?? servantOrTemplate.selectedAscensionStage ?? servantOrTemplate.servant?.selectedAscensionStage ?? servantOrTemplate.ascensionStage ?? servantOrTemplate.servant?.ascensionStage ?? 1;
+
+  const cleanRawName = rawName.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
+
+  if (servantId.includes('archetype') || cleanRawName.includes('archetype') || cleanRawName.includes('arcueid') || servantId.includes('earth')) {
+    const effectiveStage = stage ?? (typeof servantOrTemplate === 'object' ? (servantOrTemplate.selectedAscensionStage ?? servantOrTemplate.servant?.selectedAscensionStage ?? servantOrTemplate.ascensionStage ?? servantOrTemplate.servant?.ascensionStage ?? 1) : 1);
     if (effectiveStage === 2) {
       return normalizeMediaUrl('https://ella.janitorai.com/media-approved/gc_jc1p1H5Gj6NlUuDG1Y.gif');
     }
@@ -215,7 +220,7 @@ export function getNoblePhantasmGif(servantOrTemplate: any, stage?: number): str
   }
 
   // 1. Check direct servant template configuration
-  const np = servantOrTemplate.noblePhantasm || servantOrTemplate.template?.noblePhantasm;
+  const np = typeof servantOrTemplate === 'object' ? (servantOrTemplate.noblePhantasm || servantOrTemplate.template?.noblePhantasm) : undefined;
   if (np?.gifUrl && np.gifUrl.trim()) return normalizeMediaUrl(np.gifUrl.trim());
   if (np?.animationUrl && np.animationUrl.trim()) return normalizeMediaUrl(np.animationUrl.trim());
 
@@ -223,22 +228,22 @@ export function getNoblePhantasmGif(servantOrTemplate: any, stage?: number): str
   if (servantId && CUSTOM_NP_ANIMATIONS_REGISTRY[servantId]?.gifUrl) {
     return normalizeMediaUrl(CUSTOM_NP_ANIMATIONS_REGISTRY[servantId].gifUrl);
   }
-  if (rawName && CUSTOM_NP_ANIMATIONS_REGISTRY[rawName]?.gifUrl) {
-    return normalizeMediaUrl(CUSTOM_NP_ANIMATIONS_REGISTRY[rawName].gifUrl);
+  if (cleanRawName && CUSTOM_NP_ANIMATIONS_REGISTRY[cleanRawName]?.gifUrl) {
+    return normalizeMediaUrl(CUSTOM_NP_ANIMATIONS_REGISTRY[cleanRawName].gifUrl);
   }
 
   // 3. Match against known canon Servant registry
-  const rawNameLower = rawName.toLowerCase();
-
   for (const [key, data] of Object.entries(NOBLE_PHANTASM_GIFS)) {
-    if (rawNameLower === key.toLowerCase()) {
+    const keyClean = key.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
+    if (cleanRawName === keyClean || cleanRawName === key.toLowerCase()) {
       return normalizeMediaUrl(data.gifUrl || data.fallbackGif);
     }
   }
 
   const sortedNpGifs = Object.entries(NOBLE_PHANTASM_GIFS).sort((a, b) => b[0].length - a[0].length);
   for (const [key, data] of sortedNpGifs) {
-    if (rawNameLower.includes(key.toLowerCase()) || key.toLowerCase().includes(rawNameLower)) {
+    const keyClean = key.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
+    if (cleanRawName.includes(keyClean) || (cleanRawName.length >= 3 && keyClean.includes(cleanRawName))) {
       return normalizeMediaUrl(data.gifUrl || data.fallbackGif);
     }
   }
@@ -286,45 +291,81 @@ export function getNoblePhantasmGif(servantOrTemplate: any, stage?: number): str
 }
 
 /**
+ * Clean chant text by trimming whitespace and removing parenthetical over-explanations like "(ROOOOOAAAR)"
+ */
+export function cleanChantText(text?: string): string {
+  if (!text) return '';
+  return text.replace(/\s*\([^)]*\)/g, '').trim();
+}
+
+/**
  * Returns the incantation / chant of the Noble Phantasm
  */
 export function getNoblePhantasmChant(servantOrTemplate: any): string {
   if (!servantOrTemplate) return 'True Name Unleashed!';
-  const custom = servantOrTemplate.customQuotes?.noblePhantasm;
-  if (custom) return cleanChantText(custom);
+
+  let custom: string | undefined;
+  let rawName = '';
+  let servantId = '';
+  let templateNp: any = undefined;
+
+  if (typeof servantOrTemplate === 'string') {
+    rawName = servantOrTemplate;
+  } else if (typeof servantOrTemplate === 'object') {
+    custom = servantOrTemplate.customQuotes?.noblePhantasm;
+    if (custom) return cleanChantText(custom);
+
+    servantId = (
+      servantOrTemplate.id ||
+      servantOrTemplate.templateId ||
+      servantOrTemplate.servant?.id ||
+      servantOrTemplate.servant?.templateId ||
+      servantOrTemplate.servant?.template?.id ||
+      servantOrTemplate.template?.id ||
+      ''
+    ).toLowerCase();
+
+    rawName = (
+      servantOrTemplate.name ||
+      servantOrTemplate.nickname ||
+      servantOrTemplate.servant?.name ||
+      servantOrTemplate.servant?.template?.name ||
+      servantOrTemplate.template?.name ||
+      servantOrTemplate.servantName ||
+      ''
+    ).toLowerCase();
+
+    templateNp = servantOrTemplate.noblePhantasm || servantOrTemplate.template?.noblePhantasm || servantOrTemplate.servant?.template?.noblePhantasm;
+  }
 
   // Check admin custom config
-  const servantId = (servantOrTemplate.id || servantOrTemplate.templateId || servantOrTemplate.template?.id || '').toLowerCase();
-  const rawName = (servantOrTemplate.name || servantOrTemplate.template?.name || '').toLowerCase();
   if (servantId && CUSTOM_NP_ANIMATIONS_REGISTRY[servantId]?.chant) {
     return cleanChantText(CUSTOM_NP_ANIMATIONS_REGISTRY[servantId].chant!);
   }
-  if (rawName && CUSTOM_NP_ANIMATIONS_REGISTRY[rawName]?.chant) {
-    return cleanChantText(CUSTOM_NP_ANIMATIONS_REGISTRY[rawName].chant!);
+
+  const cleanRawName = rawName.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
+  if (cleanRawName && CUSTOM_NP_ANIMATIONS_REGISTRY[cleanRawName]?.chant) {
+    return cleanChantText(CUSTOM_NP_ANIMATIONS_REGISTRY[cleanRawName].chant!);
   }
 
-  const np = servantOrTemplate.noblePhantasm || servantOrTemplate.template?.noblePhantasm;
-  if (np?.chant) return cleanChantText(np.chant);
+  if (templateNp?.chant) return cleanChantText(templateNp.chant);
 
-  const rawNameLower = rawName.toLowerCase();
-  for (const [key, data] of Object.entries(NOBLE_PHANTASM_GIFS)) {
-    if (rawNameLower === key.toLowerCase()) {
-      return cleanChantText(data.chant);
+  if (cleanRawName) {
+    for (const [key, data] of Object.entries(NOBLE_PHANTASM_GIFS)) {
+      const keyClean = key.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
+      if (cleanRawName === keyClean || cleanRawName === key.toLowerCase()) {
+        return cleanChantText(data.chant);
+      }
     }
-  }
 
-  const sortedNpGifs = Object.entries(NOBLE_PHANTASM_GIFS).sort((a, b) => b[0].length - a[0].length);
-  for (const [key, data] of sortedNpGifs) {
-    if (rawNameLower.includes(key.toLowerCase())) {
-      return cleanChantText(data.chant);
+    const sortedNpGifs = Object.entries(NOBLE_PHANTASM_GIFS).sort((a, b) => b[0].length - a[0].length);
+    for (const [key, data] of sortedNpGifs) {
+      const keyClean = key.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
+      if (cleanRawName.includes(keyClean) || (cleanRawName.length >= 3 && keyClean.includes(cleanRawName))) {
+        return cleanChantText(data.chant);
+      }
     }
   }
 
   return 'True Name Unleashed — Receive the full divine power of this Heroic Spirit!';
-}
-
-
-export function cleanChantText(text: string): string {
-  if (!text) return "";
-  return text.replace(/s*([^)]*)/g, "").trim();
 }

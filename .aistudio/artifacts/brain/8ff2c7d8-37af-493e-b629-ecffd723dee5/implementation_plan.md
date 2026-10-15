@@ -1,108 +1,82 @@
-# Beast II / Tiamat Raid Overhaul & Ascension
+# Fix Servant Noble Phantasm Lines Bug & Dialogue Profile Resolution
 
-Upgrade the Primordial Mother Tiamat raid encounter into an epic, multi-phase endgame calamity with doubled combat parameters, 66M Phase 3 HP, phase-specific Noble Phantasm cut-in cinematics, rapid NP gauge acceleration, and massive endgame spoils of war.
-
----
-
-### User Review & Critical Decisions
+Fixes the issue where all Servants were displaying the exact same Noble Phantasm line ("Sword of Promised Victory... EXCALIBUR!") during battles and commands.
 
 > [!IMPORTANT]
-> The following parameters were confirmed via user clarification:
-> - **NP Gauge Acceleration Rate**: 35% chance per enemy round to charge NP gauge by **+2 diamonds** instead of +1.
-> - **Scaling Focus**: Scale **HP and attack damage by 2x**, keeping base skill utility, debuff durations, and barrier values balanced for tactical counterplay.
-> - **Final Phase Vitality**: Phase 3 HP scaled to **66,000,000 HP** (base 8M × 2 = 16M + 50M bonus).
-> - **Victory Spoils**: 200,000 Battle EXP, 30 Universal EXP Embers, 1,000 Bond EXP, and 50 Saint Quartz.
-
-- **Confirmed Decision 1**: Distinct Noble Phantasm names, chants, and full visual cut-ins for each of Tiamat's 3 phases using the user's approved image assets.
-- **Confirmed Decision 2**: Automatic distribution of 30 Universal EXP Embers and 1,000 Bond EXP alongside 50 SQ upon raid completion.
+> **Root Cause Identified**:
+> 1. **Hardcoded Fallback in Battle Engine (`lib/engine/battle.ts`)**: When `actor.noblePhantasm?.chant` was missing or unpopulated on combatants, `generateTurnDialogueQuote` defaulted to `"Sword of Promised Victory... EXCALIBUR!"`.
+> 2. **Class Keyword Pollution in Dialogue Profiles (`src/engine/dialogue.ts`)**: `getServantProfile` checked generic class keywords (e.g. `n.includes('saber')`, `n.includes('archer')`, `n.includes('berserker')`) before specific servant names. Because servant names are formatted like `"Adiosa (Saber)"` or `"Lucia Lyozes (Saber)"`, all Sabers matched `saber` and returned Artoria's dialogue profile.
+> 3. **Name Parsing in NP Chant Resolver (`src/data/noblePhantasmGifs.ts`)**: `getNoblePhantasmChant` did not strip trailing class parentheses `"(Saber)"`, causing dictionary lookups in `NOBLE_PHANTASM_GIFS` to fail for formatted servant names.
 
 ---
 
-### 1. Overview & Core Concept
+## 1. Overview & Core Concept
 
-- **What It Does**: Upgrades the 3-phase Tiamat raid battle in `/raid tiamat` to reflect true Beast II status. Phase 1 represents her Limiter State (7M HP), Phase 2 awakens the Titan Form (11M HP), and Phase 3 unleashes the Primeval Sea Dragon (66M HP) with Nega-Genesis damage mitigation.
-- **Target Audience**: Cooperative raid groups and solo Masters looking for an intense endgame boss fight requiring team synergy, anti-purge defense, and sustained card chains.
-- **Key Value**: Delivers cinematic, high-stakes raid combat with authentic Fate lore pacing and generous rewards for victory.
+When Servants activate their Noble Phantasm in duels, raids, combat logs, or card previews, they should display their authentic, unique NP chant (e.g. Gilgamesh's *Enuma Elish*, Emiya's *Unlimited Blade Works*, Okita's *Mumyō Sandan-Zuki*, Adiosa's *Azure-Magenta Ruin*, etc.) rather than repeating Artoria Pendragon's *Excalibur* chant.
 
 ---
 
-### 2. User Experience & Visual Design
+## 2. User Experience & Visual Design
 
-- **Key User Flows**:
-  1. **Raid Initiation (`/raid tiamat`)**: Masters launch or join the Chaos Sea expedition; lobby embeds display Tiamat's augmented parameters and threat level.
-  2. **Phase 1 Combat (Limiter State — 7,000,000 HP)**: Tiamat exerts Chaos Tide drain and self-limitation healing. At 5 diamonds, she unleashes **Primordial Murmur** with Phase 1 visual cut-in.
-  3. **Phase 2 Break (Titan March — 11,000,000 HP)**: The limiter cracks; Tiamat gains stun immunity and chaos shields. At 4 diamonds, she executes **Chaos Surge** with Phase 2 visual cut-in.
-  4. **Phase 3 Break (Primeval Sea Dragon — 66,000,000 HP)**: Final boss emergence with 66 Million HP and Nega-Genesis (-50% normal card resistance). At 3 diamonds, she unleashes **Primordial Roar** with Phase 3 draconic cut-in, bypassing standard Evade and Invincibility.
-  5. **Victory & Spoils Distribution**: Tiamat is banished; all participating Masters receive 50 SQ, 200k Servant EXP, 30 Universal EXP Embers, and 1k Bond EXP with level-up notifications.
-
-- **Visual Assets & Cut-in Mapping**:
-  - **Phase 1 NP Cut-In**: `https://ella.janitorai.com/media-approved/xpD_kMhfXNT1T0MtyF4DX.webp`
-  - **Phase 2 NP Cut-In**: `https://ella.janitorai.com/media-approved/kQ23vRCI41AnKDMw9RHcW.webp`
-  - **Phase 3 NP Cut-In**: `https://ella.janitorai.com/media-approved/tiZM7h03gIQkcvsJEwEYd.webp`
+- **Combat Logs & Banners**: During combat turns, activating a Noble Phantasm will display the Servant's exact NP incantation in the combat log and canvas cut-in banner.
+- **Duel & Raid Embeds**: All combatants (players, AI rivals, raid bosses, and summoned Servants) will showcase their distinct dialogue and chants.
+- **Servant Information Cards**: Calling `/servant` or inspecting Servant details will consistently show their actual NP chant line.
 
 ---
 
-### 3. Key Product Decisions & Trade-Offs
-
-- **Decision 1: HP & Damage Scaling Structure**
-  - *Chosen Approach*:
-    - Phase 1 HP: `3,500,000 × 2 = 7,000,000`
-    - Phase 2 HP: `5,500,000 × 2 = 11,000,000`
-    - Phase 3 HP: `(8,000,000 × 2) + 50,000,000 = 66,000,000`
-    - Attack scaling: 2.0x multiplier on normal strikes and AoE Noble Phantasms.
-  - *Why*: Delivers an escalating endurance challenge where early phases test resource conservation and the final phase demands optimal burst rotation before enrage.
-  - *Alternatives Considered*: Scaling skills 2x was considered, but per user feedback, skill effects/barriers remain baseline to ensure the fight is difficult yet fair.
-
-- **Decision 2: NP Gauge Acceleration (Primordial Pulse)**
-  - *Chosen Approach*: On enemy turn start (when not NP-sealed), roll 35% chance to grant +2 diamonds instead of +1, broadcast with a combat log notice.
-  - *Why*: Adds pressure and unpredictability, compelling Masters to time defensive buffs, NP seals, and drains strategically.
-
-- **Decision 3: Drops & Reward Packaging**
-  - *Chosen Approach*: Direct injection of 50 SQ, 200,000 Servant Battle EXP, 30 EXP Embers (crafted into Master Craft Essence inventory), and 1,000 Bond EXP to all participants.
-  - *Why*: Fulfills user requirements directly and integrates with existing servant growth systems (`/servant`, `/feed`).
-
----
-
-### 4. Technical Architecture & Data Strategy
+## 3. Key Technical Fixes & Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    RAID COMMAND (/raid)                     │
-│  - Select Boss: Tiamat (Beast II)                           │
-│  - Initializes RaidBattleState with 3-Phase HP Scaling      │
+│                    Servant / Combatant                      │
+│            e.g. name = "Lucia Lyozes (Saber)"               │
 └──────────────────────────────┬──────────────────────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   TIAMAT BOSS DATA ENGINE                   │
-│  - Phase 1: 7,000,000 HP | 5 Max Charge                     │
-│  - Phase 2: 11,000,000 HP | 4 Max Charge                    │
-│  - Phase 3: 66,000,000 HP | 3 Max Charge                    │
-│  - NP Assets: 3 Dedicated WebP URLs mapped per phase        │
-└──────────────────────────────┬──────────────────────────────┘
+│               Name Sanitizer & Parser                       │
+│    Strips "(Class)" -> rawName = "Lucia Lyozes"              │
+└──────────────┬──────────────────────────────┬───────────────┘
+               │                              │
+               ▼                              ▼
+┌──────────────────────────────┐┌─────────────────────────────┐
+│   getNoblePhantasmChant      ││      getServantProfile      │
+│ Checks:                      ││ Checks specific name rules  │
+│ 1. customQuotes.noblePhantasm││ BEFORE generic class tags   │
+│ 2. noblePhantasm.chant       ││ (saber, archer, berserker) │
+│ 3. NOBLE_PHANTASM_GIFS       │└──────────────┬──────────────┘
+│ 4. SERVANT_DATABASE          │               │
+└──────────────┬───────────────┘               │
+               │                               │
+               └───────────────┬───────────────┘
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                 COMBAT ROUND & ENEMY PHASE                  │
-│  - 35% Primordial Pulse Roll: +2 Charge Diamonds            │
-│  - 2x Damage Multiplier on Normal Attacks & Noble Phantasms │
-│  - Dynamic Cut-In dispatch with phase-specific image        │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│               VICTORY & SPOILS OF WAR ENGINE                │
-│  - +50 Saint Quartz to Master profile                       │
-│  - +200,000 Servant Battle EXP (Levels up Servant)          │
-│  - +1,000 Servant Bond EXP (Advances Bond Ranks)            │
-│  - +30 Universal EXP Embers added to Craft Essence Vault    │
+│                 Combat Log & Canvas Renderer                │
+│    Renders unique NP Chant & Dialogue Profile for Servant   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-- **Entities & Configuration Updated**:
-  - `src/data/raidBosses.ts`: Update Tiamat definition (`baseHp`, `phases` array with new HP and NP config, `drops` table).
-  - `src/commands/raid.ts`:
-    - Update `dispatchBossNpGif` to support phase-specific NP names, chants, and cut-in image URLs for Tiamat.
-    - Update enemy phase charge logic to check 35% roll for +2 gauge diamonds.
-    - Apply 2.0x multiplier to Tiamat's normal and AoE attack damage.
-    - Update `handleRaidVictory` to award 50 SQ, 200k EXP, 30 Embers, and 1k Bond EXP, rendering the updated spoils report.
+### Planned Changes
+
+1. **Fix `getServantProfile` in `src/engine/dialogue.ts`**:
+   - Strip class tags `(Saber)`, `(Archer)`, `(Lancer)`, `(Caster)`, `(Rider)`, `(Berserker)`, `(Assassin)`, `(Avenger)`, `(Ruler)`, etc., from `servantName` before checking keywords.
+   - Reorder keyword checks so specific Servant names (e.g., `okita`, `nero`, `adiosa`, `lucia`, `aoko`, `amamiya`, `altera`, `karna`, `mordred`) are matched BEFORE checking general class words like `saber`, `archer`, `berserker`, `ruler`.
+
+2. **Fix `getNoblePhantasmChant` in `src/data/noblePhantasmGifs.ts`**:
+   - Clean `servantOrTemplate.name` and `id` by stripping parenthetical class suffixes before matching against `NOBLE_PHANTASM_GIFS` and `CUSTOM_NP_ANIMATIONS_REGISTRY`.
+   - Fall back to checking `SERVANT_DATABASE` by ID/name if not directly defined in `NOBLE_PHANTASM_GIFS`.
+
+3. **Fix `generateTurnDialogueQuote` in `lib/engine/battle.ts`**:
+   - Replace the hardcoded default `"Sword of Promised Victory... EXCALIBUR!"` on line 2052 with a dynamic fallback using `getNoblePhantasmChant(actor)`.
+
+4. **Ensure `ActiveCombatant` Initializers Populate Chant**:
+   - Ensure all battle state creation logic in `lib/engine/battle.ts`, `src/engine/battle.ts`, `src/commands/duel.ts`, and `src/commands/raid.ts` sets `noblePhantasm.chant` using `getNoblePhantasmChant(servant)` during combatant initialization.
+
+---
+
+## 4. Verification Plan
+
+- Run TypeScript build check (`npx tsc --noEmit`) to ensure zero type errors.
+- Run `npm run lint` / `lint_applet` to confirm clean static analysis.
+- Execute test scripts verifying that `getServantProfile` and `getNoblePhantasmChant` return distinct NP lines for all Servants (including Sabers, Archers, Berserkers, etc.).

@@ -9,6 +9,7 @@ import {
   TurnActionChoice
 } from '../types';
 import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
+import { getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { executeNoblePhantasmLogic, generateTurnDialogueQuote } from '../../lib/engine/battle';
 
 // Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
@@ -536,7 +537,7 @@ export function resolveCombatTurn(
   // Trigger Noble Phantasm if requested & gauge is >= 100%
   if (attackerChoice.useNoblePhantasm && attacker.npGauge >= 100) {
     npTriggered = true;
-    npChant = attacker.noblePhantasm.chant;
+    npChant = attacker.noblePhantasm?.chant || getNoblePhantasmChant(attacker);
     const npOutcome = executeNoblePhantasmLogic(attacker, defender, classMultiplier);
 
     totalDmg += npOutcome.damageDealt;
