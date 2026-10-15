@@ -1,82 +1,71 @@
-# Fix Servant Noble Phantasm Lines Bug & Dialogue Profile Resolution
+# Tiamat Raid Boss Verification & Phase 3 HP Tuning
 
-Fixes the issue where all Servants were displaying the exact same Noble Phantasm line ("Sword of Promised Victory... EXCALIBUR!") during battles and commands.
+Adjusts Primordial Mother Tiamat's final phase (Phase 3: Primeval Sea Dragon) base HP from 182,000,000 to 70,000,000 (70 Million) and performs a thorough verification of all 6 active skills, 6 phase passives, and 3 Phase Noble Phantasms in the raid combat system.
 
 > [!IMPORTANT]
-> **Root Cause Identified**:
-> 1. **Hardcoded Fallback in Battle Engine (`lib/engine/battle.ts`)**: When `actor.noblePhantasm?.chant` was missing or unpopulated on combatants, `generateTurnDialogueQuote` defaulted to `"Sword of Promised Victory... EXCALIBUR!"`.
-> 2. **Class Keyword Pollution in Dialogue Profiles (`src/engine/dialogue.ts`)**: `getServantProfile` checked generic class keywords (e.g. `n.includes('saber')`, `n.includes('archer')`, `n.includes('berserker')`) before specific servant names. Because servant names are formatted like `"Adiosa (Saber)"` or `"Lucia Lyozes (Saber)"`, all Sabers matched `saber` and returned Artoria's dialogue profile.
-> 3. **Name Parsing in NP Chant Resolver (`src/data/noblePhantasmGifs.ts`)**: `getNoblePhantasmChant` did not strip trailing class parentheses `"(Saber)"`, causing dictionary lookups in `NOBLE_PHANTASM_GIFS` to fail for formatted servant names.
+> **User Confirmed Decisions**:
+> - **Phase 3 Base HP**: Set to **70,000,000** (70 Million) in `src/data/raidBosses.ts` and `src/commands/raid.ts`.
+> - **Skill & NP Verification**: Audit and verify all 6 active skills (`Wailing Voice`, `Mud Surge`, `Tremor Step`, `Crying Eyes`, `Jaw of the Primordial`, `Chaos Deluge`), Phase 1-3 passives (`Sea of Life / Chaos Tide`, `Self-Limitation`, `Immense Mass`, `Chaos Spores`, `Nega-Genesis`, `Authority of the Beast`), and Phase 1-3 NP executions (`PRIMORDIAL MURMUR`, `CHAOS SURGE`, `PRIMORDIAL ROAR`).
 
 ---
 
 ## 1. Overview & Core Concept
 
-When Servants activate their Noble Phantasm in duels, raids, combat logs, or card previews, they should display their authentic, unique NP chant (e.g. Gilgamesh's *Enuma Elish*, Emiya's *Unlimited Blade Works*, Okita's *Mumyō Sandan-Zuki*, Adiosa's *Azure-Magenta Ruin*, etc.) rather than repeating Artoria Pendragon's *Excalibur* chant.
+**Tiamat (Beast II / Primordial Mother)** is a 3-Phase Break Gauge Grand Calamity raid boss in the `/raid` system.
+- **Phase 1 (Limiter State)**: 14,000,000 HP. Features *Sea of Life* (-2,000 HP & -15% NP Gain per turn) and *Self-Limitation* (+150k HP heal on player heal).
+- **Phase 2 (Titan Form)**: 22,000,000 HP. Features *Immense Mass* (Stun/Charm/Freeze immunity) and *Chaos Spores* (20% DEF shield on odd turns).
+- **Phase 3 (Primeval Sea Dragon)**: Adjusted to **70,000,000 HP**. Features *Nega-Genesis* (-50% normal card DMG) and *Authority of the Beast* (cleaves 2 Servants with high crit).
 
 ---
 
 ## 2. User Experience & Visual Design
 
-- **Combat Logs & Banners**: During combat turns, activating a Noble Phantasm will display the Servant's exact NP incantation in the combat log and canvas cut-in banner.
-- **Duel & Raid Embeds**: All combatants (players, AI rivals, raid bosses, and summoned Servants) will showcase their distinct dialogue and chants.
-- **Servant Information Cards**: Calling `/servant` or inspecting Servant details will consistently show their actual NP chant line.
+- **Raid Combat Log Clarity**: Ensure Tiamat's skills render bold, distinct combat logs with accurate debuff tags (`Skill Seal`, `Buff Shorten`, `DEF Shred`, `NP Drain`, `NP Siphon + 50k Barrier`).
+- **Break Gauge Transition Feedback**: Display dramatic break announcements when transitioning from Phase 1 -> Phase 2 -> Phase 3, updating Tiamat's full-canvas sprite, NP name, and charge threshold (5 -> 4 -> 3 diamonds).
+- **Phase 3 NP Visuals**: `PRIMORDIAL ROAR (NEGA-GENESIS ANNIHILATION)` renders True AoE damage ignoring Evade/Invincibility with unmitigated true damage logs.
 
 ---
 
-## 3. Key Technical Fixes & Architecture
+## 3. Key Product Decisions & Trade-Offs
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Servant / Combatant                      │
-│            e.g. name = "Lucia Lyozes (Saber)"               │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│               Name Sanitizer & Parser                       │
-│    Strips "(Class)" -> rawName = "Lucia Lyozes"              │
-└──────────────┬──────────────────────────────┬───────────────┘
-               │                              │
-               ▼                              ▼
-┌──────────────────────────────┐┌─────────────────────────────┐
-│   getNoblePhantasmChant      ││      getServantProfile      │
-│ Checks:                      ││ Checks specific name rules  │
-│ 1. customQuotes.noblePhantasm││ BEFORE generic class tags   │
-│ 2. noblePhantasm.chant       ││ (saber, archer, berserker) │
-│ 3. NOBLE_PHANTASM_GIFS       │└──────────────┬──────────────┘
-│ 4. SERVANT_DATABASE          │               │
-└──────────────┬───────────────┘               │
-               │                               │
-               └───────────────┬───────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 Combat Log & Canvas Renderer                │
-│    Renders unique NP Chant & Dialogue Profile for Servant   │
-└─────────────────────────────────────────────────────────────┘
-```
+1. **Phase 3 HP Balance (70M)**:
+   - *Chosen*: Lower Phase 3 base HP from 182M to 70M.
+   - *Rationale*: Reduces extreme attrition grind while retaining high threat via *Nega-Genesis* (-50% normal card damage) and 3-diamond NP charge frequency.
 
-### Planned Changes
-
-1. **Fix `getServantProfile` in `src/engine/dialogue.ts`**:
-   - Strip class tags `(Saber)`, `(Archer)`, `(Lancer)`, `(Caster)`, `(Rider)`, `(Berserker)`, `(Assassin)`, `(Avenger)`, `(Ruler)`, etc., from `servantName` before checking keywords.
-   - Reorder keyword checks so specific Servant names (e.g., `okita`, `nero`, `adiosa`, `lucia`, `aoko`, `amamiya`, `altera`, `karna`, `mordred`) are matched BEFORE checking general class words like `saber`, `archer`, `berserker`, `ruler`.
-
-2. **Fix `getNoblePhantasmChant` in `src/data/noblePhantasmGifs.ts`**:
-   - Clean `servantOrTemplate.name` and `id` by stripping parenthetical class suffixes before matching against `NOBLE_PHANTASM_GIFS` and `CUSTOM_NP_ANIMATIONS_REGISTRY`.
-   - Fall back to checking `SERVANT_DATABASE` by ID/name if not directly defined in `NOBLE_PHANTASM_GIFS`.
-
-3. **Fix `generateTurnDialogueQuote` in `lib/engine/battle.ts`**:
-   - Replace the hardcoded default `"Sword of Promised Victory... EXCALIBUR!"` on line 2052 with a dynamic fallback using `getNoblePhantasmChant(actor)`.
-
-4. **Ensure `ActiveCombatant` Initializers Populate Chant**:
-   - Ensure all battle state creation logic in `lib/engine/battle.ts`, `src/engine/battle.ts`, `src/commands/duel.ts`, and `src/commands/raid.ts` sets `noblePhantasm.chant` using `getNoblePhantasmChant(servant)` during combatant initialization.
+2. **Skill Engine Validation**:
+   - *Chosen*: Audit state transitions in `src/commands/raid.ts` to ensure skill probability weighting (17% per skill) correctly triggers all 6 skills without index out-of-bounds or silent pass-throughs.
 
 ---
 
-## 4. Verification Plan
+## 4. Technical Architecture & Data Strategy
 
-- Run TypeScript build check (`npx tsc --noEmit`) to ensure zero type errors.
-- Run `npm run lint` / `lint_applet` to confirm clean static analysis.
-- Execute test scripts verifying that `getServantProfile` and `getNoblePhantasmChant` return distinct NP lines for all Servants (including Sabers, Archers, Berserkers, etc.).
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Tiamat Raid Engine Architecture                  │
+└────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                     ┌─────────────────────────────┐
+                     │    src/data/raidBosses.ts   │
+                     │  - Phase 1 HP: 14,000,000   │
+                     │  - Phase 2 HP: 22,000,000   │
+                     │  - Phase 3 HP: 70,000,000   │  <-- UPDATE
+                     │  - 6 Active Skills Config   │
+                     └──────────────┬──────────────┘
+                                    │
+                                    ▼
+                     ┌─────────────────────────────┐
+                     │    src/commands/raid.ts     │
+                     │  - Phase 3 fallback HP      │  <-- UPDATE (70M)
+                     │  - Skill RNG Roll (0.0-1.0) │  <-- VERIFY (6 skills)
+                     │  - Phase 1-3 Passives       │  <-- VERIFY
+                     │  - Phase 1-3 NP Executions  │  <-- VERIFY
+                     └─────────────────────────────┘
+```
+
+### Files to Update & Verify
+1. **`src/data/raidBosses.ts`**: Update Phase 3 `baseHp` from `182_000_000` to `70_000_000`.
+2. **`src/commands/raid.ts`**:
+   - Update fallback Phase 3 base HP in break gauge handler (line 2088) from `182_000_000` to `70_000_000`.
+   - Verify skill roll boundaries (0.17, 0.34, 0.50, 0.67, 0.84, 1.0) map to all 6 active skills (`Wailing Voice`, `Mud Surge`, `Tremor Step`, `Jaw of the Primordial`, `Crying Eyes`, `Chaos Deluge`).
+   - Verify Phase 1, Phase 2, and Phase 3 NP execution handlers and passives.

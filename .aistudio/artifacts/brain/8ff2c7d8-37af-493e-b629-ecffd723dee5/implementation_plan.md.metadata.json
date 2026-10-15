@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for fixing the bug where all Servants' Noble Phantasm lines were defaulting to the same phrase (\"Excalibur!\"). Details root causes across name matching, profile lookup order, and battle engine fallback, along with the step-by-step resolution plan.",
-  "updatedAt": "2026-10-15T13:39:52.197520922Z",
+  "summary": "Implementation plan for verifying Tiamat's 6 skills, phase passives, and Noble Phantasms, and adjusting Phase 3 base HP from 182M to 70M across raid configuration and command handlers.",
+  "updatedAt": "2026-10-15T16:08:04.555736768Z",
   "requestFeedback": true,
   "userFacing": true
 }

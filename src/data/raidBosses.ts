@@ -190,7 +190,7 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
         phaseNumber: 3,
         name: 'Beast II / Tiamat',
         title: 'Beast of Calamity • Primeval Sea Dragon',
-        baseHp: 182_000_000,
+        baseHp: 70_000_000,
         maxCharge: 3,
         spriteUrl: 'https://ella.janitorai.com/media-approved/0e2G0RijgX5dnEjjuZPBm.webp',
         npName: 'PRIMORDIAL ROAR (NEGA-GENESIS ANNIHILATION)',
