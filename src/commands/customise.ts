@@ -772,6 +772,8 @@ export async function handleGlobalInventoryInteraction(interaction: any) {
     // Extract current page, filter, and category from message components/embed
     let currentPage = 1;
     let ceRarityFilter: 'all' | 5 | 4 | 3 | 'bond' | 'embers' = 'all';
+    let currentCategory: 'ces' | 'servants' | 'seals' | 'items' = 'ces';
+    let selectedItemId: string | undefined = interaction.isStringSelectMenu() ? interaction.values[0] : undefined;
 
     const footerText = interaction.message?.embeds?.[0]?.footer?.text || '';
     const pageMatch = footerText.match(/Page\s+(\d+)\/(\d+)/i);
@@ -922,7 +924,7 @@ export async function handleGlobalInventoryInteraction(interaction: any) {
       }
     }
 
-    const { embed, components } = buildInventoryHub(master, activeServant, currentCategory, currentPage, selectedItemId, 'owned', ceRarityFilter);
+    const { embed, components } = buildInventoryHub(master, activeServant, currentCategory, currentPage, selectedItemId, { ceViewMode: 'owned', ceRarityFilter });
     await interaction.update({ embeds: [embed], components });
   } catch (err: any) {
     if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;

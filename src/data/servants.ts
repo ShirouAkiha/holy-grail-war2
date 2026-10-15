@@ -1311,7 +1311,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     noblePhantasm: {
       name: 'Nine Lives: Shooting the Hundred Heads',
       cardType: 'Buster',
-      chant: '■■■■■■■■■■■■---!!! (ROOOOOAAAR)',
+      chant: '■■■■■■■■■■■■---!!!',
       description: 'Unleashes 9 simultaneous supersonic crushing blows with his gigantic stone slab blade.',
       target: 'single',
       multiplier: 800,

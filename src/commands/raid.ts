@@ -2084,6 +2084,7 @@ async function runRaidBattle(
           battleState.breakGaugesRemaining--;
           battleState.currentPhase = (battleState.currentPhase || 1) + 1;
           const phaseIdx = battleState.currentPhase - 1;
+          const nextPhase = boss.phases?.[phaseIdx];
           const newBase = nextPhase?.baseHp || (battleState.currentPhase === 2 ? (boss.id === 'tiamat' ? 22_000_000 : 5_500_000) : (boss.id === 'tiamat' ? 182_000_000 : 8_000_000));
           const scaledNewHp = Math.round(newBase * hpMultiplier);
 

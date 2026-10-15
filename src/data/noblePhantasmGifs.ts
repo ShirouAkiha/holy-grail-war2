@@ -291,34 +291,40 @@ export function getNoblePhantasmGif(servantOrTemplate: any, stage?: number): str
 export function getNoblePhantasmChant(servantOrTemplate: any): string {
   if (!servantOrTemplate) return 'True Name Unleashed!';
   const custom = servantOrTemplate.customQuotes?.noblePhantasm;
-  if (custom) return custom;
+  if (custom) return cleanChantText(custom);
 
   // Check admin custom config
   const servantId = (servantOrTemplate.id || servantOrTemplate.templateId || servantOrTemplate.template?.id || '').toLowerCase();
   const rawName = (servantOrTemplate.name || servantOrTemplate.template?.name || '').toLowerCase();
   if (servantId && CUSTOM_NP_ANIMATIONS_REGISTRY[servantId]?.chant) {
-    return CUSTOM_NP_ANIMATIONS_REGISTRY[servantId].chant!;
+    return cleanChantText(CUSTOM_NP_ANIMATIONS_REGISTRY[servantId].chant!);
   }
   if (rawName && CUSTOM_NP_ANIMATIONS_REGISTRY[rawName]?.chant) {
-    return CUSTOM_NP_ANIMATIONS_REGISTRY[rawName].chant!;
+    return cleanChantText(CUSTOM_NP_ANIMATIONS_REGISTRY[rawName].chant!);
   }
 
   const np = servantOrTemplate.noblePhantasm || servantOrTemplate.template?.noblePhantasm;
-  if (np?.chant) return np.chant;
+  if (np?.chant) return cleanChantText(np.chant);
 
   const rawNameLower = rawName.toLowerCase();
   for (const [key, data] of Object.entries(NOBLE_PHANTASM_GIFS)) {
     if (rawNameLower === key.toLowerCase()) {
-      return data.chant;
+      return cleanChantText(data.chant);
     }
   }
 
   const sortedNpGifs = Object.entries(NOBLE_PHANTASM_GIFS).sort((a, b) => b[0].length - a[0].length);
   for (const [key, data] of sortedNpGifs) {
     if (rawNameLower.includes(key.toLowerCase())) {
-      return data.chant;
+      return cleanChantText(data.chant);
     }
   }
 
   return 'True Name Unleashed — Receive the full divine power of this Heroic Spirit!';
+}
+
+
+export function cleanChantText(text: string): string {
+  if (!text) return "";
+  return text.replace(/s*([^)]*)/g, "").trim();
 }

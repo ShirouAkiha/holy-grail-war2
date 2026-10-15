@@ -13,6 +13,7 @@ import {
 import { getOrCreateMaster, saveMaster, getAllThroneServants } from '../database/service';
 import { buildServantsListUI } from './servants';
 import { SERVANT_DATABASE, getDefaultClassPassives, getServantAvatarAndCardArt } from '../data/servants';
+import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { 
   CANONICAL_SERVANT_ASCENSIONS, 
   getUnlockedAscensionStages, 
@@ -540,7 +541,7 @@ export async function buildServantHub(
   } else if (category === 'equip_ce') {
     const currentEq = (typeof targetServant.equippedCe === 'object' && targetServant.equippedCe !== null ? targetServant.equippedCe : null)
       || (targetServant.equippedCeId ? master.craftEssences?.find((c: any) => c.id === targetServant.equippedCeId) : null)
-      || (targetServant.equippedCeId ? CRAFT_ESSENCE_DATABASE.find(c => c.id === targetServant.equippedCeId) : null);
+      || (targetServant.equippedCeId ? CRAFT_ESSENCE_DATABASE.find((c: any) => c.id === targetServant.equippedCeId) : null);
 
     const embed = new EmbedBuilder()
       .setTitle(`👔 Craft Essence Equipment Studio: ${sName}`)
