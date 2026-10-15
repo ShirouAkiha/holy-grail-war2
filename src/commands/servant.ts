@@ -34,6 +34,14 @@ import {
 } from '../engine/customization';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
+export interface ServantSessionState {
+  category: 'profile' | 'stats' | 'ascension' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster';
+  servantId?: string;
+  step: number;
+  servantPage: number;
+}
+export const servantSessions = new Map<string, ServantSessionState>();
+
 export function findServantInRoster(servants: any[], query?: string): any {
   if (!servants || servants.length === 0 || !query) return undefined;
   const clean = query.trim().toLowerCase();
@@ -251,6 +259,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         targetServant = found;
       }
     }
+
+    servantSessions.set(interaction.user.id, {
+      category: initialCategory,
+      servantId: targetServant.id,
+      step: 1,
+      servantPage: 1
+    });
 
     const { embeds, files, components } = await buildServantHub(master, targetServant, initialCategory, targetServant.id);
 
@@ -606,10 +621,10 @@ export async function buildServantHub(
 
   } else if (category === 'dialogue') {
     const quotes = targetServant.customQuotes || {};
-    const profile = getServantProfile(sName);
-    const busterDef = profile.buster[0] || "Blade of Selection... Strike true! Dragon Core, ignite!";
-    const artsDef = profile.arts[0] || "With pure heart and steadfast oath... Prana circulation stable!";
-    const quickDef = profile.quick[0] || "Invisible Air, release! Wind of the King, sweep the field!";
+    const profile = getServantProfile(sName) || {};
+    const busterDef = profile.buster?.[0] || "Blade of Selection... Strike true! Dragon Core, ignite!";
+    const artsDef = profile.arts?.[0] || "With pure heart and steadfast oath... Prana circulation stable!";
+    const quickDef = profile.quick?.[0] || "Invisible Air, release! Wind of the King, sweep the field!";
 
     const matchupsCount = Object.keys(quotes.matchups || {}).length;
     let matchupsSection = '';
@@ -782,7 +797,7 @@ export async function buildServantHub(
         label: `${sN} (${sC})`.slice(0, 100),
         description: `Lv. ${s.level || 1} • ${sC} • Points: ${s.availableStatPoints || 0} pts`.slice(0, 100),
         value: val,
-        default: s.id === targetServant.id
+        default: Boolean(targetServant?.id && s.id && s.id === targetServant.id)
       };
     });
 
@@ -903,7 +918,7 @@ export async function buildServantHub(
         label: `★${ce.rarity || 3} ${ce.name}${count > 1 ? ` (x${count})` : ''}`.slice(0, 100),
         description: (ce.effectText || 'Craft Essence').slice(0, 100),
         value: ce.id || ce.name,
-        default: targetServant.equippedCeId === ce.id
+        default: Boolean(targetServant.equippedCeId && ce.id && targetServant.equippedCeId === ce.id)
       }));
       if (ceOptions.length > 0 && components.length < 5) {
         const ceSelect = new StringSelectMenuBuilder()
@@ -1043,40 +1058,33 @@ export async function buildServantHub(
 }
 
 // ==========================================
-// 4. INTERACTION COLLECTOR
+// 4. SERVANT INTERACTION HANDLER & COLLECTOR
 // ==========================================
-export function attachServantCollector(
-  message: any,
-  userId: string,
-  initialMaster: any,
-  initialServant: any,
-  initialCategory: 'profile' | 'stats' | 'ascension' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile'
-) {
-  if (!message || typeof message.createMessageComponentCollector !== 'function') return;
+export async function handleGlobalServantInteraction(i: any) {
+  if (i.replied || i.deferred) return;
 
-  let currentCategory = initialCategory;
-  let currentServantId = initialServant.id;
-  let currentStep = 1;
-  let servantPage = 1;
-
-  const collector = message.createMessageComponentCollector({
-    idle: 120000,
-    time: 600000
-  });
-
-  collector.on('collect', async (i: any) => {
-    if (i.replied || i.deferred) return;
-    if (i.user.id !== userId) {
-      await i.reply({ content: 'Only the Master who issued this command can interact with this workshop.', flags: MessageFlags.Ephemeral });
+  try {
+    const master = await getOrCreateMaster(i.user.id, i.user.username);
+    if (!master.servants || master.servants.length === 0) {
+      await i.reply({ content: '❌ You do not have any contracted Servants. Use `/summon ritual` first!', flags: MessageFlags.Ephemeral });
       return;
     }
-    collector.resetTimer();
 
-    try {
-      const master = await getOrCreateMaster(i.user.id, i.user.username);
-      let targetServant = findServantInRoster(master.servants, currentServantId) || master.servants[0];
-      const sName = targetServant?.nickname || targetServant?.template?.name || 'Servant';
-      let actionOutcomeMsg = '';
+    const session = servantSessions.get(i.user.id) || {
+      category: 'profile' as const,
+      servantId: master.activeServantId || master.servants[0]?.id,
+      step: 1,
+      servantPage: 1
+    };
+
+    let currentCategory = session.category;
+    let currentServantId = session.servantId || master.activeServantId || master.servants[0]?.id;
+    let currentStep = session.step || 1;
+    let servantPage = session.servantPage || 1;
+
+    let targetServant = findServantInRoster(master.servants, currentServantId) || master.servants[0];
+    const sName = targetServant?.nickname || targetServant?.template?.name || 'Servant';
+    let actionOutcomeMsg = '';
 
       // DROPDOWN PAGE NAVIGATION
       if (i.customId.startsWith('servant_pagedrop_prev_')) {
@@ -1893,6 +1901,13 @@ export function attachServantCollector(
         return;
       }
 
+      // Save session state
+      session.category = currentCategory;
+      session.servantId = targetServant?.id || currentServantId;
+      session.step = currentStep;
+      session.servantPage = servantPage;
+      servantSessions.set(i.user.id, session);
+
       // Modals and ephemeral replies are handled above with immediate return
       const hub = await buildServantHub(
         master,
@@ -1942,7 +1957,38 @@ export function attachServantCollector(
       ) {
         return;
       }
-      console.error('Error in servant collector:', err);
+      console.error('Error in servant interaction:', err);
     }
+}
+
+export function attachServantCollector(
+  message: any,
+  userId: string,
+  initialMaster: any,
+  initialServant: any,
+  initialCategory: 'profile' | 'stats' | 'ascension' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile'
+) {
+  if (!message || typeof message.createMessageComponentCollector !== 'function') return;
+
+  servantSessions.set(userId, {
+    category: initialCategory,
+    servantId: initialServant.id,
+    step: 1,
+    servantPage: 1
+  });
+
+  const collector = message.createMessageComponentCollector({
+    idle: 120000,
+    time: 600000
+  });
+
+  collector.on('collect', async (i: any) => {
+    if (i.replied || i.deferred) return;
+    if (i.user.id !== userId) {
+      await i.reply({ content: 'Only the Master who issued this command can interact with this workshop.', flags: MessageFlags.Ephemeral });
+      return;
+    }
+    collector.resetTimer();
+    await handleGlobalServantInteraction(i);
   });
 }

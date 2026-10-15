@@ -769,15 +769,70 @@ export async function handleGlobalInventoryInteraction(interaction: any) {
     const customId = interaction.customId;
     const ownedCes = (master.craftEssences || []).filter(Boolean);
 
-    // Default category from customId if applicable
-    let currentCategory: 'ces' | 'servants' | 'seals' | 'items' = 'ces';
-    if (customId === 'inv_cat_servants') currentCategory = 'servants';
-    else if (customId === 'inv_cat_seals') currentCategory = 'seals';
-    else if (customId === 'inv_cat_items') currentCategory = 'items';
+    // Extract current page, filter, and category from message components/embed
+    let currentPage = 1;
+    let ceRarityFilter: 'all' | 5 | 4 | 3 | 'bond' | 'embers' = 'all';
 
-    let selectedItemId: string | undefined = activeServant?.equippedCeId;
-    if (interaction.isStringSelectMenu() && interaction.values?.[0]) {
-      selectedItemId = interaction.values[0];
+    const footerText = interaction.message?.embeds?.[0]?.footer?.text || '';
+    const pageMatch = footerText.match(/Page\s+(\d+)\/(\d+)/i);
+    if (pageMatch) {
+      currentPage = parseInt(pageMatch[1], 10) || 1;
+    }
+
+    const titleText = interaction.message?.embeds?.[0]?.title || '';
+    if (titleText.includes('Command Seals')) currentCategory = 'seals';
+    else if (titleText.includes('Servant Roster')) currentCategory = 'servants';
+    else if (titleText.includes('Vault & Currency')) currentCategory = 'items';
+    else if (titleText.includes('Craft Essence')) currentCategory = 'ces';
+
+    // Override category if category button was clicked
+    if (customId === 'inv_cat_ces') { currentCategory = 'ces'; currentPage = 1; }
+    else if (customId === 'inv_cat_servants') { currentCategory = 'servants'; currentPage = 1; }
+    else if (customId === 'inv_cat_seals') { currentCategory = 'seals'; currentPage = 1; }
+    else if (customId === 'inv_cat_items') { currentCategory = 'items'; currentPage = 1; }
+
+    // Rarity Filters
+    if (customId === 'inv_filter_ce_all') { ceRarityFilter = 'all'; currentPage = 1; }
+    else if (customId === 'inv_filter_ce_5star') { ceRarityFilter = 5; currentPage = 1; }
+    else if (customId === 'inv_filter_ce_4star') { ceRarityFilter = 4; currentPage = 1; }
+    else if (customId === 'inv_filter_ce_3star') { ceRarityFilter = 3; currentPage = 1; }
+    else if (customId === 'inv_filter_ce_embers') { ceRarityFilter = 'embers'; currentPage = 1; }
+
+    // Pagination
+    if (customId === 'inv_page_prev') {
+      currentPage = Math.max(1, currentPage - 1);
+    } else if (customId === 'inv_page_next') {
+      currentPage = currentPage + 1;
+    }
+
+    // Lock toggle & Unlock All
+    if (customId === 'inv_act_lock_toggle') {
+      const targetCe = ownedCes.find((c: any) => c.instanceId === selectedItemId || c.id === selectedItemId || (c.id && selectedItemId?.startsWith(c.id)));
+      if (targetCe) {
+        targetCe.locked = !targetCe.locked;
+        await saveMaster(master);
+        await interaction.reply({
+          flags: MessageFlags.Ephemeral,
+          content: targetCe.locked
+            ? `🔒 **${targetCe.name}** is now **Locked** (Protected from synthesis).`
+            : `🔓 **${targetCe.name}** is now **Unlocked** (Ready for synthesis/feeding in Workshop)!`
+        });
+        return;
+      }
+    } else if (customId === 'inv_act_unlock_all') {
+      let count = 0;
+      for (const c of ownedCes) {
+        if (!c.isBondCe) {
+          c.locked = false;
+          count++;
+        }
+      }
+      await saveMaster(master);
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: `🔓 Successfully unlocked **${count}** Craft Essences in your Vault!`
+      });
+      return;
     }
 
     // Handle Quick Gacha
@@ -849,9 +904,12 @@ export async function handleGlobalInventoryInteraction(interaction: any) {
     // Handle Equip
     if (customId === 'inv_act_equip') {
       if (ownedCes.length > 0 && activeServant) {
-        activeServant.equippedCeId = ownedCes[0].id;
-        activeServant.equippedCe = ownedCes[0];
-        await saveMaster(master);
+        const ceToEquip = (selectedItemId ? ownedCes.find((c: any) => c.id === selectedItemId || c.instanceId === selectedItemId) : null) || ownedCes[0];
+        if (ceToEquip) {
+          activeServant.equippedCeId = ceToEquip.id;
+          activeServant.equippedCe = ceToEquip;
+          await saveMaster(master);
+        }
       }
     }
 
@@ -864,7 +922,7 @@ export async function handleGlobalInventoryInteraction(interaction: any) {
       }
     }
 
-    const { embed, components } = buildInventoryHub(master, activeServant, currentCategory, 1, selectedItemId);
+    const { embed, components } = buildInventoryHub(master, activeServant, currentCategory, currentPage, selectedItemId, 'owned', ceRarityFilter);
     await interaction.update({ embeds: [embed], components });
   } catch (err: any) {
     if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;

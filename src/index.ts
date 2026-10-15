@@ -72,6 +72,7 @@ import { buildWarEmbed, buildWarButtons, buildGrailWarHub, attachGrailWarCollect
 import * as grailCommand from './commands/grail';
 import * as boardCommand from './commands/board';
 import { handleGlobalInventoryInteraction } from './commands/customise';
+import { handleGlobalServantInteraction } from './commands/servant';
 import { buildGachaHub, attachGachaCollector, handleGlobalGachaInteraction } from './commands/gacha';
 import { executeCraftEssenceGachaRoll, executeUnifiedGachaRoll } from './engine/ceGacha';
 import { 
@@ -1111,6 +1112,11 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
+      if (interaction.customId.startsWith('servant_')) {
+        await handleGlobalServantInteraction(interaction);
+        return;
+      }
+
       if (interaction.customId.startsWith('select_ce:')) {
         const servantId = interaction.customId.replace('select_ce:', '');
         const selectedCeId = interaction.values[0]; // The ID of the chosen Craft Essence
@@ -1420,6 +1426,12 @@ client.on(Events.InteractionCreate, async interaction => {
       }
       if (btnId === 'servant_link_duel') {
         await interaction.reply({ content: 'Use `/duel` to enter the combat arena and test your tactical card chains!', flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      // Universal Servant Workshop Buttons & Tab Navigation
+      if (btnId.startsWith('servant_')) {
+        await handleGlobalServantInteraction(interaction);
         return;
       }
 
