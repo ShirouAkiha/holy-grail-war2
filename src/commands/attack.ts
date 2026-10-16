@@ -128,18 +128,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     let servantAmbushLine = '';
-    if (res.targetWasMaster && activeServant) {
+    if (res.targetWasMaster && warServant) {
       const oppMaster = res.targetMasterUsername || resolvedTargetUsername || 'Rival Master';
       try {
         servantAmbushLine = await generateServantBattleReaction({
-          servant: activeServant,
+          servant: warServant,
           masterName: interaction.user.username,
           masterId: interaction.user.id,
           role: 'ambush_attacker',
           outcomeDecision: 'ambush',
           opponentName: `Master ${oppMaster}`,
           opponentMaster: oppMaster,
-          currentHp: activeServant.currentHp || 25000,
+          currentHp: warServant.currentHp || 25000,
           maxHp: 30000,
           warId: war.id
         });
@@ -152,7 +152,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setTitle(res.targetWasMaster ? '⚔️ TACTICAL AMBUSH: RIVAL MASTER ENGAGED!' : '☠️ COLLATERAL CASUALTY: CIVILIAN SLAIN!')
       .setDescription(
         res.message +
-        (servantAmbushLine ? `\n\n💬 **[STRIKE DEBRIEF] ${activeServant.nickname || activeServant.template?.name || 'Servant'}:**\n> ❝ ***${servantAmbushLine}*** ❞` : '')
+        (servantAmbushLine ? `\n\n💬 **[STRIKE DEBRIEF] ${warServant.nickname || warServant.template?.name || 'Servant'}:**\n> ❝ ***${servantAmbushLine}*** ❞` : '')
       )
       .setColor(res.targetWasMaster ? 0xef4444 : 0x7f1d1d)
       .setFooter({ text: footerText });

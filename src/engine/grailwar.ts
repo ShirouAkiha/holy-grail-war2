@@ -904,9 +904,11 @@ export function calculateCurrentHp(participant: WarMasterParticipant, now: numbe
     return maxHp;
   }
 
-  // Auto-regeneration ONLY channels mana if an active Mage Sanctuary ('ward') is established and NOT in combat!
-  const hasMageSanctuary = participant.boundedField === 'ward';
-  if (!hasMageSanctuary || (participant as any).inCombat) {
+  // Auto-regeneration channels mana:
+  // - If active Mage Sanctuary ('ward') or Church Sanctuary: fast 5-minute full recovery (300s).
+  // - Baseline passive recovery (all living participants): gradual 15-minute recovery (900s).
+  const inCombat = !!(participant as any).inCombat;
+  if (inCombat) {
     return participant.currentHp;
   }
 
@@ -914,8 +916,9 @@ export function calculateCurrentHp(participant: WarMasterParticipant, now: numbe
     return participant.currentHp;
   }
 
+  const hasSanctuary = participant.boundedField === 'ward' || !!participant.inChurchSanctuary;
+  const REGEN_DURATION = hasSanctuary ? 300000 : 900000; // 5 min with sanctuary, 15 min baseline
   const elapsed = Math.max(0, now - participant.lastDamageTime);
-  const REGEN_DURATION = 300000; // 5 minutes in ms (300s)
 
   if (elapsed >= REGEN_DURATION) {
     participant.currentHp = maxHp;

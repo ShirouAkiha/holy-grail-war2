@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for isolating Holy Grail War tournaments, participant status, and Safe Mode per Discord server (guildId). Global Servant rosters and inventory remain shared, while tournament participation, combat standing, environment modes, and war commands are strictly scoped per server.",
-  "updatedAt": "2026-10-16T14:10:58.229539666Z",
+  "summary": "Implementation plan for enforcing registered Servant lock during Holy Grail War duels, ensuring post-battle HP recovery mechanics, and adding an ephemeral warning confirmation modal when attempting to reset a war-registered Servant.",
+  "updatedAt": "2026-10-16T16:37:51.792883675Z",
   "requestFeedback": true,
   "userFacing": true
 }

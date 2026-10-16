@@ -4360,9 +4360,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const challengerServant =
-      challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) ||
-      challengerMaster.servants[0];
+    const challengerServant = (!isFreeBattle && isEnrolledAndAliveInWar && challengerParticipant?.servantId)
+      ? (challengerMaster.servants.find(s => s.id === challengerParticipant.servantId) || challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) || challengerMaster.servants[0])
+      : (challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) || challengerMaster.servants[0]);
 
     if (mode === 'forcejoin') {
       await interaction.reply({
@@ -4450,7 +4450,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       // Resolve profiles and servants
       const opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
-      const opponentServant = opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0];
+      const oppParticipant = warSession.participants[opponentUser.id];
+      const isOppInWar = !isFreeBattle && !!oppParticipant && oppParticipant.isAlive;
+      const opponentServant = (isOppInWar && oppParticipant?.servantId)
+        ? (opponentMaster.servants?.find(s => s.id === oppParticipant.servantId) || opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0])
+        : (opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0]);
       if (!opponentServant) {
         await interaction.reply({
           content: `❌ Rival Master <@${opponentUser.id}> has not summoned a Servant yet! All participants must have an active Servant.`,
@@ -4460,7 +4464,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       const p2AllyMaster = await getOrCreateMaster(opponent2User.id, opponent2User.username);
-      const opp2Servant = p2AllyMaster.servants?.find(s => s.id === p2AllyMaster.activeServantId) || p2AllyMaster.servants?.[0];
+      const opp2Participant = warSession.participants[opponent2User.id];
+      const isOpp2InWar = !isFreeBattle && !!opp2Participant && opp2Participant.isAlive;
+      const opp2Servant = (isOpp2InWar && opp2Participant?.servantId)
+        ? (p2AllyMaster.servants?.find(s => s.id === opp2Participant.servantId) || p2AllyMaster.servants?.find(s => s.id === p2AllyMaster.activeServantId) || p2AllyMaster.servants?.[0])
+        : (p2AllyMaster.servants?.find(s => s.id === p2AllyMaster.activeServantId) || p2AllyMaster.servants?.[0]);
       if (!opp2Servant) {
         await interaction.reply({
           content: `❌ Rival Master <@${opponent2User.id}> has not summoned a Servant yet! All participants must have an active Servant.`,
@@ -4475,7 +4483,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       if (is2v2 && allyUser) {
         const allyMaster = await getOrCreateMaster(allyUser.id, allyUser.username);
         p1AllyMaster = allyMaster;
-        const allyServant = allyMaster.servants?.find(s => s.id === allyMaster.activeServantId) || allyMaster.servants?.[0];
+        const allyParticipant = warSession.participants[allyUser.id];
+        const isAllyInWar = !isFreeBattle && !!allyParticipant && allyParticipant.isAlive;
+        const allyServant = (isAllyInWar && allyParticipant?.servantId)
+          ? (allyMaster.servants?.find(s => s.id === allyParticipant.servantId) || allyMaster.servants?.find(s => s.id === allyMaster.activeServantId) || allyMaster.servants?.[0])
+          : (allyMaster.servants?.find(s => s.id === allyMaster.activeServantId) || allyMaster.servants?.[0]);
         if (!allyServant) {
           await interaction.reply({
             content: `❌ Allied Master <@${allyUser.id}> has not summoned a Servant yet! All participants must have an active Servant.`,
@@ -4753,7 +4765,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const opponentServant = isOpponentCivilian
         ? null
-        : (opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0]);
+        : ((!isFreeBattle && opponentParticipant && opponentParticipant.isAlive && opponentParticipant.servantId)
+          ? (opponentMaster.servants.find(s => s.id === opponentParticipant.servantId) || opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0])
+          : (opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0]));
 
       const inviteEmbed = new EmbedBuilder()
         .setTitle('⚔️ HOLY GRAIL WAR: DUEL INVITATION')
@@ -5025,7 +5039,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const isOpponentCivilian = !opponentMaster.servants || opponentMaster.servants.length === 0;
     const opponentServant = isOpponentCivilian
       ? null
-      : (opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0]);
+      : ((!isFreeBattle && targetRival && targetRival.isAlive && targetRival.servantId)
+        ? (opponentMaster.servants.find(s => s.id === targetRival.servantId) || opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0])
+        : (opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0]));
 
     const inviteEmbed = new EmbedBuilder()
       .setTitle('⚔️ HOLY GRAIL WAR: DUEL INVITATION')
@@ -8241,7 +8257,7 @@ async function finalizeDuelRewardsAndSync(
     }
 
     const wMaster = await getOrCreateMaster(winner.userId, winner.username);
-    const isWinnerSafe = isFreeBattle || wMaster?.environmentMode === 'safe' || !wMaster?.environmentMode;
+    const isWinnerSafe = isFreeBattle || getMasterEnvironment(wMaster, preferredGuildId, warSession) === 'safe';
     if (wMaster) {
       wMaster.saintQuartz = (wMaster.saintQuartz || 0) + winSq;
       wMaster.manaPrisms = (wMaster.manaPrisms || 0) + winManaPrisms;
@@ -8344,7 +8360,7 @@ async function finalizeDuelRewardsAndSync(
     }
 
     if (s.master) {
-      const isLoserSafe = isFreeBattle || s.master.environmentMode === 'safe' || !s.master.environmentMode;
+      const isLoserSafe = isFreeBattle || getMasterEnvironment(s.master, preferredGuildId, warSession) === 'safe';
       s.master.saintQuartz = (s.master.saintQuartz || 0) + loseSq;
       s.master.manaPrisms = (s.master.manaPrisms || 0) + loseManaPrisms;
       s.master.duelsLost = (s.master.duelsLost || 0) + 1;
@@ -8698,7 +8714,9 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
     const targetUser = mentionedUsers[0];
     if (targetUser) {
       const targetMaster = await getOrCreateMaster(targetUser.id, targetUser.username);
-      const targetServant = targetMaster.servants?.find(s => s.id === targetMaster.activeServantId) || targetMaster.servants?.[0];
+      const targetServant = (!isFreeBattle && p2Part && p2Part.isAlive && p2Part.servantId)
+        ? (targetMaster.servants?.find(s => s.id === p2Part.servantId) || targetMaster.servants?.find(s => s.id === targetMaster.activeServantId) || targetMaster.servants?.[0])
+        : (targetMaster.servants?.find(s => s.id === targetMaster.activeServantId) || targetMaster.servants?.[0]);
       if (!targetServant) {
         await message.reply({ content: `❌ Rival Master <@${targetUser.id}> has not summoned a Servant yet!` });
         return;

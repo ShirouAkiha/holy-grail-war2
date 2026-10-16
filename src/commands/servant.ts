@@ -20,7 +20,7 @@ import {
   resolveAscensionArtwork 
 } from '../data/servantAscensions';
 import { getServantProfile } from '../engine/dialogue';
-import { getOrInitWarSession, exposeMasterInWar, getHealingStatus } from '../engine/grailwar';
+import { getOrInitWarSession, exposeMasterInWar, getHealingStatus, getAllWarSessions } from '../engine/grailwar';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { allocateStatPoints, calculateServantMaxHp, calculateServantMaxAtk, getParameterRank, getParameterRankMultiplier, getServantDefaultParamRank, getEnduranceDamageReductionPercent } from '../engine/statSystem';
 import { 
@@ -1738,8 +1738,77 @@ export async function handleGlobalServantInteraction(i: any) {
         await i.showModal(modal);
         return;
       }
+      // CANCEL WAR RESET
+      else if (i.customId === 'servant_cancel_reset') {
+        await i.reply({
+          content: `🛡️ **Reset Cancelled:** **${sName}** remains unchanged in the Holy Grail War!`,
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+      // CONFIRMED STAT RESPEC
+      else if (i.customId === 'servant_confirm_respec_stats') {
+        const res = respecServantStats(targetServant);
+        const sIdx = findServantIndexInRoster(master.servants, targetServant);
+        if (sIdx !== -1) master.servants[sIdx] = res.updatedServant;
+        await saveMaster(master);
+        targetServant = res.updatedServant;
+        actionOutcomeMsg = `🔄 **STAT RESPEC COMPLETE!**\n` +
+          `• Successfully refunded **+${res.refundedPoints.toLocaleString()} Stat Points** back to **${sName}**!\n` +
+          `• All allocated battle parameters reset to 0.\n` +
+          `• **New Unspent Pool:** \`${res.newAvailablePoints.toLocaleString()} pts\` available to re-distribute!`;
+        await i.reply({ content: actionOutcomeMsg, flags: MessageFlags.Ephemeral });
+      }
+      // CONFIRMED DE-LEVEL & RECLAIM EXP
+      else if (i.customId === 'servant_confirm_reclaim_exp') {
+        const oldLvl = targetServant.level || 1;
+        const currentExp = targetServant.experience ?? getTotalExpForLevel(oldLvl);
+        if (oldLvl <= 1 && currentExp <= 0) {
+          await i.reply({ content: `⚠️ **${sName}** is already at **Level 1** with 0 synthesized EXP to extract.`, flags: MessageFlags.Ephemeral });
+          return;
+        }
+        const res = reclaimServantLevelAndExp(targetServant, master.craftEssences);
+        master.craftEssences = res.updatedCraftEssences;
+        const sIdx = findServantIndexInRoster(master.servants, targetServant);
+        if (sIdx !== -1) master.servants[sIdx] = res.updatedServant;
+        await saveMaster(master);
+        targetServant = res.updatedServant;
+        actionOutcomeMsg = `⚗️ **LEVEL EXTRACTION & RESPEC COMPLETE!**\n` +
+          `• **${sName}** has been de-leveled from **Lv.${res.oldLevel}** ➔ **Lv.1**.\n` +
+          `• Reclaimed **+${res.refundedExp.toLocaleString()} Synthesis EXP** converted into **${res.embersGenerated.totalEmbers} Universal EXP Embers** in your Master Vault!\n` +
+          `  - ★5 Blaze of Wisdom (10,000 XP): **${res.embersGenerated.ssrCount}x**\n` +
+          `  - ★4 Blaze of Wisdom (3,000 XP): **${res.embersGenerated.srCount}x**\n` +
+          `  - ★3 Spark of Wisdom (1,000 XP): **${res.embersGenerated.rCount}x**\n` +
+          `• *⭐ Bond Level (${targetServant.bondLevel || 1}), NP Level, and Custom Quotes are 100% preserved!*`;
+        await i.reply({ content: actionOutcomeMsg, flags: MessageFlags.Ephemeral });
+      }
       // STAT RESPEC (Type A Reset: Reallocate Points)
       else if (i.customId === 'servant_act_respec_stats') {
+        const warCheck = checkServantInActiveWar(targetServant.id, master.discordId);
+        if (warCheck.isRegistered) {
+          const warnEmbed = new EmbedBuilder()
+            .setTitle('⚠️ HOLY GRAIL WAR REGISTRATION WARNING')
+            .setDescription(
+              `**${sName}** is currently registered as your champion in an ongoing Holy Grail War tournament (${warCheck.warTitle})!\n\n` +
+              `• **Tournament Impact:** Resetting this Servant's allocated stat points will reset their battle parameters until you reallocate them, while your tournament standing and current war damage remain intact.\n\n` +
+              `Are you sure you want to reset parameter allocations for **${sName}**?`
+            )
+            .setColor(0xf59e0b);
+          const warnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId('servant_confirm_respec_stats')
+              .setLabel('Yes, Reset Stats')
+              .setEmoji('🔄')
+              .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId('servant_cancel_reset')
+              .setLabel('Cancel')
+              .setEmoji('✖️')
+              .setStyle(ButtonStyle.Secondary)
+          );
+          await i.reply({ embeds: [warnEmbed], components: [warnRow], flags: MessageFlags.Ephemeral });
+          return;
+        }
         const alloc = targetServant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
         const allocatedSum = (alloc.strength || 0) + (alloc.endurance || 0) + (alloc.agility || 0) + (alloc.mana || 0) + (alloc.luck || 0);
 
@@ -1759,6 +1828,32 @@ export async function handleGlobalServantInteraction(i: any) {
       }
       // DE-LEVEL & RECLAIM EXP (Type B Reset: Universal EXP Embers Extraction)
       else if (i.customId === 'servant_act_reclaim_exp') {
+        const warCheck = checkServantInActiveWar(targetServant.id, master.discordId);
+        if (warCheck.isRegistered) {
+          const warnEmbed = new EmbedBuilder()
+            .setTitle('⚠️ HOLY GRAIL WAR REGISTRATION WARNING')
+            .setDescription(
+              `**${sName}** is currently registered as your champion in an ongoing Holy Grail War tournament (${warCheck.warTitle})!\n\n` +
+              `• **Tournament Impact:** De-leveling this Servant will lower their combat parameters during war duels, but your tournament registration and current war damage will remain intact.\n` +
+              `• Only proceed if you intend to reallocate EXP/points or compete with adjusted parameters.\n\n` +
+              `Are you sure you want to de-level and reclaim EXP from **${sName}**?`
+            )
+            .setColor(0xf59e0b);
+          const warnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId('servant_confirm_reclaim_exp')
+              .setLabel('Yes, Reset & Reclaim')
+              .setEmoji('⚗️')
+              .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId('servant_cancel_reset')
+              .setLabel('Cancel')
+              .setEmoji('✖️')
+              .setStyle(ButtonStyle.Secondary)
+          );
+          await i.reply({ embeds: [warnEmbed], components: [warnRow], flags: MessageFlags.Ephemeral });
+          return;
+        }
         const oldLvl = targetServant.level || 1;
         const currentExp = targetServant.experience ?? getTotalExpForLevel(oldLvl);
 
@@ -1975,6 +2070,22 @@ export async function handleGlobalServantInteraction(i: any) {
       }
       console.error('Error in servant interaction:', err);
     }
+}
+
+
+export function checkServantInActiveWar(servantId: string, discordId: string): { isRegistered: boolean; warTitle?: string } {
+  try {
+    const allWars = getAllWarSessions();
+    for (const session of Object.values(allWars)) {
+      if (session && session.status === "active" && session.participants) {
+        const p = session.participants[discordId];
+        if (p && p.isAlive && p.servantId === servantId) {
+          return { isRegistered: true, warTitle: session.title || "Holy Grail War" };
+        }
+      }
+    }
+  } catch {}
+  return { isRegistered: false };
 }
 
 export function attachServantCollector(
