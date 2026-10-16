@@ -107,7 +107,7 @@ import {
   attemptJoinWar,
   findActiveWarSessionForMaster
 } from './engine/grailwar';
-import { checkWarActionPermission } from './engine/environmentService';
+import { checkWarActionPermission, getMasterEnvironment } from './engine/environmentService';
 import { handleRecruitmentInteraction, resumePendingRecruitment, handleWarDmInteraction } from './engine/warRecruitmentService';
 
 // ==========================================
@@ -1149,9 +1149,9 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (interaction.customId === 'war_trap_channel_select') {
-        const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-        const war = getOrInitWarSession(master);
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
+        const war = getOrInitWarSession(master, interaction.guildId || undefined);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
@@ -1462,7 +1462,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
       // Trap actions from channel select menu or trap hub
       if (btnId.startsWith('war_anchor_sanctuary_') || btnId.startsWith('trap_set_sanctuary_')) {
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({ content: perm.message, flags: MessageFlags.Ephemeral });
           return;
@@ -1479,7 +1479,7 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
       if (btnId.startsWith('war_anchor_alarm_') || btnId.startsWith('trap_set_alarm_')) {
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({ content: perm.message, flags: MessageFlags.Ephemeral });
           return;
@@ -1494,7 +1494,7 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
       if (btnId.startsWith('war_anchor_drain_') || btnId.startsWith('trap_set_drain_')) {
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({ content: perm.message, flags: MessageFlags.Ephemeral });
           return;
@@ -1509,7 +1509,7 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
       if (btnId.startsWith('war_anchor_disarm_') || btnId.startsWith('trap_disarm_')) {
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({ content: perm.message, flags: MessageFlags.Ephemeral });
           return;
@@ -1540,8 +1540,8 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
         const uP = war.participants[interaction.user.id];
-        const embed = buildProfileEmbed(master, war);
-        const btns = buildProfileButtons(uP, master.activeServantId || master.servants?.[0]?.id, master);
+        const embed = buildProfileEmbed(master, war, undefined, interaction.guildId || undefined);
+        const btns = buildProfileButtons(uP, master.activeServantId || master.servants?.[0]?.id, master, interaction.guildId || undefined);
         await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         return;
       }
@@ -1616,8 +1616,8 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
         const uP = war.participants[interaction.user.id];
-        const embed = buildProfileEmbed(master, war, btnId === 'profile_refresh' ? '🔄 Profile refreshed.' : undefined);
-        const btns = buildProfileButtons(uP, master.activeServantId || master.servants?.[0]?.id, master);
+        const embed = buildProfileEmbed(master, war, btnId === 'profile_refresh' ? '🔄 Profile refreshed.' : undefined, interaction.guildId || undefined);
+        const btns = buildProfileButtons(uP, master.activeServantId || master.servants?.[0]?.id, master, interaction.guildId || undefined);
         if (btnId === 'war_my_profile') {
           await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         } else {
@@ -1662,7 +1662,7 @@ client.on(Events.InteractionCreate, async interaction => {
           });
           return;
         }
-        const publicEmbed = buildPublicProfileEmbed(master, war);
+        const publicEmbed = buildPublicProfileEmbed(master, war, interaction.guildId || undefined);
         try {
           if (interaction.channel && 'send' in interaction.channel) {
             await (interaction.channel as any).send({ embeds: [publicEmbed] });
@@ -1678,7 +1678,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
       if (btnId.startsWith('profile_ward_') || btnId === 'profile_toggle_evade' || btnId === 'profile_heal' || btnId === 'profile_toggle_mode') {
         if (btnId !== 'profile_toggle_mode') {
-          const perm = checkWarActionPermission(master, war, interaction.user.id);
+          const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
           if (!perm.allowed) {
             await interaction.reply({
               flags: MessageFlags.Ephemeral,
@@ -1753,13 +1753,13 @@ client.on(Events.InteractionCreate, async interaction => {
         }
 
         const uP = war.participants[interaction.user.id];
-        await interaction.update({ embeds: [buildProfileEmbed(master, war, msg)], components: buildProfileButtons(uP, master.activeServantId || master.servants?.[0]?.id, master) });
+        await interaction.update({ embeds: [buildProfileEmbed(master, war, msg, interaction.guildId || undefined)], components: buildProfileButtons(uP, master.activeServantId || master.servants?.[0]?.id, master, interaction.guildId || undefined) });
         return;
       }
 
       // Defenses Buttons
       if (btnId === 'war_defenses' || btnId === 'war_refresh_defenses') {
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
@@ -1779,7 +1779,7 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (btnId.startsWith('ward_') || btnId === 'toggle_auto_evade' || btnId === 'church_enter' || btnId === 'church_leave') {
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
@@ -1839,7 +1839,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
       // War Board Buttons
       if (btnId === 'war_patrol') {
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
@@ -1866,7 +1866,7 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (btnId === 'disarm_all_traps') {
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
@@ -1894,7 +1894,7 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (btnId === 'quick_war_defenses') {
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
@@ -1910,7 +1910,7 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (btnId === 'recall_all_familiars') {
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
@@ -1930,7 +1930,7 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (btnId === 'war_familiars_hub') {
-        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
         if (!perm.allowed) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,

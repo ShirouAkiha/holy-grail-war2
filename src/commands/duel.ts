@@ -15,6 +15,7 @@ import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCom
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
 import { resolveAscensionSprite } from '../data/servantAscensions';
 import { getOrInitWarSession, findActiveWarSessionForMaster, recordDuelOutcome, calculateCurrentHp, getReputationInfo, isUserSlainCivilianInWar } from '../engine/grailwar';
+import { getMasterEnvironment } from '../engine/environmentService';
 import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard, renderMasterCommandSealDialogueCard, renderSkillDialogueCard, cleanCanvasText } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
@@ -4278,10 +4279,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const isEnrolledAndAliveInWar = !!challengerParticipant && challengerParticipant.isAlive;
 
-    // When enrolled and alive in active Holy Grail War, ensure Master environmentMode reflects 'war'
-    if (isEnrolledAndAliveInWar && challengerMaster.environmentMode !== 'war') {
-      challengerMaster.environmentMode = 'war';
-      await saveMaster(challengerMaster);
+    // When enrolled and alive in active Holy Grail War in this server, ensure Master environment reflects 'war'
+    if (isEnrolledAndAliveInWar && preferredGuildId) {
+      if (!challengerMaster.guildEnvironmentModes) challengerMaster.guildEnvironmentModes = {};
+      if (challengerMaster.guildEnvironmentModes[preferredGuildId] !== 'war') {
+        challengerMaster.guildEnvironmentModes[preferredGuildId] = 'war';
+        challengerMaster.environmentMode = 'war';
+        await saveMaster(challengerMaster);
+      }
     }
 
     // Determine combat mode (1v1, 1v2, 2v2, forcejoin)
@@ -4298,7 +4303,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // Determine if this is a Free Battle (Safe Mode / Friendly Sparring)
     let isFreeBattle = false;
-    if (isExplicitFree || rawMode === 'free' || rawMode === 'free_1v2' || rawMode === 'free_2v2') {
+    if (!preferredGuildId) {
+      // Direct Messages: strictly default to Safe Mode with war duels disabled
+      if (rawMode === '1v1' || rawMode === '2v2' || rawMode === '1v2') {
+        await interaction.reply({
+          content: '🕊️ **Direct Messages Protection:** Holy Grail War tournament clashing must take place inside a Discord server where a war is underway. In Direct Messages, duels default to friendly sparring! Use `/duel mode:free`.',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+      isFreeBattle = true;
+    } else if (isExplicitFree || rawMode === 'free' || rawMode === 'free_1v2' || rawMode === 'free_2v2') {
       isFreeBattle = true;
     } else if (rawMode === '1v1' || rawMode === '2v2' || rawMode === '1v2') {
       // User explicitly selected Holy Grail War mode!
@@ -4316,7 +4331,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           return;
         } else {
           await interaction.reply({
-            content: `❌ **Not Enrolled in Holy Grail War:** You are currently not registered in an ongoing Holy Grail War tournament.\n\n` +
+            content: `❌ **Not Enrolled in Holy Grail War:** You are currently not registered in an ongoing Holy Grail War tournament in this server.\n\n` +
               `• ⚔️ **Tournament Battles:** You must be registered in the active war to initiate **1v1 Holy Grail Duels**.\n` +
               `• 🕊️ **Friendly Sparring:** You can duel without tournament stakes anytime using \`/duel mode:free\`!`,
             flags: MessageFlags.Ephemeral
@@ -4326,7 +4341,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
       isFreeBattle = false;
     } else {
-      isFreeBattle = !isEnrolledAndAliveInWar || challengerMaster.environmentMode === 'safe';
+      const challengerGuildEnv = getMasterEnvironment(challengerMaster, preferredGuildId, warSession);
+      isFreeBattle = !isEnrolledAndAliveInWar || challengerGuildEnv === 'safe';
     }
 
     // Check if challenger is eliminated from the Holy Grail War tournament (only relevant in War battles)
@@ -4468,20 +4484,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           return;
         }
         const allyPart = warSession.participants[allyMaster.discordId];
-        const allyHp = (isFreeBattle || allyMaster.environmentMode === 'safe') ? undefined : (allyPart ? calculateCurrentHp(allyPart) : undefined);
+        const allyHp = (isFreeBattle || getMasterEnvironment(allyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (allyPart ? calculateCurrentHp(allyPart) : undefined);
         p1Ally = createCombatant(allyMaster, allyServant, false, allyHp, isFreeBattle);
       }
 
       const p1Part = warSession.participants[challengerMaster.discordId];
-      const p1Hp = (isFreeBattle || challengerMaster.environmentMode === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
+      const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
       const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
 
       const p2Part = warSession.participants[opponentMaster.discordId];
-      const p2Hp = (isFreeBattle || opponentMaster.environmentMode === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
+      const p2Hp = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
       const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle);
 
       const opp2Part = warSession.participants[p2AllyMaster.discordId];
-      const opp2Hp = (isFreeBattle || p2AllyMaster.environmentMode === 'safe') ? undefined : (opp2Part ? calculateCurrentHp(opp2Part) : undefined);
+      const opp2Hp = (isFreeBattle || getMasterEnvironment(p2AllyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (opp2Part ? calculateCurrentHp(opp2Part) : undefined);
       const p2Ally = createCombatant(p2AllyMaster, opp2Servant, false, opp2Hp, isFreeBattle);
 
       if (is2v2) {
@@ -4683,9 +4699,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const opponentParticipant = warSession.participants[opponentUser.id] ||
         Object.values(warSession.participants).find(p => p.discordId === opponentUser.id || p.username.toLowerCase() === opponentUser.username.toLowerCase());
 
-      if (opponentParticipant && opponentParticipant.isAlive && opponentMaster.environmentMode !== 'war') {
-        opponentMaster.environmentMode = 'war';
-        await saveMaster(opponentMaster);
+      if (opponentParticipant && opponentParticipant.isAlive && preferredGuildId) {
+        if (!opponentMaster.guildEnvironmentModes) opponentMaster.guildEnvironmentModes = {};
+        if (opponentMaster.guildEnvironmentModes[preferredGuildId] !== 'war') {
+          opponentMaster.guildEnvironmentModes[preferredGuildId] = 'war';
+          opponentMaster.environmentMode = 'war';
+          await saveMaster(opponentMaster);
+        }
       }
 
       const isOpponentInWar = !!opponentParticipant && opponentParticipant.isAlive;
@@ -4913,12 +4933,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
             try {
               const p1Part = warSession.participants[challengerMaster.discordId];
-              const p1Hp = (isFreeBattle || challengerMaster.environmentMode === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
+              const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
               const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
 
               const p2Part = warSession.participants[opponentUser.id] ||
                 Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
-              const p2Hp = (isFreeBattle || opponentMaster.environmentMode === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
+              const p2Hp = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
               const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle);
               await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster, undefined, undefined, undefined, undefined, isFreeBattle);
             } catch (duelErr: any) {
@@ -5185,12 +5205,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
           try {
             const p1Part = warSession.participants[challengerMaster.discordId];
-            const p1Hp = (isFreeBattle || challengerMaster.environmentMode === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
+            const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
             const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
 
             const p2Part = warSession.participants[targetRival.discordId] ||
               Object.values(warSession.participants).find(p => p.username.toLowerCase() === targetRival.username.toLowerCase());
-            const p2Hp = (isFreeBattle || opponentMaster.environmentMode === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
+            const p2Hp = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
             const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle);
             await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster, undefined, undefined, undefined, undefined, isFreeBattle);
           } catch (duelErr: any) {
@@ -8424,26 +8444,35 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       return;
     }
 
-    const warSession = findActiveWarSessionForMaster(challengerMaster.discordId, challengerMaster, message.guild?.id || undefined);
+    const preferredGuildId = message.guild?.id || undefined;
+    const warSession = findActiveWarSessionForMaster(challengerMaster.discordId, challengerMaster, preferredGuildId);
     const text = args.join(' ').toLowerCase();
 
     const challengerParticipant = warSession.participants[challengerMaster.discordId] ||
       Object.values(warSession.participants).find(p => p.discordId === challengerMaster.discordId || p.username.toLowerCase() === challengerMaster.username.toLowerCase());
 
     const isEnrolledAndAliveInWar = !!challengerParticipant && challengerParticipant.isAlive;
-    if (isEnrolledAndAliveInWar && challengerMaster.environmentMode !== 'war') {
-      challengerMaster.environmentMode = 'war';
-      await saveMaster(challengerMaster);
+    if (isEnrolledAndAliveInWar && preferredGuildId) {
+      if (!challengerMaster.guildEnvironmentModes) challengerMaster.guildEnvironmentModes = {};
+      if (challengerMaster.guildEnvironmentModes[preferredGuildId] !== 'war') {
+        challengerMaster.guildEnvironmentModes[preferredGuildId] = 'war';
+        challengerMaster.environmentMode = 'war';
+        await saveMaster(challengerMaster);
+      }
     }
 
     const isExplicitFree = text.includes('free') || text.includes('spar') || text.includes('safe');
     let isFreeBattle = false;
-    if (isExplicitFree) {
+    if (!preferredGuildId) {
+      // Direct Messages: strictly default to Safe Mode
+      isFreeBattle = true;
+    } else if (isExplicitFree) {
       isFreeBattle = true;
     } else if (text.includes('1v1') || text.includes('war')) {
       isFreeBattle = !isEnrolledAndAliveInWar;
     } else {
-      isFreeBattle = !isEnrolledAndAliveInWar || challengerMaster.environmentMode === 'safe';
+      const challengerGuildEnv = getMasterEnvironment(challengerMaster, preferredGuildId, warSession);
+      isFreeBattle = !isEnrolledAndAliveInWar || challengerGuildEnv === 'safe';
     }
 
     const is1v2Requested = text.includes('1v2') || text.includes('raid');
@@ -8519,20 +8548,20 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
           return;
         }
         const allyPart = warSession.participants[allyMaster.discordId];
-        const allyHp = (isFreeBattle || allyMaster.environmentMode === 'safe') ? undefined : (allyPart ? calculateCurrentHp(allyPart) : undefined);
+        const allyHp = (isFreeBattle || getMasterEnvironment(allyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (allyPart ? calculateCurrentHp(allyPart) : undefined);
         p1Ally = createCombatant(allyMaster, allyServant, false, allyHp, isFreeBattle);
       }
 
       const p1Part = warSession.participants[challengerMaster.discordId];
-      const p1Hp = (isFreeBattle || challengerMaster.environmentMode === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
+      const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
       const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
 
       const p2Part = warSession.participants[opponentMaster.discordId];
-      const p2Hp = (isFreeBattle || opponentMaster.environmentMode === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
+      const p2Hp = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
       const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle);
 
       const opp2Part = warSession.participants[opp2Master.discordId];
-      const opp2Hp = (isFreeBattle || opp2Master.environmentMode === 'safe') ? undefined : (opp2Part ? calculateCurrentHp(opp2Part) : undefined);
+      const opp2Hp = (isFreeBattle || getMasterEnvironment(opp2Master, preferredGuildId, warSession) === 'safe') ? undefined : (opp2Part ? calculateCurrentHp(opp2Part) : undefined);
       const p2Ally = createCombatant(opp2Master, opp2Servant, false, opp2Hp, isFreeBattle);
 
       if (is2v2) {
@@ -8676,11 +8705,11 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       }
 
       const p1Part = warSession.participants[challengerMaster.discordId];
-      const p1Hp = (isFreeBattle || challengerMaster.environmentMode === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
+      const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
       const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
 
       const p2Part = warSession.participants[targetMaster.discordId];
-      const p2Hp = (isFreeBattle || targetMaster.environmentMode === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
+      const p2Hp = (isFreeBattle || getMasterEnvironment(targetMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
       const p2 = createCombatant(targetMaster, targetServant, false, p2Hp, isFreeBattle);
 
       const matchHeading = isFreeBattle ? '🕊️ FREE BATTLE: 1v1 SPARRING' : '⚔️ HOLY GRAIL WAR: 1v1 DUEL CHALLENGE';
@@ -8743,7 +8772,7 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
 
     // Solo 1v1 vs AI or Available Master
     const p1Part = warSession.participants[challengerMaster.discordId];
-    const p1Hp = (isFreeBattle || challengerMaster.environmentMode === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
+    const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
     const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
 
     const allSpirits = getAllThroneServants();

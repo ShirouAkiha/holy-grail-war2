@@ -235,7 +235,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     let lastMsg: string | undefined = undefined;
 
     if (action === 'enter' || action === 'leave') {
-      const perm = checkWarActionPermission(master, war, interaction.user.id);
+      const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
       if (!perm.allowed) {
         return interaction.editReply({
           content: perm.message

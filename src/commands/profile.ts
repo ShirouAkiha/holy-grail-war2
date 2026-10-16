@@ -15,6 +15,7 @@ import {
   findActiveWarSessionForMaster,
   getHealingStatus
 } from '../engine/grailwar';
+import { getMasterEnvironment } from '../engine/environmentService';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { getServantAvatarAndCardArt } from '../data/servants';
 
@@ -35,9 +36,9 @@ export function renderHpBar(percent: number): string {
   return '█'.repeat(filled) + '░'.repeat(empty);
 }
 
-export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
+export function buildProfileEmbed(master: any, war: any, lastMsg?: string, guildId?: string) {
   const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
-  const userParticipant = war.participants?.[master.discordId];
+  const userParticipant = war?.participants?.[master.discordId];
 
   if (!activeServant) {
     return new EmbedBuilder()
@@ -46,7 +47,8 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
       .setColor(0x71717a);
   }
 
-  const isSafe = master.environmentMode === 'safe' || !master.environmentMode;
+  const env = getMasterEnvironment(master, guildId, war);
+  const isSafe = env === 'safe';
   const sTemplate = activeServant.template || activeServant;
   const servantName = activeServant.nickname || sTemplate.name || activeServant.name || 'Heroic Spirit';
   const servantClass = sTemplate.servantClass || activeServant.servantClass || activeServant.class || userParticipant?.servantClass || 'Saber';
@@ -192,9 +194,9 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
   return embed;
 }
 
-export function buildPublicProfileEmbed(master: any, war: any) {
+export function buildPublicProfileEmbed(master: any, war: any, guildId?: string) {
   const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
-  const userParticipant = war.participants?.[master.discordId];
+  const userParticipant = war?.participants?.[master.discordId];
 
   if (!activeServant) {
     return new EmbedBuilder()
@@ -203,7 +205,8 @@ export function buildPublicProfileEmbed(master: any, war: any) {
       .setColor(0x71717a);
   }
 
-  const isSafe = master.environmentMode === 'safe' || !master.environmentMode;
+  const env = getMasterEnvironment(master, guildId, war);
+  const isSafe = env === 'safe';
   const seals = isSafe ? 3 : (userParticipant?.commandSeals ?? master.commandSeals ?? 3);
   const isExposed = userParticipant?.isExposed;
   const isUnderSanctuary = userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary;
@@ -293,8 +296,9 @@ export function buildPublicProfileEmbed(master: any, war: any) {
   return embed;
 }
 
-export function buildProfileButtons(userParticipant: any, activeServantId?: string, master?: any) {
-  const isSafe = master?.environmentMode === 'safe' || !master?.environmentMode;
+export function buildProfileButtons(userParticipant: any, activeServantId?: string, master?: any, guildId?: string) {
+  const env = master ? getMasterEnvironment(master, guildId) : 'safe';
+  const isSafe = env === 'safe';
 
   // ==========================================
   // SAFE MODE BUTTONS: Clean & Focused
@@ -441,7 +445,7 @@ export function buildProfileButtons(userParticipant: any, activeServantId?: stri
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const isPublic = interaction.options.getBoolean('public') ?? false;
-    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
 
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
@@ -456,7 +460,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       Object.values(war.participants).find((p: any) => p.discordId === interaction.user.id);
 
     if (isPublic) {
-      const publicEmbed = buildPublicProfileEmbed(master, war);
+      const publicEmbed = buildPublicProfileEmbed(master, war, interaction.guildId || undefined);
       await interaction.reply({
         embeds: [publicEmbed]
       });
@@ -464,8 +468,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
-    const embed = buildProfileEmbed(master, war);
-    const buttons = buildProfileButtons(userParticipant, activeServant?.id, master);
+    const embed = buildProfileEmbed(master, war, undefined, interaction.guildId || undefined);
+    const buttons = buildProfileButtons(userParticipant, activeServant?.id, master, interaction.guildId || undefined);
 
     await interaction.reply({
       embeds: [embed],

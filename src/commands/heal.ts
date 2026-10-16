@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { getOrInitWarSession, executeWarAction } from '../engine/grailwar';
+import { getMasterEnvironment } from '../engine/environmentService';
 
 export const data = new SlashCommandBuilder()
   .setName('heal')
@@ -8,7 +9,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
         flags: MessageFlags.Ephemeral,
@@ -17,8 +18,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    const env = getMasterEnvironment(master, interaction.guildId || undefined);
+
     // Safe Mode Masters have infinite continuous sanctuary healing
-    if (master.environmentMode === 'safe') {
+    if (env === 'safe') {
       const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
       for (const s of master.servants) {
         s.currentHp = (s as any).maxHp || s.template?.baseHp || 50000;

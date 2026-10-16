@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for verifying Tiamat's 6 skills, phase passives, and Noble Phantasms, and adjusting Phase 3 base HP from 182M to 70M across raid configuration and command handlers.",
-  "updatedAt": "2026-10-15T16:08:04.555736768Z",
+  "summary": "Implementation plan for isolating Holy Grail War tournaments, participant status, and Safe Mode per Discord server (guildId). Global Servant rosters and inventory remain shared, while tournament participation, combat standing, environment modes, and war commands are strictly scoped per server.",
+  "updatedAt": "2026-10-16T14:10:58.229539666Z",
   "requestFeedback": true,
   "userFacing": true
 }

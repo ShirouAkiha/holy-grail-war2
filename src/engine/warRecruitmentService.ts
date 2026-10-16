@@ -1053,6 +1053,8 @@ export async function igniteWarFromRecruitment(
     // Set Master into active War mode with full HP and starting Command Seals
     master.environmentMode = 'war';
     if (targetGuildId) {
+      if (!master.guildEnvironmentModes) master.guildEnvironmentModes = {};
+      master.guildEnvironmentModes[targetGuildId] = 'war';
       master.guildId = targetGuildId;
       if (!master.guildIds) master.guildIds = [];
       if (!master.guildIds.includes(targetGuildId)) master.guildIds.push(targetGuildId);
@@ -1120,7 +1122,16 @@ export async function igniteWarFromRecruitment(
   // Notify unchosen applicants that they remain safely in Safe Mode
   for (const item of unchosenApplicants) {
     const master = item.master;
-    master.environmentMode = 'safe';
+    if (targetGuildId) {
+      if (!master.guildEnvironmentModes) master.guildEnvironmentModes = {};
+      master.guildEnvironmentModes[targetGuildId] = 'safe';
+    }
+    const hasOtherWar = Object.entries(master.guildEnvironmentModes || {}).some(
+      ([gid, m]) => gid !== targetGuildId && m === 'war'
+    );
+    if (!hasOtherWar) {
+      master.environmentMode = 'safe';
+    }
     master.commandSeals = 3;
     await saveMaster(master);
 

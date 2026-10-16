@@ -9,6 +9,7 @@ import {
   attackSuspectUserInWar,
   isUserSlainCivilianInWar 
 } from '../engine/grailwar';
+import { getMasterEnvironment } from '../engine/environmentService';
 import { generateServantBattleReaction } from '../engine/talkService';
 
 export const data = new SlashCommandBuilder()
@@ -25,7 +26,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
-    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
     const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
 
     if (!activeServant) {
@@ -35,13 +36,27 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const war = getOrInitWarSession(master, interaction.guildId || undefined);
+    if (!interaction.guildId) {
+      const dmEmbed = new EmbedBuilder()
+        .setTitle('🚫 CANNOT ATTACK IN DIRECT MESSAGES')
+        .setDescription(
+          `🕊️ **Server-Exclusive Action:** Holy Grail War surprise ambushes and tactical strikes must take place inside a Discord server where an active Holy Grail War is taking place.\n\n` +
+          `• In Direct Messages, you are in **Chaldea Safe Mode**.\n` +
+          `• Use \`/duel mode:free\` to spar and duel friendly Masters or AI safely without elimination risks!`
+        )
+        .setColor(0x38bdf8);
+      await interaction.editReply({ embeds: [dmEmbed] });
+      return;
+    }
+
+    const war = getOrInitWarSession(master, interaction.guildId);
+    const env = getMasterEnvironment(master, interaction.guildId, war);
 
     const attackerPart = war.participants[interaction.user.id] ||
       Object.values(war.participants).find(p => p.discordId === interaction.user.id);
 
     // CRITICAL: Prevent players in Safe Mode from launching ambushes into an ongoing war
-    if (master.environmentMode === 'safe' || !attackerPart || !attackerPart.isAlive) {
+    if (env === 'safe' || !attackerPart || !attackerPart.isAlive) {
       const isSlainCiv = isUserSlainCivilianInWar(war, interaction.user.id, interaction.user.username);
       const deadEmbed = new EmbedBuilder()
         .setTitle('🚫 CANNOT ATTACK — SAFE MODE ACTIVE')

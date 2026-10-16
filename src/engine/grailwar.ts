@@ -90,12 +90,6 @@ export function resolveGuildKey(master?: MasterProfile, guildId?: string): strin
   if (guildId && typeof guildId === 'string' && guildId.trim().length > 0) {
     return guildId.trim();
   }
-  if (master?.guildId && typeof master.guildId === 'string' && master.guildId.trim().length > 0) {
-    return master.guildId.trim();
-  }
-  if (master?.guildIds && Array.isArray(master.guildIds) && master.guildIds.length > 0 && master.guildIds[0].trim().length > 0) {
-    return master.guildIds[0].trim();
-  }
   return 'default-fuyuki-guild';
 }
 
@@ -588,12 +582,13 @@ export function getOrInitWarSession(master?: MasterProfile, guildId?: string): H
     return warSession;
   }
 
-  // If Master is in Safe Mode (or uninitialized), DO NOT enroll them into an active Holy Grail War!
-  if (master.environmentMode === 'safe' || !master.environmentMode) {
+  // If Master is in Safe Mode (or uninitialized for this server), DO NOT enroll them into an active Holy Grail War!
+  const currentGuildMode = master.guildEnvironmentModes?.[gKey] ?? (guildId ? 'safe' : (master.environmentMode || 'safe'));
+  if (currentGuildMode === 'safe') {
     return warSession;
   }
 
-  // Master is in War Mode: check if this war session has room
+  // Master is in War Mode for this server: check if this war session has room
   const maxCap = warSession.rules?.maxMasters || 7;
   const participantCount = Object.keys(warSession.participants).length;
 
@@ -602,6 +597,11 @@ export function getOrInitWarSession(master?: MasterProfile, guildId?: string): H
     // Crucial: Do NOT demote master.environmentMode to 'safe' as they may be enrolled elsewhere!
     return warSession;
   }
+
+  if (!master.guildEnvironmentModes) {
+    master.guildEnvironmentModes = {};
+  }
+  master.guildEnvironmentModes[gKey] = 'war';
 
   // Open tournament registration: Enroll new Master
   warSession.participants[master.discordId] = {
@@ -642,8 +642,20 @@ export function forfeitWar(
   war?: HolyGrailWarSession,
   guildId?: string
 ): { success: boolean; message: string; war: HolyGrailWarSession } {
-  const targetWar = war || getOrInitWarSession(master, guildId);
-  master.environmentMode = 'safe';
+  const gKey = resolveGuildKey(master, guildId);
+  const targetWar = war || getOrInitWarSession(master, gKey);
+
+  if (!master.guildEnvironmentModes) {
+    master.guildEnvironmentModes = {};
+  }
+  master.guildEnvironmentModes[gKey] = 'safe';
+
+  const hasOtherWar = Object.entries(master.guildEnvironmentModes).some(
+    ([gid, m]) => gid !== gKey && m === 'war'
+  );
+  if (!hasOtherWar) {
+    master.environmentMode = 'safe';
+  }
   master.commandSeals = 3;
 
   if (master.servants) {
@@ -664,7 +676,7 @@ export function forfeitWar(
     targetWar.eventLogs.unshift({
       id: `evt_forfeit_${Date.now()}`,
       timestamp: Date.now(),
-      text: `🏳️ Master **${master.username}** has voluntarily surrendered and forfeited from the Holy Grail War into Safe Mode! (Master Permanently Eliminated)`,
+      text: `🏳️ Master **${master.username}** has voluntarily surrendered and forfeited from the Holy Grail War into Safe Mode! (Master Permanently Eliminated in Server)`,
       type: 'clash'
     });
     evaluateWarState(targetWar);
@@ -673,7 +685,7 @@ export function forfeitWar(
 
   return {
     success: true,
-    message: `🏳️ **WAR FORFEITED — SAFE MODE ACTIVATED!**\n\nYou have voluntarily surrendered and withdrawn from the Holy Grail War. You are now permanently eliminated from the current tournament and placed in **Safe Mode**.\n\n• 🚫 **Cannot Rejoin Ongoing War:** Entry into the current war is now closed to you until the next tournament begins.\n• 🕊️ **Safe Mode Active:** Daily rewards (\`/daily\`), summoning (\`/summon\`), and friendly free duels (\`/duel mode:free\`) remain completely open without elimination risks!`,
+    message: `🏳️ **WAR FORFEITED — SAFE MODE ACTIVATED!**\n\nYou have voluntarily surrendered and withdrawn from the Holy Grail War in this server. You are now permanently eliminated from this server's tournament and placed in **Safe Mode**.\n\n• 🚫 **Cannot Rejoin Ongoing War:** Entry into this server's war is now closed to you until the next tournament begins.\n• 🕊️ **Safe Mode Active:** Daily rewards (\`/daily\`), summoning (\`/summon\`), and friendly free duels (\`/duel mode:free\`) remain completely open without elimination risks!`,
     war: targetWar
   };
 }
@@ -687,7 +699,8 @@ export function attemptJoinWar(
   war?: HolyGrailWarSession,
   guildId?: string
 ): { success: boolean; message: string; war: HolyGrailWarSession } {
-  const targetWar = war || getOrInitWarSession(master, guildId);
+  const gKey = resolveGuildKey(master, guildId);
+  const targetWar = war || getOrInitWarSession(master, gKey);
 
   const existingP = targetWar.participants[master.discordId] ||
     Object.values(targetWar.participants).find(x => x.discordId === master.discordId);
@@ -711,6 +724,10 @@ export function attemptJoinWar(
     };
   }
 
+  if (!master.guildEnvironmentModes) {
+    master.guildEnvironmentModes = {};
+  }
+  master.guildEnvironmentModes[gKey] = 'war';
   master.environmentMode = 'war';
 
   // If master is not yet registered in targetWar participants, register them immediately
@@ -741,39 +758,28 @@ export function attemptJoinWar(
 
   return {
     success: true,
-    message: `⚔️ **WAR MODE ACTIVATED!** You are an active competitor in the Holy Grail War!`,
+    message: `⚔️ **WAR MODE ACTIVATED!** You are an active competitor in this server's Holy Grail War!`,
     war: targetWar
   };
 }
 
 /**
  * Resolves the active Holy Grail War session for a given Master/User.
- * Checks the preferred guild, then searches all guild sessions for where this Master is an active participant.
+ * Strictly scopes session lookups to the specified server (never leaks other server sessions).
  */
 export function findActiveWarSessionForMaster(
   discordId: string,
   master?: MasterProfile,
   preferredGuildId?: string
 ): HolyGrailWarSession {
-  // 1. Try preferred guild if provided
-  const pKey = resolveGuildKey(master, preferredGuildId);
-  const preferredWar = warSessionsByGuild[pKey];
-  if (preferredWar?.participants && (preferredWar.participants[discordId] || Object.values(preferredWar.participants).some(p => p.discordId === discordId))) {
-    return preferredWar;
+  // 1. If preferred guild is provided, strictly resolve within that guild
+  if (preferredGuildId && typeof preferredGuildId === 'string' && preferredGuildId.trim().length > 0) {
+    const pKey = resolveGuildKey(master, preferredGuildId);
+    return getOrInitWarSession(master, pKey);
   }
 
-  // 2. Search all war sessions to see if this user is a registered participant in any active war
-  for (const session of Object.values(warSessionsByGuild)) {
-    if (session?.status === 'active' && session.participants) {
-      const isParticipant = !!session.participants[discordId] || Object.values(session.participants).some(p => p.discordId === discordId);
-      if (isParticipant) {
-        return session;
-      }
-    }
-  }
-
-  // 3. Fallback to preferred or default war session
-  return getOrInitWarSession(master, preferredGuildId);
+  // 2. In Direct Messages (no preferredGuildId), return safe isolated DM session
+  return getOrInitWarSession(master, 'dm-safe-zone');
 }
 
 export function getActiveWarSession(guildId?: string): HolyGrailWarSession | null {

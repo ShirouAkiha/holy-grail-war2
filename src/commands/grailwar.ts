@@ -142,8 +142,21 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
   try {
+    if (!interaction.guildId) {
+      const dmEmbed = new EmbedBuilder()
+        .setTitle('🕊️ CHALDEA SAFE MODE — DIRECT MESSAGES')
+        .setDescription(
+          `**Holy Grail War tournaments are strictly scoped to Discord servers.**\n\n` +
+          `• In Direct Messages, you are safeguarded in **Chaldea Safe Mode**.\n` +
+          `• Tactical Holy Grail War operations, tournament brackets, and ambush strikes take place exclusively inside Discord servers where a war is underway.\n` +
+          `• All peaceful Chaldea RPG features (\`/profile\`, \`/daily\`, \`/summon\`, \`/servants\`, \`/inventory\`, and \`/duel mode:free\`) remain fully available here!`
+        )
+        .setColor(0x38bdf8);
+      await interaction.editReply({ embeds: [dmEmbed] });
+      return;
+    }
+
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
     const category = (interaction.options.getString('category') as any) || 'board';
 
@@ -823,7 +836,7 @@ export function attachGrailWarCollector(
         i.customId === 'church_leave';
 
       if (isTacticalWarAction) {
-        const perm = checkWarActionPermission(master, war, i.user.id);
+        const perm = checkWarActionPermission(master, war, i.user.id, i.guildId || undefined);
         if (!perm.allowed) {
           if (!i.deferred && !i.replied) {
             await i.reply({
@@ -1156,7 +1169,7 @@ export async function handleGlobalGrailWarInteraction(interaction: any): Promise
       customId === 'church_leave';
 
     if (isTacticalWarAction) {
-      const perm = checkWarActionPermission(master, war, interaction.user.id);
+      const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
       if (!perm.allowed) {
         if (!interaction.deferred && !interaction.replied) {
           await interaction.reply({

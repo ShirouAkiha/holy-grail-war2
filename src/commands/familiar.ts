@@ -63,7 +63,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     let war = findActiveWarSessionForMaster(interaction.user.id, master, interaction.guildId || undefined);
-    const perm = checkWarActionPermission(master, war, interaction.user.id);
+    const perm = checkWarActionPermission(master, war, interaction.user.id, interaction.guildId || undefined);
     if (!perm.allowed) {
       await interaction.reply({
         flags: MessageFlags.Ephemeral,

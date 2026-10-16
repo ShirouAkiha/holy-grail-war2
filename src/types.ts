@@ -413,6 +413,7 @@ export interface MasterProfile {
   lastTeaTimestamp?: number;
   customApiConfig?: UserCustomApiConfig;
   environmentMode?: 'safe' | 'war';
+  guildEnvironmentModes?: Record<string, 'safe' | 'war'>;
   darkSakuraAffinity?: {
     kills: number;
     spares: number;
