@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for enforcing registered Servant lock during Holy Grail War duels, ensuring post-battle HP recovery mechanics, and adding an ephemeral warning confirmation modal when attempting to reset a war-registered Servant.",
-  "updatedAt": "2026-10-16T16:37:51.792883675Z",
+  "summary": "Architectural plan to decouple active Servant switching from Holy Grail War participant registration, ensure war registration occurs strictly through the official Church recruitment announcement or explicit War Mode entry, lock registered Servants in war duels, protect war board integrity, and provide confirmation warnings on resetting registered Servants.",
+  "updatedAt": "2026-10-17T07:03:55.247126327Z",
   "requestFeedback": true,
   "userFacing": true
 }

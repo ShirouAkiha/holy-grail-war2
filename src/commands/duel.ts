@@ -8714,7 +8714,9 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
     const targetUser = mentionedUsers[0];
     if (targetUser) {
       const targetMaster = await getOrCreateMaster(targetUser.id, targetUser.username);
-      const targetServant = (!isFreeBattle && p2Part && p2Part.isAlive && p2Part.servantId)
+      const p2Part = warSession.participants[targetMaster.discordId];
+      const isTargetInWar = !isFreeBattle && getMasterEnvironment(targetMaster, preferredGuildId, warSession) === 'war' && p2Part && p2Part.isAlive;
+      const targetServant = (isTargetInWar && p2Part?.servantId)
         ? (targetMaster.servants?.find(s => s.id === p2Part.servantId) || targetMaster.servants?.find(s => s.id === targetMaster.activeServantId) || targetMaster.servants?.[0])
         : (targetMaster.servants?.find(s => s.id === targetMaster.activeServantId) || targetMaster.servants?.[0]);
       if (!targetServant) {
@@ -8726,7 +8728,6 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
       const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
 
-      const p2Part = warSession.participants[targetMaster.discordId];
       const p2Hp = (isFreeBattle || getMasterEnvironment(targetMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
       const p2 = createCombatant(targetMaster, targetServant, false, p2Hp, isFreeBattle);
 

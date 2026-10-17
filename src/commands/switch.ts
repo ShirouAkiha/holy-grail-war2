@@ -11,7 +11,7 @@ import {
   ComponentType
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
-import { getOrInitWarSession } from '../engine/grailwar';
+
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { SERVANT_DATABASE } from '../data/servants';
 
@@ -20,7 +20,7 @@ import { SERVANT_DATABASE } from '../data/servants';
 // ==========================================
 export const data = new SlashCommandBuilder()
   .setName('switch')
-  .setDescription('Switch your active contracted Servant for Holy Grail War battles and dialogues')
+  .setDescription('Switch your active contracted Servant for Free Battles, Raids, and Dialogues')
   .addStringOption(opt =>
     opt
       .setName('servant')
@@ -101,7 +101,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       master.activeServantId = chosen.id;
       await saveMaster(master);
-      getOrInitWarSession(master);
 
       const sTemplate = chosen.template || SERVANT_DATABASE.find(t => t.id === chosen.templateId) || chosen;
       const sName = chosen.nickname || sTemplate.name || 'Heroic Spirit';
@@ -118,7 +117,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `🗣️ *" ${chosen.customQuotes?.summon || sTemplate.summonQuote || sTemplate.battleStartQuote || 'Ready for battle, Master.'} "*`
         )
         .setColor(0xeab308)
-        .setFooter({ text: 'Contract active for all Holy Grail War battles, duels, and dialogues.' });
+        .setFooter({ text: 'Active combat partner for Free Battles & Raids. (Holy Grail War uses your officially registered tournament champion).' });
 
       safeSetEmbedThumbnail(embed, sTemplate.avatarUrl);
       safeSetEmbedImage(embed, sTemplate.cardArtUrl || sTemplate.avatarUrl);
@@ -163,7 +162,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           if (picked) {
             master.activeServantId = picked.id;
             await saveMaster(master);
-            getOrInitWarSession(master);
 
             const sTemp = picked.template || SERVANT_DATABASE.find(t => t.id === picked.templateId) || picked;
             const sName = picked.nickname || sTemp.name || 'Heroic Spirit';
@@ -224,7 +222,7 @@ function buildSwitchHub(master: any, currentActiveId: string, bannerMessage?: st
       `Current Active Partner: **${activeName}** (\`${activeClass}\`) [Lv.${activeServant.level || 1}]\n\n` +
       `**📜 Contracted Roster (${master.servants.length} Servants):**\n` +
       rosterLines +
-      `\n\n*Select a Servant below to switch your active Holy Grail War partner.*`
+      `\n\n*Select a Servant below to switch your active partner for Free Battles & Raids.*`
     )
     .setColor(0xeab308)
     .setFooter({ text: `Master ${master.username} • Use /servant for workshop & parameter upgrades` });

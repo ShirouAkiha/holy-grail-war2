@@ -1573,8 +1573,7 @@ export async function handleGlobalServantInteraction(i: any) {
       else if (i.customId === 'servant_act_set_active') {
         master.activeServantId = targetServant.id;
         await saveMaster(master);
-        getOrInitWarSession(master);
-        actionOutcomeMsg = `👑 Contract updated! **${targetServant.nickname || targetServant.template?.name || 'Servant'}** is now your Active Servant.`;
+        actionOutcomeMsg = `👑 Contract updated! **${targetServant.nickname || targetServant.template?.name || 'Servant'}** is now your Active Servant (for Free Battles & Raids).`;
       }
       // ASCENSION STAGE SELECTION (DROPDOWN)
       else if (i.customId === 'servant_sel_ascension_stage') {

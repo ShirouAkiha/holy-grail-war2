@@ -364,70 +364,17 @@ export function createHolyGrailWarSession(
  */
 export function registerMasterSummonInWar(master: MasterProfile, servantInstance: any): HolyGrailWarSession {
   const war = getOrInitWarSession();
-
-  const sAny = servantInstance as any;
-  const sTemplate = sAny?.template || sAny;
-  const servantName = sAny?.nickname || sTemplate?.name || sAny?.name || 'Heroic Spirit';
-  const servantClass = sTemplate?.servantClass || sAny?.servantClass || sAny?.class || 'Saber';
-  const avatarUrl = sTemplate?.avatarUrl || sAny?.avatarUrl || '';
-  const maxHp = calculateServantMaxHp(servantInstance);
-
   const existing = war.participants[master.discordId];
-  const isNewEntry = !existing;
-
-  if (existing) {
-    existing.servantId = servantInstance.id || 'servant_contract';
-    existing.servantName = servantName;
-    existing.servantClass = servantClass;
-    existing.avatarUrl = avatarUrl;
-    existing.username = master.username;
+  if (existing && existing.servantId === servantInstance.id) {
+    const maxHp = calculateServantMaxHp(servantInstance);
     existing.maxHp = maxHp;
     if (existing.currentHp <= 0 && existing.isAlive) {
       existing.currentHp = maxHp;
     } else {
       existing.currentHp = Math.min(maxHp, existing.currentHp);
     }
-  } else {
-    war.participants[master.discordId] = {
-      discordId: master.discordId,
-      username: master.username,
-      servantId: servantInstance.id || 'servant_contract',
-      servantName,
-      servantClass,
-      avatarUrl,
-      currentHp: maxHp,
-      maxHp,
-      commandSeals: master.commandSeals || 3,
-      isAlive: true,
-      isExposed: false,
-      autoEvadeEnabled: false,
-      autoConsumeCommandSeal: false,
-      kills: 0,
-      innocentKills: 0
-    };
+    saveWarToDisk();
   }
-
-  const totalSummoned = Object.keys(war.participants).length;
-
-  if (isNewEntry) {
-    war.eventLogs.unshift({
-      id: `evt_summon_${Date.now()}`,
-      timestamp: Date.now(),
-      text: `🕯️ A new Master contracted with a Heroic Spirit in the shadows! (Holy Grail War: **${totalSummoned}/7** Masters Summoned)`,
-      type: 'clash'
-    });
-
-    if (totalSummoned >= 7) {
-      war.eventLogs.unshift({
-        id: `evt_all_summoned_${Date.now()}`,
-        timestamp: Date.now(),
-        text: `⚔️ ALL 7 HEROIC SPIRITS HAVE BEEN SUMMONED! The Fuyuki Holy Grail War has reached full convergence! The Elimination Climax begins!`,
-        type: 'clash'
-      });
-    }
-  }
-
-  saveWarToDisk();
   return war;
 }
 
@@ -536,27 +483,39 @@ export function getOrInitWarSession(master?: MasterProfile, guildId?: string): H
       return warSession;
     }
 
-    if (activeServant) {
+    // Preserve registered Servant integrity: never overwrite existing.servantId with activeServantId
+    if (existing.servantId) {
+      const regServant = master.servants.find((s: any) => s.id === existing.servantId);
+      if (regServant) {
+        const sAny = regServant as any;
+        const sTemplate = sAny?.template || sAny;
+        existing.servantName = sAny?.nickname || sTemplate?.name || sAny?.name || existing.servantName;
+        existing.servantClass = sTemplate?.servantClass || sAny?.servantClass || existing.servantClass;
+        existing.avatarUrl = sTemplate?.avatarUrl || sAny?.avatarUrl || existing.avatarUrl;
+        const computedMax = calculateServantMaxHp(regServant);
+        if (existing.maxHp !== computedMax) {
+          const hpRatio = existing.maxHp > 0 ? (existing.currentHp / existing.maxHp) : 1;
+          existing.maxHp = computedMax;
+          existing.currentHp = Math.min(computedMax, Math.round(hpRatio * computedMax));
+          if (existing.baseHpAtDamage !== undefined) {
+            existing.baseHpAtDamage = Math.min(computedMax, existing.baseHpAtDamage);
+          }
+        }
+      }
+    } else if (activeServant) {
       existing.servantId = activeServant.id;
       existing.servantName = servantName;
       existing.servantClass = servantClass;
       existing.avatarUrl = avatarUrl;
       const computedMax = calculateServantMaxHp(activeServant);
-      if (existing.maxHp !== computedMax) {
-        const hpRatio = existing.maxHp > 0 ? (existing.currentHp / existing.maxHp) : 1;
-        existing.maxHp = computedMax;
-        existing.currentHp = Math.min(computedMax, Math.round(hpRatio * computedMax));
-        if (existing.baseHpAtDamage !== undefined) {
-          existing.baseHpAtDamage = Math.min(computedMax, existing.baseHpAtDamage);
-        }
-      }
+      existing.maxHp = computedMax;
+      existing.currentHp = computedMax;
     }
 
     // Refresh real-time passive leyline healing
     Object.values(warSession.participants).forEach(p => {
       calculateCurrentHp(p);
     });
-
     return warSession;
   }
 
@@ -582,54 +541,12 @@ export function getOrInitWarSession(master?: MasterProfile, guildId?: string): H
     return warSession;
   }
 
-  // If Master is in Safe Mode (or uninitialized for this server), DO NOT enroll them into an active Holy Grail War!
-  const currentGuildMode = master.guildEnvironmentModes?.[gKey] ?? (guildId ? 'safe' : (master.environmentMode || 'safe'));
-  if (currentGuildMode === 'safe') {
-    return warSession;
-  }
-
-  // Master is in War Mode for this server: check if this war session has room
-  const maxCap = warSession.rules?.maxMasters || 7;
-  const participantCount = Object.keys(warSession.participants).length;
-
-  if (participantCount >= maxCap) {
-    // War is full; cannot add new participant to this specific session.
-    // Crucial: Do NOT demote master.environmentMode to 'safe' as they may be enrolled elsewhere!
-    return warSession;
-  }
-
-  if (!master.guildEnvironmentModes) {
-    master.guildEnvironmentModes = {};
-  }
-  master.guildEnvironmentModes[gKey] = 'war';
-
-  // Open tournament registration: Enroll new Master
-  warSession.participants[master.discordId] = {
-    discordId: master.discordId,
-    username: master.username,
-    servantId: activeServant?.id || 'servant_contract',
-    servantName,
-    servantClass,
-    avatarUrl,
-    currentHp: maxHp,
-    maxHp,
-    commandSeals: master.commandSeals || 3,
-    isAlive: true,
-    isExposed: false,
-    kills: 0,
-    innocentKills: 0
-  };
-
-  const totalCount = Object.keys(warSession.participants).length;
-
-  warSession.eventLogs.unshift({
-    id: `evt_enter_${Date.now()}`,
-    timestamp: Date.now(),
-    text: `🕯️ A new Master contracted with a Heroic Spirit in the shadows! (Holy Grail War: **${totalCount}/7** Masters Summoned)`,
-    type: 'clash'
+  // Non-participant Master: DO NOT auto-enroll them into an active Holy Grail War session!
+  // Masters only enter the tournament via explicit registration (Church Recruitment Call or explicit War Mode activation).
+  Object.values(warSession.participants).forEach(p => {
+    calculateCurrentHp(p);
   });
 
-  saveWarToDisk();
   return warSession;
 }
 

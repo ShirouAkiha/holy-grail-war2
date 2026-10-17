@@ -1296,7 +1296,6 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       master.activeServantId = chosen.id;
       await saveMaster(master);
-      getOrInitWarSession(master);
 
       const sTemp = chosen.template || chosen;
       const sName = chosen.nickname || sTemp.name || 'Heroic Spirit';
@@ -1312,7 +1311,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       return interaction.followUp({
         flags: MessageFlags.Ephemeral,
-        content: `⭐ Set **${sName}** (${sTemp.servantClass}) as your active Holy Grail War partner!`
+        content: `⭐ Set **${sName}** (${sTemp.servantClass}) as your active partner for Free Battles & Raids!`
       });
     }
 

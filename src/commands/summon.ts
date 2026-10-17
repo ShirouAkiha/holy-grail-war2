@@ -162,11 +162,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     await saveMaster(updatedMaster);
 
-    // Register active servant in war if needed
-    if (updatedMaster.servants.length > 0) {
-      const activeS = updatedMaster.servants.find((s: any) => s.id === updatedMaster.activeServantId) || updatedMaster.servants[0];
-      registerMasterSummonInWar(updatedMaster, activeS);
-    }
+// Summoned servants join your Chaldea roster without altering active Holy Grail War registrations
 
     // 1x Single Summon Result Display
     if (rolls === 1) {
