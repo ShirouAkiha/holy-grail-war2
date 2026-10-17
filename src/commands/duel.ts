@@ -4253,7 +4253,12 @@ function resolveStrike(
 // ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    const challengerMaster = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const challengerAvatar = interaction.user.displayAvatarURL({ extension: 'png', forceStatic: true, size: 512 });
+    const challengerMaster = await getOrCreateMaster(interaction.user.id, interaction.user.username, challengerAvatar);
+    if (challengerAvatar && challengerMaster.avatarUrl !== challengerAvatar) {
+      challengerMaster.avatarUrl = challengerAvatar;
+      await saveMaster(challengerMaster);
+    }
 
     // Verify challenger has summoned at least 1 Servant
     if (!challengerMaster.servants || challengerMaster.servants.length === 0) {
@@ -4449,7 +4454,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       // Resolve profiles and servants
-      const opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
+      const oppAvatar = opponentUser.displayAvatarURL?.({ extension: 'png', forceStatic: true, size: 512 });
+      const opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username, oppAvatar);
+      if (oppAvatar && opponentMaster.avatarUrl !== oppAvatar) {
+        opponentMaster.avatarUrl = oppAvatar;
+        await saveMaster(opponentMaster);
+      }
       const oppParticipant = warSession.participants[opponentUser.id];
       const isOppInWar = !isFreeBattle && !!oppParticipant && oppParticipant.isAlive;
       const opponentServant = (isOppInWar && oppParticipant?.servantId)
@@ -4463,7 +4473,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return;
       }
 
-      const p2AllyMaster = await getOrCreateMaster(opponent2User.id, opponent2User.username);
+      const opp2Avatar = opponent2User.displayAvatarURL?.({ extension: 'png', forceStatic: true, size: 512 });
+      const p2AllyMaster = await getOrCreateMaster(opponent2User.id, opponent2User.username, opp2Avatar);
+      if (opp2Avatar && p2AllyMaster.avatarUrl !== opp2Avatar) {
+        p2AllyMaster.avatarUrl = opp2Avatar;
+        await saveMaster(p2AllyMaster);
+      }
       const opp2Participant = warSession.participants[opponent2User.id];
       const isOpp2InWar = !isFreeBattle && !!opp2Participant && opp2Participant.isAlive;
       const opp2Servant = (isOpp2InWar && opp2Participant?.servantId)
@@ -4481,7 +4496,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       let p1Ally: DuelCombatant | undefined = undefined;
 
       if (is2v2 && allyUser) {
-        const allyMaster = await getOrCreateMaster(allyUser.id, allyUser.username);
+        const allyAvatar = allyUser.displayAvatarURL?.({ extension: 'png', forceStatic: true, size: 512 });
+        const allyMaster = await getOrCreateMaster(allyUser.id, allyUser.username, allyAvatar);
+        if (allyAvatar && allyMaster.avatarUrl !== allyAvatar) {
+          allyMaster.avatarUrl = allyAvatar;
+          await saveMaster(allyMaster);
+        }
         p1AllyMaster = allyMaster;
         const allyParticipant = warSession.participants[allyUser.id];
         const isAllyInWar = !isFreeBattle && !!allyParticipant && allyParticipant.isAlive;
@@ -6410,7 +6430,12 @@ async function startInteractiveDuel(
           return;
         }
 
-        const joinerMaster = await getOrCreateMaster(i.user.id, i.user.username);
+        const joinerAvatar = i.user.displayAvatarURL({ extension: 'png', forceStatic: true, size: 512 });
+        const joinerMaster = await getOrCreateMaster(i.user.id, i.user.username, joinerAvatar);
+        if (joinerAvatar && joinerMaster.avatarUrl !== joinerAvatar) {
+          joinerMaster.avatarUrl = joinerAvatar;
+          await saveMaster(joinerMaster);
+        }
         if (!joinerMaster.servants || joinerMaster.servants.length === 0) {
           await i.reply({
             content: '❌ You must summon a Servant before force-joining an active battle! Invoke `/summon ritual` first.',
@@ -7142,11 +7167,20 @@ async function startInteractiveDuel(
         });
 
         const masterName = actingMaster?.username || actor.username;
-        const masterAvatar = actor.masterAvatarUrl || actingMaster?.avatarUrl;
+        const liveDiscordAvatar = i.user?.displayAvatarURL?.({ extension: 'png', forceStatic: true, size: 512 });
+        const masterAvatar = liveDiscordAvatar || actor.masterAvatarUrl || actingMaster?.avatarUrl;
         const sName = actor.servant.nickname || actor.servant.template?.name || 'Servant';
         const sClass = actor.servant.template?.servantClass || 'Saber';
         const sAvatar = getCombatantSpriteUrl(actor) || actor.avatarUrl;
         const csQuote = res.quote || 'By my Command Seal... unleash your full power!';
+
+        if (masterAvatar) {
+          actor.masterAvatarUrl = masterAvatar;
+          if (actingMaster && actingMaster.avatarUrl !== masterAvatar) {
+            actingMaster.avatarUrl = masterAvatar;
+            saveMaster(actingMaster).catch(() => {});
+          }
+        }
 
         const sealGifBuffer = await renderMasterCommandSealDialogueCard(
           masterName,
@@ -8458,11 +8492,20 @@ async function finalizeDuelRewardsAndSync(
           updatedLoser.availableStatPoints = (updatedLoser.availableStatPoints || 0) + loseStatPoints;
         }
 
-        checkAndGrantBond10Ce(s.master, updatedLoser);
-        if (isLoserSafe) {
+        if (isLoserSafe || s.fate === 'kill') {
           const loserMaxHp = (updatedLoser as any).maxHp || updatedLoser.template?.baseHp || 50000;
           updatedLoser.currentHp = loserMaxHp;
           s.master.commandSeals = 3;
+          s.master.environmentMode = 'safe';
+          if (preferredGuildId) {
+            if (!s.master.guildEnvironmentModes) s.master.guildEnvironmentModes = {};
+            s.master.guildEnvironmentModes[preferredGuildId] = 'safe';
+          }
+          if (s.fate === 'kill' && s.master.servants) {
+            for (const srv of s.master.servants) {
+              srv.currentHp = (srv as any).maxHp || srv.template?.baseHp || 50000;
+            }
+          }
         } else if (s.evacuated) {
           updatedLoser.currentHp = 1;
         }

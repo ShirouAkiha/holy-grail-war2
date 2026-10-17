@@ -807,6 +807,7 @@ export interface WarRecruitmentCall {
 
 export interface HolyGrailWarSession {
   id: string;
+  guildId?: string;
   title: string;
   status: 'gathering' | 'active' | 'concluded';
   rules?: WarRules;

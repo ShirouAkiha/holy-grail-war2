@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan to fix Holy Grail War duel Force Join restrictions so only active, living tournament participants can intervene with their registered Servant, and eliminate Bond EXP rewards from Barbatos raid drops while keeping Bond EXP exclusive to Tiamat.",
-  "updatedAt": "2026-10-17T09:19:30.261032831Z",
+  "summary": "Implementation plan for Holy Grail War Safe Mode reversion upon death and war conclusion, and debugging the Command Seal visual novel dialogue cut-in canvas to display the user's Discord profile picture.",
+  "updatedAt": "2026-10-17T16:05:39.956906908Z",
   "requestFeedback": true,
   "userFacing": true
 }

@@ -1,36 +1,41 @@
-# Holy Grail War Duel Integrity & Barbatos Raid Reward Fixes
+# Holy Grail War Safe Mode Reversion & Duel Command Seal Cut-In PFP Fix
 
-Enforce strict tournament participation rules on duel Force Join so only active, living Masters can intervene in Holy Grail War battles with their registered Servants, and remove Servant Bond EXP drops from the Demon God Pillar Barbatos raid encounter.
+Automatically transition Masters back to Safe Mode with fully restored Servant HP and 3 Command Seals upon death in the Holy Grail War and when a war reaches its conclusion, and fix the Command Seal visual novel canvas dialogue cut-in in duels to display the user's live Discord avatar.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following decisions were confirmed to address the reported bugs:
+> The following decisions were confirmed by the user in Phase 1:
 
-- **Confirmed Decision 1 (Force Join War Restriction):** Only active, living participants registered in that server's Holy Grail War can Force Join an ongoing war duel. Non-participants and eliminated Masters will be cleanly blocked with an ephemeral notice explaining that tournament duels are restricted to registered contenders.
-- **Confirmed Decision 2 (Registered Servant in War Force Join):** When an enrolled war Master force-joins a Holy Grail War duel, the system fields their locked war-registered Servant (and their current war HP status), preserving tournament state and preventing daily active Servant switches from leaking into the arena.
-- **Confirmed Decision 3 (Barbatos Raid Bond EXP Removal):** Demon God Pillar Barbatos will award zero Bond EXP upon defeat. Bond EXP rewards and victory log announcements are restricted exclusively to the Beast II Tiamat raid encounter.
+- **Confirmed Decision 1 (Safe Mode on Death):** When a Master is killed or executed in the Holy Grail War, they immediately revert to Safe Mode (`environmentMode = 'safe'`, `guildEnvironmentModes[guildId] = 'safe'`), their contracted Servant is restored to full HP, and their Command Seals are reset to 3.
+- **Confirmed Decision 2 (Safe Mode on War Conclusion):** When a Holy Grail War concludes (whether a victor is crowned, all fall, corruption deadline expires, or an admin terminates the war), every participant across the server is automatically transitioned back to Safe Mode with full Servant HP and 3 Command Seals restored.
+- **Confirmed Decision 3 (Command Seal Cut-In Avatar Priority):** For the Command Seal visual novel canvas dialogue cut-in in duels, the avatar resolution prioritizes the user's live Discord avatar (`i.user.displayAvatarURL()`), falling back to the stored Master profile avatar.
 
 ---
 
 ## 1. Overview & Core Concept
 
 ### What It Does
-1. **Duel Force Join Gatekeeping:**
-   - Detects whether an active duel is an official Holy Grail War tournament battle (`!isFreeBattle`) or a casual sparring match (`isFreeBattle`).
-   - If the duel is a War battle, checks the intervening Master against `warSession.participants`:
-     - If the Master is not registered in the war, interaction is blocked with an explanation directing them to Free Battles (`/duel mode:free`) or war registration.
-     - If the Master has already been eliminated in the war (`!participant.isAlive`), interaction is blocked with an elimination notice.
-     - If the Master is an active living contender, resolves their combatant entity using their war-registered Servant (`participant.servantId`) and their persistent war HP.
-   - If the duel is a Free Battle, any Master with a summoned Servant can intervene freely as before.
-2. **Barbatos Raid Spoils Calibration:**
-   - Cleanses the drop tables and victory calculation in `src/commands/raid.ts`: sets `bondExpReward` to `0` for Barbatos (`boss.id === 'barbatos'`).
-   - Prevents `addBondExpToServant` execution and removes Bond EXP progression lines from Barbatos victory reports.
-   - Cleans up raid menu text and boss inspect cards so Barbatos displays only SQ, Servant Battle EXP, and Universal Blaze Embers.
+1. **Fallen Master Safe Mode Transition:**
+   - Detects when a Master is eliminated in combat (`resolveDuelEnd`, `recordDuelOutcome`, or environmental war events).
+   - Reverts their status in the guild and profile to `'safe'`.
+   - Restores their Servant to full HP and replenishes their Command Seals to 3, allowing them to participate in casual Free Battles and normal bot features without penalty.
+2. **War Conclusion Mass Safe Mode Reversion:**
+   - In `evaluateWarState` (and all war conclusion handlers), when `targetWar.status` transitions to `'concluded'`:
+   - Iterates through all registered war participants (winner, survivors, and fallen).
+   - Sets each Master's guild and active environment mode to `'safe'`.
+   - Fully restores their Servant HP and replenishes their Command Seals to 3.
+   - Logs the demobilization in the Holy Grail War event chronicle.
+3. **Duel Command Seal Cut-In User PFP Display:**
+   - In `src/commands/duel.ts`, when a Master invokes `card_seal`:
+     - Resolves the user's live Discord avatar (`i.user.displayAvatarURL({ extension: 'png', forceStatic: true, size: 512 })`) with fallback to `actor.masterAvatarUrl` and `actingMaster?.avatarUrl`.
+     - Updates `actor.masterAvatarUrl` and persists `master.avatarUrl`.
+     - Fixes the parameter order in `buildMasterCommandSealDialogueCutInEmbed` so the quote, servant name, and class are properly mapped instead of scrambled.
+   - In `src/canvas/renderer.ts`, ensures `@napi-rs/canvas` reliably loads Discord CDN avatar images without referer-blocking or format decode failures, rendering the user's portrait clearly inside the visual novel cut-in frame.
 
 ### Target Audience & Persona
-- Players competing in competitive server Holy Grail War tournaments who need bracket purity without outside disruptions.
-- Masters undertaking collaborative co-op raid battles against Barbatos and Tiamat with accurate progression rewards.
+- Players competing in Holy Grail War tournaments who need clean, predictable lifecycle transitions when defeated or when a tournament concludes.
+- Duel combatants who want their authentic Discord profile picture showcased during high-impact Command Seal cut-in animations.
 
 ---
 
@@ -38,99 +43,134 @@ Enforce strict tournament participation rules on duel Force Join so only active,
 
 ### Key User Flows
 
-#### Flow A: Non-War Participant Clicks "⚡ Force Join Arena" on a War Duel
+#### Flow A: Master Falls in Battle and Reverts to Safe Mode
 ```
-[User clicks ⚡ Force Join Arena on active War Duel]
-          │
-          ▼
-Is this a War Duel (!isFreeBattle)?
-          │── Yes ──► Check Master's War Enrollment in Guild War Session
-                            │
-                            ├── Not Registered? ──► Ephemeral Alert:
-                            │   "❌ Holy Grail War Restricted: Only registered Masters
-                            │    currently competing in this server's Holy Grail War can
-                            │    intervene in tournament duels. You can freely Force Join
-                            │    any Free Battle (/duel mode:free) match!"
-                            │
-                            ├── Fallen/Eliminated? ──► Ephemeral Alert:
-                            │   "❌ Eliminated Master: You have fallen in this Holy Grail War
-                            │    and cannot intervene in active tournament duels."
-                            │
-                            └── Active Contender ──► Opens Team / Solo Selection Prompts
+[Master is Executed or Slain in Holy Grail War Duel]
+                    │
+                    ▼
+          War State Evaluated
+                    │
+    ┌───────────────┴───────────────┐
+    ▼                               ▼
+War Continues               War Concludes (Sole Survivor / All Fallen)
+    │                               │
+    ▼                               ▼
+Defeated Master set to 'safe'   All Participants set to 'safe'
+Servant HP restored to 100%     All Servants restored to 100%
+Command Seals reset to 3/3      All Command Seals reset to 3/3
+Profile saved to database       All Profiles saved to database
+    │                               │
+    ▼                               ▼
+Defeat announcement posted      Grand Grail conclusion posted
+Master can run /duel mode:free  Server returns to peace
 ```
 
-#### Flow B: Active War Contender Force Joins a War Duel
-- Master selects `Ally with Team 1`, `Ally with Team 2`, or `Solo Rogue Intervention`.
-- The combatant added to the arena uses `participant.servantId` (their tournament champion) and `calculateCurrentHp(participant)`.
-- Reinforcements receive standard battle intervention buffs (+30% ATK for 3 turns, +20 Critical Stars).
-- Combat canvas renders the registered Servant sprite and portrait.
-
-#### Flow C: Free Battle Force Join
-- Any Master with at least 1 summoned Servant can click `⚡ Force Join Arena` on casual matches without restrictions.
-
-#### Flow D: Barbatos Raid Victory Screen
-- **Boss Defeated:** Barbatos collapses into the void.
-- **Spoils of War Embed:**
-  - `• +10–20 Saint Quartz 💎`
-  - `• +25,000 Servant Battle EXP ⚔️`
-  - `• +3 Universal EXP Embers ✨`
-  - *(Bond EXP line is omitted)*
-- **Master Progression:**
-  - Reports Servant level-ups and stat points.
-  - Does not advance Bond Level and omits the 🌸 Bond line.
+#### Flow B: Invoking Command Seal in Duel Arena
+```
+[Master clicks 🔴 Command Seal during Duel Turn]
+                    │
+                    ▼
+Extract i.user.displayAvatarURL({ extension: 'png', size: 512 })
+                    │
+                    ▼
+Pass to renderMasterCommandSealDialogueCard(masterName, quote, avatarUrl, ...)
+                    │
+                    ▼
+Canvas renders:
+- Left: Master Discord PFP with flaring Magic Circuit aura & crest
+- Right: Contracted Servant battle cutout
+- Center: Arcane HUD & Command Seal slash vfx
+- Bottom: Visual Novel dialogue ribbon with Master command quote
+                    │
+                    ▼
+Embed & Canvas Image sent to channel with correct author icon and quote
+```
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-### Decision 1: Server-Scoped War Verification vs Global State
-- **Chosen Approach:** Check `findActiveWarSessionForMaster` using the battle's `guildId`. Match the joiner's ID in `warSession.participants`.
-- **Why:** Holy Grail Wars operate on a per-guild basis. Checking the guild's war session guarantees that someone who is in a war on Server A cannot force-join a war on Server B unless registered there.
+### Decision 1: Immediate Safe Mode on Death vs Delayed Reversion
+- **Chosen Approach:** Transition the fallen Master to Safe Mode immediately upon death.
+- **Why:** Prevents eliminated players from being trapped in a locked war state or lingering at 0 HP. They can immediately enjoy casual features and Free Battles without manual administrative intervention.
 
-### Decision 2: Field Registered War Servant on Force Join
-- **Chosen Approach:** When `!isFreeBattle`, fetch the Servant by `joinPart.servantId`. Fall back to active Servant only if no registered ID is recorded.
-- **Why:** Maintains consistency with earlier servant isolation rules where tournament combatants are locked to their inscribed champion.
+### Decision 2: Full HP & Seal Restoration upon Safe Mode Entry
+- **Chosen Approach:** Automatically restore Servant to max HP and reset Command Seals to 3 upon reverting to Safe Mode.
+- **Why:** As confirmed by the user, once a player is out of the tournament, they should not suffer punitive HP locks for casual activities.
 
-### Decision 3: Zero Bond EXP for Barbatos vs Explicit Value
-- **Chosen Approach:** Set `bondExpReward = isTiamat ? 1000 : 0`. Wrap the bond addition and bond report generation inside `if (bondExpReward > 0)`.
-- **Why:** Keeps the logic clean and maintainable. Tiamat preserves her full 1,000 Bond EXP drop, Barbatos yields 0, and any future boss can easily define its own bond rewards without side-effects.
+### Decision 3: Live Discord Avatar Prioritization
+- **Chosen Approach:** `i.user.displayAvatarURL()` takes highest priority for canvas rendering, falling back to stored profile URL.
+- **Why:** Players frequently change Discord avatars. Using the live interaction user avatar guarantees the cut-in reflects their current identity in real time, while also updating their stored profile for future turns.
 
 ---
 
 ## 4. Technical Architecture & Data Strategy
 
-### Technical Flow Diagram
-
+### System Flow Diagram
 ```
-┌────────────────────────────────────────────────────────┐
-│                   DISCORD BATTLE EVENT                 │
-└────────────────────────────────────────────────────────┘
-                            │
-        ┌───────────────────┴───────────────────┐
-        ▼                                       ▼
-┌──────────────────────────────┐ ┌──────────────────────────────┐
-│       src/commands/duel.ts    │ │      src/commands/raid.ts    │
-│  - card_forcejoin click      │ │  - Victory calculation      │
-│  - fj_join_team1 / team2 /   │ │  - Drop descriptions        │
-│    join_solo button handlers │ │  - Progress report builder   │
-└──────────────────────────────┘ └──────────────────────────────┘
-        │                                       │
-        ▼                                       ▼
-┌──────────────────────────────┐ ┌──────────────────────────────┐
-│    War Enrollment Guard:     │ │      Boss Drop Logic:        │
-│ • Check !isFreeBattle        │ │ • isTiamat ? 1000 : 0        │
-│ • Verify joinPart exists     │ │ • if (bondExpReward > 0)     │
-│ • Verify joinPart.isAlive    │ │   award bond & log progress  │
-│ • Use joinPart.servantId     │ │ • Omit bond from Barbatos UI │
-└──────────────────────────────┘ └──────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                      Holy Grail War Engine                   │
+│                                                             │
+│  recordDuelOutcome() / evaluateWarState()                   │
+│    │                                                        │
+│    ├── On Master Death:                                     │
+│    │     p.isAlive = false;                                 │
+│    │     revertMasterToSafeMode(master, guildId);           │
+│    │                                                        │
+│    └── On War Status -> 'concluded':                        │
+│          for (const p of participants) {                    │
+│            revertMasterToSafeMode(p.master, guildId);       │
+│          }                                                  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Master Profile Database                   │
+│                                                             │
+│  revertMasterToSafeMode(master, guildId):                   │
+│    master.environmentMode = 'safe';                         │
+│    master.guildEnvironmentModes[guildId] = 'safe';         │
+│    master.commandSeals = 3;                                 │
+│    activeServant.currentHp = activeServant.maxHp;           │
+│    await saveMaster(master);                                │
+└─────────────────────────────────────────────────────────────┘
+                               ▲
+                               │
+┌──────────────────────────────┴──────────────────────────────┐
+│                      Duel Arena Interaction                  │
+│                                                             │
+│  card_seal button handler:                                  │
+│    avatar = i.user.displayAvatarURL({ extension: 'png' });  │
+│    renderMasterCommandSealDialogueCard(..., avatar, ...);   │
+│    buildMasterCommandSealDialogueCutInEmbed(..., avatar);   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Affected Handlers & State Mapping
+### Component & File Modifications
+1. **`src/engine/grailwar.ts`:**
+   - Add helper `revertMasterToSafeMode(discordId, guildId)` to update environment mode, restore Servant HP to max, and set Command Seals to 3.
+   - In `recordDuelOutcome`: When a Master is executed (`decision === 'kill'`), call `revertMasterToSafeMode` for the defeated Master.
+   - In `evaluateWarState`: When war status becomes `'concluded'` (sole survivor, all fallen, corruption timeout), iterate all participants and invoke `revertMasterToSafeMode`.
+   - In other elimination paths (e.g., trap deaths, civilian casualties), ensure Safe Mode reversion is called.
+2. **`src/commands/duel.ts`:**
+   - In `card_seal`:
+     - Resolve `masterAvatar` via `i.user.displayAvatarURL({ extension: 'png', forceStatic: true, size: 512 }) || actor.masterAvatarUrl || actingMaster?.avatarUrl`.
+     - Update `actor.masterAvatarUrl` and `actingMaster.avatarUrl`.
+     - Fix `buildMasterCommandSealDialogueCutInEmbed` arguments so the parameters match the function signature: `(masterName, masterAvatar, sName, sClass, csQuote, true)`.
+   - In duel initialization (`execute`), pass `interaction.user.displayAvatarURL(...)` when creating/getting challenger and opponent Masters so combatants have `masterAvatarUrl` pre-populated.
+   - In `finalizeDuelRewardsAndSync`, ensure executed Masters have their environment mode set to `'safe'` and HP/seals refreshed.
+3. **`src/canvas/renderer.ts`:**
+   - Verify `fetchImageBuffer` / `loadImage` handles Discord CDN avatar URLs reliably without referer headers that cause CDN rejections.
+   - Verify `drawHoveringMaster` positions and renders the user's avatar cleanly with full fidelity.
 
-| Target Area | Location | Expected Adjustment |
-| :--- | :--- | :--- |
-| **Force Join Modal Handler** | `src/commands/duel.ts` (`card_forcejoin`) | Add check for `!isFreeBattle`: verify `warSession.participants[i.user.id]`. Reject non-registered and dead Masters with ephemeral messages. |
-| **Team 1 / 2 Selection** | `src/commands/duel.ts` (`fj_join_team1_`, `fj_join_team2_`) | Verify `joinPart && joinPart.isAlive` in War duels; load `joinPart.servantId` as the combatant's Servant. |
-| **Solo Rogue Selection** | `src/commands/duel.ts` (`fj_join_solo_`) | Verify `joinPart && joinPart.isAlive` in War duels; load `joinPart.servantId` as the combatant's Servant. |
-| **Barbatos Raid Reward** | `src/commands/raid.ts` (`bondExpReward`) | Change calculation to `isTiamat ? 1000 : 0`. Conditionally apply bond rewards and conditionally render Bond EXP lines in victory embeds. |
-| **Raid Menu & Inspect UI** | `src/commands/raid.ts` (lines 135, 203) | Remove `+2,000 Bond` references from Barbatos drop listings. |
+---
+
+## 5. Verification Plan
+
+### Automated Compilation & Type Checks
+- Run `npx tsc --noEmit` across all modified files (`src/commands/duel.ts`, `src/engine/grailwar.ts`, `src/canvas/renderer.ts`) to verify zero TypeScript errors.
+
+### Functional Verification
+- Verify that calling `renderMasterCommandSealDialogueCard` with a Discord avatar URL successfully fetches and renders a valid PNG buffer with the Master portrait.
+- Verify that calling `revertMasterToSafeMode` updates the Master's environment to `'safe'`, sets HP to max, sets Command Seals to 3, and persists the record.
+- Verify war evaluation transitions all participants to Safe Mode upon conclusion.

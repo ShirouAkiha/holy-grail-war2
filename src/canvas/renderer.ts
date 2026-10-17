@@ -232,6 +232,7 @@ function getOptimalReferer(url: string): string {
     if (host.includes('imgur.com')) return 'https://imgur.com/';
     if (host.includes('giphy.com')) return 'https://giphy.com/';
     if (host.includes('catbox.moe')) return 'https://catbox.moe/';
+    if (host.includes('discordapp.com') || host.includes('discordapp.net') || host.includes('discord.com')) return 'https://discord.com/';
     return parsed.origin + '/';
   } catch {
     return 'https://fategrandorder.fandom.com/';
@@ -4644,33 +4645,23 @@ function drawHoveringMaster(
 
   if (masterImg) {
     drawImageCover(ctx, masterImg, spriteX, spriteY, spriteW, spriteH);
-  } else {
-    // Stylized Magus Silhouette Fallback
-    const mGrad = ctx.createLinearGradient(spriteX, spriteY, spriteX, spriteY + spriteH);
-    mGrad.addColorStop(0, '#3f0c18');
-    mGrad.addColorStop(0.55, '#1a050a');
-    mGrad.addColorStop(1, '#080103');
-    ctx.fillStyle = mGrad;
-    ctx.fillRect(spriteX, spriteY, spriteW, spriteH);
 
-    drawVectorShield(ctx, spriteX + spriteW / 2, spriteY + 120, 72, 84, 'rgba(225, 29, 72, 0.25)', '#e11d48');
-    drawVectorCommandSeal(ctx, spriteX + spriteW / 2, spriteY + 120, 1.2, '#f43f5e');
+    // Right Edge Smooth Fade into Center Leyline
+    const fadeRight = ctx.createLinearGradient(spriteX + spriteW - 90, spriteY, spriteX + spriteW, spriteY);
+    fadeRight.addColorStop(0, 'rgba(10, 5, 3, 0)');
+    fadeRight.addColorStop(0.6, 'rgba(10, 5, 3, 0.65)');
+    fadeRight.addColorStop(1, 'rgba(10, 5, 3, 0.98)');
+    ctx.fillStyle = fadeRight;
+    ctx.fillRect(spriteX + spriteW - 90, spriteY, 90, spriteH);
+
+    // Bottom Edge Fade into Dialogue Ribbon
+    const fadeBottom = ctx.createLinearGradient(spriteX, spriteY + spriteH - 80, spriteX, spriteY + spriteH);
+    fadeBottom.addColorStop(0, 'rgba(10, 5, 3, 0)');
+    fadeBottom.addColorStop(1, 'rgba(10, 5, 3, 0.95)');
+    ctx.fillStyle = fadeBottom;
+    ctx.fillRect(spriteX, spriteY + spriteH - 80, spriteW, 80);
   }
-
-  // Right Edge Smooth Fade into Center Leyline
-  const fadeRight = ctx.createLinearGradient(spriteX + spriteW - 90, spriteY, spriteX + spriteW, spriteY);
-  fadeRight.addColorStop(0, 'rgba(10, 5, 3, 0)');
-  fadeRight.addColorStop(0.6, 'rgba(10, 5, 3, 0.65)');
-  fadeRight.addColorStop(1, 'rgba(10, 5, 3, 0.98)');
-  ctx.fillStyle = fadeRight;
-  ctx.fillRect(spriteX + spriteW - 90, spriteY, 90, spriteH);
-
-  // Bottom Edge Fade into Dialogue Ribbon
-  const fadeBottom = ctx.createLinearGradient(spriteX, spriteY + spriteH - 80, spriteX, spriteY + spriteH);
-  fadeBottom.addColorStop(0, 'rgba(10, 5, 3, 0)');
-  fadeBottom.addColorStop(1, 'rgba(10, 5, 3, 0.95)');
-  ctx.fillStyle = fadeBottom;
-  ctx.fillRect(spriteX, spriteY + spriteH - 80, spriteW, 80);
+  // If master avatar does not load, left completely blank as requested
 
   ctx.restore(); // end clip
 

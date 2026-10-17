@@ -408,6 +408,7 @@ export function getOrInitWarSession(master?: MasterProfile, guildId?: string): H
   if (!warSessionsByGuild[gKey]) {
     const session: HolyGrailWarSession = {
       id: `grail_war_${gKey}_${Date.now()}`,
+      guildId: gKey !== 'dm-safe-zone' && gKey !== 'global' ? gKey : undefined,
       title: 'Fuyuki Holy Grail War',
       status: 'active',
       participants: {},
@@ -428,6 +429,9 @@ export function getOrInitWarSession(master?: MasterProfile, guildId?: string): H
   }
 
   const warSession = warSessionsByGuild[gKey];
+  if (!warSession.guildId && gKey !== 'dm-safe-zone' && gKey !== 'global') {
+    warSession.guildId = gKey;
+  }
 
   // Ensure arrays exist
   if (!warSession.leakedIntel) warSession.leakedIntel = [];
@@ -608,6 +612,62 @@ export function forfeitWar(
 }
 
 /**
+ * Demobilizes a single Master back to Safe Mode upon death or war conclusion.
+ * Resets environmentMode to 'safe', Command Seals to 3, and restores Servant HP to max.
+ */
+export async function demobilizeMasterToSafeMode(
+  discordId: string,
+  guildId?: string,
+  username?: string
+): Promise<MasterProfile | null> {
+  try {
+    const { getMaster, getOrCreateMaster, saveMaster } = require('../database/service');
+    let master = getMaster ? getMaster(discordId) : null;
+    if (!master && getOrCreateMaster) {
+      master = await getOrCreateMaster(discordId, username || 'Master');
+    }
+    if (!master) return null;
+
+    master.environmentMode = 'safe';
+    if (guildId) {
+      if (!master.guildEnvironmentModes) master.guildEnvironmentModes = {};
+      master.guildEnvironmentModes[guildId] = 'safe';
+    } else if (master.guildEnvironmentModes) {
+      for (const gid of Object.keys(master.guildEnvironmentModes)) {
+        master.guildEnvironmentModes[gid] = 'safe';
+      }
+    }
+
+    master.commandSeals = 3;
+
+    // Full HP restoration for all contracted Servants
+    if (master.servants && Array.isArray(master.servants)) {
+      for (const s of master.servants) {
+        const maxHp = (s as any).maxHp || s.template?.baseHp || 50000;
+        s.currentHp = maxHp;
+      }
+    }
+
+    await saveMaster(master);
+    return master;
+  } catch (err) {
+    console.error(`[demobilizeMasterToSafeMode] Error updating master ${discordId}:`, err);
+    return null;
+  }
+}
+
+/**
+ * Demobilizes all participants in a Holy Grail War session back to Safe Mode upon war conclusion.
+ */
+export async function demobilizeAllWarParticipantsToSafeMode(targetWar: HolyGrailWarSession): Promise<void> {
+  if (!targetWar || !targetWar.participants) return;
+  const participants = Object.values(targetWar.participants);
+  for (const p of participants) {
+    await demobilizeMasterToSafeMode(p.discordId, targetWar.guildId, p.username);
+  }
+}
+
+/**
  * Attempts to join an active Holy Grail War.
  * Prohibits late entry if an active war tournament is currently ongoing.
  */
@@ -706,6 +766,10 @@ export function getActiveWarSession(guildId?: string): HolyGrailWarSession | nul
 
 export function resetWarSession(guildId?: string): HolyGrailWarSession {
   const gKey = resolveGuildKey(undefined, guildId);
+  // Demobilize prior war participants back to Safe Mode with restored vitality
+  if (warSessionsByGuild[gKey]?.participants) {
+    demobilizeAllWarParticipantsToSafeMode(warSessionsByGuild[gKey]).catch(() => {});
+  }
   // Clear all past Servant telepathic memories for the new Holy Grail War cycle
   try {
     if (warSessionsByGuild[gKey]?.id) {
@@ -1070,6 +1134,7 @@ export function evaluateWarState(targetWar: HolyGrailWarSession): void {
     targetWar.status = 'concluded';
     targetWar.grailWinnerId = undefined;
     targetWar.concludedReason = 'all_fallen';
+    demobilizeAllWarParticipantsToSafeMode(targetWar).catch(() => {});
     targetWar.eventLogs.unshift({
       id: `evt_grail_collapse_${Date.now()}`,
       timestamp: Date.now(),
@@ -1087,6 +1152,7 @@ export function evaluateWarState(targetWar: HolyGrailWarSession): void {
       targetWar.grailWinnerId = undefined;
       targetWar.isCorrupted = true;
       targetWar.concludedReason = 'grail_corruption';
+      demobilizeAllWarParticipantsToSafeMode(targetWar).catch(() => {});
       targetWar.eventLogs.unshift({
         id: `evt_grail_corrupt_${Date.now()}`,
         timestamp: Date.now(),
@@ -1121,6 +1187,7 @@ export function evaluateWarState(targetWar: HolyGrailWarSession): void {
     targetWar.grailWinnerId = aliveList[0].discordId;
     targetWar.concludedReason = 'sole_survivor';
     aliveList[0].isExposed = true;
+    demobilizeAllWarParticipantsToSafeMode(targetWar).catch(() => {});
     targetWar.eventLogs.unshift({
       id: `evt_grail_win_${Date.now()}`,
       timestamp: Date.now(),
@@ -1394,6 +1461,8 @@ export function attackSuspectUserInWar(
 
       if (attacker.currentHp <= 0) {
         attacker.isAlive = false;
+        attacker.eliminatedReason = 'ambush_counter_slain';
+        demobilizeMasterToSafeMode(attacker.discordId, targetWar.guildId, attacker.username).catch(() => {});
         failMsg += `\n☠️ **FATAL CONSEQUENCE:** Master **${attacker.username}** was slain by the Assassin they tried to ambush!`;
       }
 
@@ -1439,6 +1508,8 @@ export function attackSuspectUserInWar(
       
       if (attacker.currentHp <= 0) {
         attacker.isAlive = false;
+        attacker.eliminatedReason = 'alarm_ward_counter_slain';
+        demobilizeMasterToSafeMode(attacker.discordId, targetWar.guildId, attacker.username).catch(() => {});
       }
     }
 
@@ -1459,6 +1530,8 @@ export function attackSuspectUserInWar(
       attacker.currentHp = Math.max(0, attacker.currentHp - 2000);
       if (attacker.currentHp <= 0) {
         attacker.isAlive = false;
+        attacker.eliminatedReason = 'instinct_parry_counter_slain';
+        demobilizeMasterToSafeMode(attacker.discordId, targetWar.guildId, attacker.username).catch(() => {});
       }
     }
 
@@ -1534,8 +1607,10 @@ export function attackSuspectUserInWar(
     // 6. ACTUAL DEATH / ELIMINATION
     else if (targetMaster.currentHp <= 0) {
       targetMaster.isAlive = false;
+      targetMaster.eliminatedReason = 'ambushed_and_slain';
       attacker.kills++;
       eliminatedId = targetMaster.discordId;
+      demobilizeMasterToSafeMode(targetMaster.discordId, targetWar.guildId, targetMaster.username).catch(() => {});
       
       mainMessage += `\n\n☠️ **FATAL AMBUSH IN ${chanTag}:** Master **${targetMaster.username}**'s Servant took a fatal strike and was permanently ELIMINATED from the active Holy Grail War!`;
 
@@ -1689,6 +1764,7 @@ export function attackSuspectUserInWar(
     matchingParticipant.isExposed = true;
     matchingParticipant.eliminatedReason = 'slain_civilian';
     matchingParticipant.eliminatedBy = attacker.username;
+    demobilizeMasterToSafeMode(matchingParticipant.discordId, targetWar.guildId, matchingParticipant.username).catch(() => {});
   }
 
   const exposureNote = wasAlreadyExposed
@@ -2103,8 +2179,10 @@ export function checkAndTriggerChannelTraps(
       } else {
         intruder.isAlive = false;
         intruder.isExposed = true;
+        intruder.eliminatedReason = 'trap_mana_drain_slain';
         isLethal = true;
         setter.kills = (setter.kills || 0) + 1;
+        demobilizeMasterToSafeMode(intruder.discordId, targetWar.guildId, intruder.username).catch(() => {});
         trapNotice += `\n☠️ **FATAL WITHERING:** Master **${intruder.username}**'s spiritual core collapsed from total mana drain!`;
         evaluateWarState(targetWar);
       }
@@ -2629,6 +2707,7 @@ export function executeWarAction(
       actor.eliminatedReason = 'forfeited';
       actor.isExposed = true;
       eliminatedId = actor.discordId;
+      demobilizeMasterToSafeMode(actor.discordId, targetWar.guildId, actor.username).catch(() => {});
       resultMsg = `🏳️ Master **${actor.username}** has voluntarily surrendered and forfeited from the Holy Grail War! (Eliminated into Safe Mode)`;
       evaluateWarState(targetWar);
       break;
@@ -2820,8 +2899,10 @@ export function recordDuelOutcome(
     defeated.isAlive = false;
     defeated.currentHp = 0;
     defeated.baseHpAtDamage = 0;
+    defeated.eliminatedReason = 'executed_in_duel';
     victor.kills = (victor.kills || 0) + 1;
     isEliminated = true;
+    demobilizeMasterToSafeMode(defeated.discordId, targetWar.guildId, defeated.username).catch(() => {});
 
     const deadCount = Object.values(targetWar.participants).filter(p => !p.isAlive).length;
 

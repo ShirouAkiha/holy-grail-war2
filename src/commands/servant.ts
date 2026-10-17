@@ -22,6 +22,7 @@ import {
 import { getServantProfile } from '../engine/dialogue';
 import { getOrInitWarSession, exposeMasterInWar, getHealingStatus, getAllWarSessions } from '../engine/grailwar';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
+import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { allocateStatPoints, calculateServantMaxHp, calculateServantMaxAtk, getParameterRank, getParameterRankMultiplier, getServantDefaultParamRank, getEnduranceDamageReductionPercent } from '../engine/statSystem';
 import { 
   equipCraftEssence, 
@@ -540,7 +541,7 @@ export async function buildServantHub(
   } else if (category === 'equip_ce') {
     const currentEq = (typeof targetServant.equippedCe === 'object' && targetServant.equippedCe !== null ? targetServant.equippedCe : null)
       || (targetServant.equippedCeId ? master.craftEssences?.find((c: any) => c.id === targetServant.equippedCeId) : null)
-      || (targetServant.equippedCeId ? CRAFT_ESSENCE_DATABASE.find(c => c.id === targetServant.equippedCeId) : null);
+      || (targetServant.equippedCeId ? CRAFT_ESSENCE_DATABASE.find((c: any) => c.id === targetServant.equippedCeId) : null);
 
     const embed = new EmbedBuilder()
       .setTitle(`👔 Craft Essence Equipment Studio: ${sName}`)

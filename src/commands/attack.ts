@@ -54,6 +54,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const attackerPart = war.participants[interaction.user.id] ||
       Object.values(war.participants).find(p => p.discordId === interaction.user.id);
+    const warServant = (attackerPart?.servantId ? master.servants?.find((s: any) => s.id === attackerPart.servantId) : null) || activeServant;
 
     // CRITICAL: Prevent players in Safe Mode from launching ambushes into an ongoing war
     if (env === 'safe' || !attackerPart || !attackerPart.isAlive) {
