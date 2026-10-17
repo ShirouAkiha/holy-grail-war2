@@ -132,7 +132,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `👁️ **1. DEMON GOD PILLAR BARBATOS** — *Temple of Time*\n` +
         `• **Class:** \`Caster\` • **Level:** \`90\` • **HP:** \`1,200,000\` (Single Phase)\n` +
         `• **Threat:** Observation Pillar • Lowers party DEF & drains critical stars\n` +
-        `• **Victory Drops:** 💎 \`10–20 SQ\` • ⚔️ \`+25,000 EXP\` • 💖 \`+2,000 Bond\` • ✨ \`3x Embers\`\n\n` +
+        `• **Victory Drops:** 💎 \`10–20 SQ\` • ⚔️ \`+25,000 EXP\` • ✨ \`3x Embers\`\n\n` +
         `🌸 **2. DARK SAKURA** — *Fuyuki Abyssal Cavity*\n` +
         `• **Class:** \`Avenger\` • **Level:** \`92\` • **HP:** \`4,500,000\` (**2 Break Gauges**)\n` +
         `• **Interactive:** Reactive Self-Aware Dialogue • **[Spare] vs [Execute]** Climax Choice!\n` +
@@ -200,7 +200,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             `**1. Demon God Pillar Barbatos (Temple of Time)**\n` +
             `• Class: \`Caster\` • HP: \`1,200,000\` • Charge: 5\n` +
             `• Traits: Demonic, Giant, Super Large, Demon God Pillar\n` +
-            `• Drops: 10–20 SQ, 25k EXP, 2,000 Bond, 3x Embers\n\n` +
+            `• Drops: 10–20 SQ, 25k EXP, 3x Embers\n\n` +
             `**2. Dark Sakura (Fuyuki Abyssal Cavity)**\n` +
             `• Class: \`Avenger\` • Total HP: \`4,500,000\` (2 Break Gauges)\n` +
             `• Traits: Threat to Humanity, Humanoid, Demonic, Shadow, Female\n` +
@@ -4764,7 +4764,7 @@ async function concludeRaidVictory(
   const sqReward = isTiamat ? 50 : Math.floor(boss.drops.minSq + Math.random() * (boss.drops.maxSq - boss.drops.minSq + 1));
   const servantExpReward = isTiamat ? 200_000 : (boss.drops.servantExp || 25_000);
   const emberCount = isTiamat ? 30 : 3;
-  const bondExpReward = isTiamat ? 1000 : 300;
+  const bondExpReward = isTiamat ? 1000 : 0;
 
   const progressionReports: string[] = [];
 
@@ -4789,20 +4789,22 @@ async function concludeRaidVictory(
 
       sReport += `\n  ├─ ⚔️ **Level:** \`${lvlDetail}\``;
 
-      // 2. Servant Bond EXP & Bond Level-Up
-      const bondResult = addBondExpToServant(s, bondExpReward);
-      s.bondExp = bondResult.updatedServant.bondExp;
-      s.bondLevel = bondResult.updatedServant.bondLevel;
-      let bondDetail = `Bond Lv. ${bondResult.newLevel}`;
-      if (bondResult.didLevelUp) {
-        bondDetail += ` *(🌸 BOND LEVEL UP! Bond Lv. ${bondResult.newLevel})*`;
+      // 2. Servant Bond EXP & Bond Level-Up (Only when raid grants Bond EXP)
+      if (bondExpReward > 0) {
+        const bondResult = addBondExpToServant(s, bondExpReward);
+        s.bondExp = bondResult.updatedServant.bondExp;
+        s.bondLevel = bondResult.updatedServant.bondLevel;
+        let bondDetail = `Bond Lv. ${bondResult.newLevel}`;
+        if (bondResult.didLevelUp) {
+          bondDetail += ` *(🌸 BOND LEVEL UP! Bond Lv. ${bondResult.newLevel})*`;
+        }
+        if (bondResult.unlockedBondCe) {
+          master.craftEssences = master.craftEssences || [];
+          master.craftEssences.push(bondResult.unlockedBondCe);
+          bondDetail += ` *(👑 UNLOCKED BOND 10 CE: **${bondResult.unlockedBondCe.name}**!)*`;
+        }
+        sReport += `\n  └─ 🌸 **Bond:** \`${bondDetail}\` (+${bondExpReward.toLocaleString()} Bond EXP)`;
       }
-      if (bondResult.unlockedBondCe) {
-        master.craftEssences = master.craftEssences || [];
-        master.craftEssences.push(bondResult.unlockedBondCe);
-        bondDetail += ` *(👑 UNLOCKED BOND 10 CE: **${bondResult.unlockedBondCe.name}**!)*`;
-      }
-      sReport += `\n  └─ 🌸 **Bond:** \`${bondDetail}\` (+${bondExpReward.toLocaleString()} Bond EXP)`;
     }
 
     // 3. Universal EXP Embers (Blaze of Wisdom) deposited directly to Master inventory
@@ -4860,7 +4862,8 @@ async function concludeRaidVictory(
       `• **+${sqReward} Saint Quartz** 💎\n` +
       `• **+${servantExpReward.toLocaleString()} Servant Battle EXP** ⚔️ *(Levels up Servant & awards unspent Stat Points)*\n` +
       `• **+${emberCount} Universal EXP Embers** ✨ *(★5 SSR Blaze of Wisdom synthesized to inventory for \`/feed\`)*\n` +
-      `• **+${bondExpReward.toLocaleString()} Bond EXP** 🌸 *(Advances Servant Bond Level)*\n\n` +
+      (bondExpReward > 0 ? `• **+${bondExpReward.toLocaleString()} Bond EXP** 🌸 *(Advances Servant Bond Level)*\n` : '') +
+      `\n` +
       `👑 **Victorious Masters & Progression:**\n` +
       progressionReports.join('\n') + `\n\n` +
       `📜 **Recent Battle Log:**\n${recentCombatLogText}`

@@ -4987,7 +4987,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // BRANCH 2: OPEN / QUICK DUEL AGAINST ANOTHER REAL MASTER
-    let livingRivalParticipants: Array<{ discordId: string; username: string }> = [];
+    let livingRivalParticipants: Array<{ discordId: string; username: string; servantId?: string; isAlive?: boolean }> = [];
 
     if (isFreeBattle) {
       // Safe Mode Free Battle: Match against any other Safe Mode Master with Servants
@@ -5284,6 +5284,7 @@ async function startInteractiveDuel(
   p2AllyMaster?: MasterProfile | null,
   isFreeBattle?: boolean
 ) {
+  const preferredGuildId = contextInteraction?.guildId || undefined;
   let round = 1;
   const t1 = p1.servant.template;
   const t2 = p2.servant.template;
@@ -6418,13 +6419,35 @@ async function startInteractiveDuel(
           return;
         }
 
-        // Safe mode masters cannot intervene in an ongoing war battle, but can freely join Free Battles
-        if (!isFreeBattle && joinerMaster.environmentMode === 'safe') {
-          await i.reply({
-            content: '❌ **Safe Mode Protected:** You are currently in Safe Mode outside of the Holy Grail War. You cannot intervene in an ongoing tournament war battle.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
-            flags: MessageFlags.Ephemeral
-          });
-          return;
+        // Check Holy Grail War participation constraints for war tournament duels
+        if (!isFreeBattle) {
+          const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, contextInteraction?.guildId || undefined);
+          const joinPart = warSession.participants[i.user.id] ||
+            Object.values(warSession.participants).find(p => p.discordId === i.user.id || p.username.toLowerCase() === i.user.username.toLowerCase());
+
+          if (!joinPart) {
+            await i.reply({
+              content: '❌ **Holy Grail War Restricted:** You have not joined this server\'s Holy Grail War tournament! Only registered Masters currently participating in the active war can intervene in tournament duels.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+              flags: MessageFlags.Ephemeral
+            });
+            return;
+          }
+
+          if (!joinPart.isAlive) {
+            await i.reply({
+              content: '❌ **Eliminated Master:** Your Servant has already fallen in this Holy Grail War tournament and cannot intervene in active war duels.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+              flags: MessageFlags.Ephemeral
+            });
+            return;
+          }
+
+          if (joinerMaster.environmentMode === 'safe') {
+            await i.reply({
+              content: '❌ **Safe Mode Protected:** You are currently in Safe Mode outside of the Holy Grail War. You cannot intervene in an ongoing tournament war battle.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+              flags: MessageFlags.Ephemeral
+            });
+            return;
+          }
         }
 
         // Always show options: Ally with Team 1, Ally with Team 2, or Solo Rogue (No Team)
@@ -6538,22 +6561,42 @@ async function startInteractiveDuel(
           return;
         }
 
-        if (!isFreeBattle && joinerMaster.environmentMode === 'safe') {
-          await i.update({
-            content: '❌ **Safe Mode Protected:** You are currently in Safe Mode outside of the Holy Grail War. You cannot intervene in an ongoing tournament war battle.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
-            components: []
-          });
-          return;
+        const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, contextInteraction?.guildId || undefined);
+        const joinPart = warSession.participants[joinerMaster.discordId] ||
+          Object.values(warSession.participants).find(p => p.discordId === joinerMaster.discordId || p.username.toLowerCase() === joinerMaster.username.toLowerCase());
+
+        if (!isFreeBattle) {
+          if (!joinPart) {
+            await i.update({
+              content: '❌ **Holy Grail War Restricted:** You have not joined this server\'s Holy Grail War tournament! Only registered Masters currently participating in the active war can intervene in tournament duels.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+              components: []
+            });
+            return;
+          }
+          if (!joinPart.isAlive) {
+            await i.update({
+              content: '❌ **Eliminated Master:** Your Servant has already fallen in this Holy Grail War tournament and cannot intervene in active war duels.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+              components: []
+            });
+            return;
+          }
+          if (joinerMaster.environmentMode === 'safe') {
+            await i.update({
+              content: '❌ **Safe Mode Protected:** You are currently in Safe Mode outside of the Holy Grail War. You cannot intervene in an ongoing tournament war battle.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+              components: []
+            });
+            return;
+          }
         }
 
-        const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
+        const joinServant = (!isFreeBattle && joinPart?.servantId)
+          ? (joinerMaster.servants.find(s => s.id === joinPart.servantId) || joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0])
+          : (joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0]);
         const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
 
-        const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, contextInteraction?.guildId || undefined);
-        const joinPart = warSession.participants[joinerMaster.discordId];
         const joinHp = (isFreeBattle || joinerMaster.environmentMode === 'safe') ? undefined : (joinPart ? calculateCurrentHp(joinPart) : undefined);
 
-        if (!isFreeBattle && joinerMaster.environmentMode !== 'safe' && ((joinServant.currentHp !== undefined && joinServant.currentHp <= 0) || (joinHp !== undefined && joinHp <= 0))) {
+        if (!isFreeBattle && ((joinServant.currentHp !== undefined && joinServant.currentHp <= 0) || (joinHp !== undefined && joinHp <= 0))) {
           await i.update({
             content: `❌ **Incapacitated Servant:** Your Servant **${joinName}** currently has 0 HP and is incapacitated! Restore your Servant before entering combat.`,
             components: []
@@ -6713,22 +6756,42 @@ async function startInteractiveDuel(
           return;
         }
 
-        if (!isFreeBattle && joinerMaster.environmentMode === 'safe') {
-          await i.update({
-            content: '❌ **Safe Mode Protected:** You are currently in Safe Mode outside of the Holy Grail War. You cannot intervene in an ongoing tournament war battle.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
-            components: []
-          });
-          return;
+        const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, contextInteraction?.guildId || undefined);
+        const joinPart = warSession.participants[joinerMaster.discordId] ||
+          Object.values(warSession.participants).find(p => p.discordId === joinerMaster.discordId || p.username.toLowerCase() === joinerMaster.username.toLowerCase());
+
+        if (!isFreeBattle) {
+          if (!joinPart) {
+            await i.update({
+              content: '❌ **Holy Grail War Restricted:** You have not joined this server\'s Holy Grail War tournament! Only registered Masters currently participating in the active war can intervene in tournament duels.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+              components: []
+            });
+            return;
+          }
+          if (!joinPart.isAlive) {
+            await i.update({
+              content: '❌ **Eliminated Master:** Your Servant has already fallen in this Holy Grail War tournament and cannot intervene in active war duels.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+              components: []
+            });
+            return;
+          }
+          if (joinerMaster.environmentMode === 'safe') {
+            await i.update({
+              content: '❌ **Safe Mode Protected:** You are currently in Safe Mode outside of the Holy Grail War. You cannot intervene in an ongoing tournament war battle.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+              components: []
+            });
+            return;
+          }
         }
 
-        const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
+        const joinServant = (!isFreeBattle && joinPart?.servantId)
+          ? (joinerMaster.servants.find(s => s.id === joinPart.servantId) || joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0])
+          : (joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0]);
         const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
 
-        const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, contextInteraction?.guildId || undefined);
-        const joinPart = warSession.participants[joinerMaster.discordId];
         const joinHp = (isFreeBattle || joinerMaster.environmentMode === 'safe') ? undefined : (joinPart ? calculateCurrentHp(joinPart) : undefined);
 
-        if (!isFreeBattle && joinerMaster.environmentMode !== 'safe' && ((joinServant.currentHp !== undefined && joinServant.currentHp <= 0) || (joinHp !== undefined && joinHp <= 0))) {
+        if (!isFreeBattle && ((joinServant.currentHp !== undefined && joinServant.currentHp <= 0) || (joinHp !== undefined && joinHp <= 0))) {
           await i.update({
             content: `❌ **Incapacitated Servant:** Your Servant **${joinName}** currently has 0 HP and is incapacitated! Restore your Servant before entering combat.`,
             components: []
@@ -7411,6 +7474,7 @@ async function finishDuel(
   }
 
   const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, i?.guildId || undefined);
+  const preferredGuildId = i?.guildId || undefined;
   const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
 
   interface DefeatedTargetState {
@@ -8075,7 +8139,7 @@ async function finishDuel(
   }
 
   // 5. Award victory rewards & sync Master HP
-  const rewardReport = await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner, isFreeBattle);
+  const rewardReport = await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner, isFreeBattle, preferredGuildId);
   const { primaryBondLevelUp, primaryNewBondLevel, primaryUnlockedBondCe, enemyBeatenMultiplier } = rewardReport;
 
   // 6. Build Victory & Final Outcome Embeds
@@ -8185,7 +8249,8 @@ async function finalizeDuelRewardsAndSync(
   warSession: any,
   _chanTag: string,
   primaryWinner: DuelCombatant,
-  isFreeBattle: boolean = false
+  isFreeBattle: boolean = false,
+  preferredGuildId?: string
 ) {
   const winnerCount = winningTeam.length;
   const loserCount = defeatedStates.length;
