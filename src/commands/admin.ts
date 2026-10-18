@@ -68,6 +68,8 @@ interface AnnounceDraft {
   targetChannelId?: string;
   customTargetTimestamp?: number;
   customLabel?: string;
+  warDurationMinutes?: number;
+  maxServantLevel?: number;
 }
 
 let adminAnnounceDraft: AnnounceDraft = {
@@ -1496,6 +1498,8 @@ export function buildAdminHub(
         `• ⚔️ **Servant Pool:** ${poolTag}\n` +
         `• 🔒 **Class Exclusivity:** \`${rules.classExclusivity ? 'Strict (1 per Class)' : 'Open (Multiple Allowed)'}\`\n` +
         `• 💀 **Lethality Mode:** \`${rules.permadeath ? 'Permadeath (Eliminated on HP 0)' : 'Casual / Training (Revive Cooldown)'}\`\n` +
+        `• ⏳ **War Time Limit:** \`${rules.warDurationMinutes ? `${rules.warDurationMinutes} Minutes` : 'Endless / None'}\`${war.deadlineTimestamp && war.status === 'active' ? ` (Ends: <t:${Math.floor(war.deadlineTimestamp / 1000)}:R>)` : ''}\n` +
+        `• 🔰 **Servant Level Cap:** \`${rules.maxServantLevel ? `Lv. ${rules.maxServantLevel} (+5 Buffer)` : 'No Limit (All Levels Allowed)'}\`\n` +
         `• 🔱 **Starting Command Seals:** \`${rules.startingCommandSeals} Seals\`\n` +
         `• 💧 **Leyline Density:** \`${rules.leylineDensity === 'fast' ? '⚡ High Surge (2x Fast Recovery)' : rules.leylineDensity === 'desolate' ? '🏜️ Desolate (No Auto-Regen)' : 'Balanced Standard (5 min full)'}\`\n` +
         `• ⛪ **Church Sanctuary:** \`${rules.churchAsylum ? '🟢 Active Asylum under Father Kotomine' : '🔴 Desecrated (No Asylum)'}\`\n` +
@@ -1534,6 +1538,8 @@ export function buildAdminHub(
         `Magi will be able to privately inscribe their Command Seals with complete anonymity and receive battle orders in their DMs upon war ignition.\n\n` +
         `📡 **Target Broadcast Channel:** ${targetChTag}\n` +
         `⏱️ **Recruitment Countdown:** ${countdownDisplay}\n` +
+        `⏳ **Active War Duration:** \`${adminAnnounceDraft.warDurationMinutes ? `${adminAnnounceDraft.warDurationMinutes} Minutes` : 'Endless (No Limit)'}\`\n` +
+        `🔰 **Servant Level Cap:** \`${adminAnnounceDraft.maxServantLevel ? `Lv. ${adminAnnounceDraft.maxServantLevel} (+5 Buffer)` : 'No Limit'}\`\n` +
         `🏆 **Format & Capacity:** \`${adminAnnounceDraft.maxSlots} Masters\` (*${presetName}*)\n\n` +
         (isCallActive 
           ? `🟢 **CURRENT ACTIVE RECRUITMENT CALL:**\n` +
@@ -1592,6 +1598,8 @@ export function buildAdminHub(
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `Directly tune ritual parameters for the active Holy Grail War. Use the direct action buttons or dropdown menu below.\n\n` +
+        `⏳ **Active War Time Limit:** \`${rules.warDurationMinutes ? `${rules.warDurationMinutes} Minutes` : 'Endless / None'}\`${war.deadlineTimestamp && war.status === 'active' ? ` (Deadline: <t:${Math.floor(war.deadlineTimestamp / 1000)}:R>)` : ''} *(Options: Endless, 1h, 6h, 24h, Custom)*\n` +
+        `🔰 **Servant Level Limit:** \`${rules.maxServantLevel ? `Lv. ${rules.maxServantLevel} Cap (+5 Disqualification buffer)` : 'No Limit (All Levels Allowed)'}\` *(Options: No Limit, Lv.50, Lv.70, Lv.90, Custom)*\n` +
         `🔱 **Starting Command Seals:** \`${rules.startingCommandSeals} Seals\` *(Options: 1, 2, 3, 5, 10)*\n` +
         `👥 **Master Roster Capacity:** \`${rules.maxMasters} Masters\` *(Options: 7, 14, 20, 30)*\n` +
         `⚔️ **Servant Summon Pool:** ${poolTag}\n` +
@@ -1726,8 +1734,17 @@ export function buildAdminHub(
   // Helper for fine-tune dropdown (Strictly <= 25 options for Discord constraints)
   const createRuleSelectMenu = () => {
     const rawOptions = [
+      new StringSelectMenuOptionBuilder().setLabel('Active War Time: Endless / No Limit').setValue('wartime_0').setEmoji('⏱️').setDescription('War continues until one survivor remains'),
+      new StringSelectMenuOptionBuilder().setLabel('Active War Time: 1 Hour Limit').setValue('wartime_60').setEmoji('⏱️').setDescription('60 minutes; timeout causes grail corruption'),
+      new StringSelectMenuOptionBuilder().setLabel('Active War Time: 6 Hours Limit').setValue('wartime_360').setEmoji('⏱️').setDescription('360 minutes active tournament horizon'),
+      new StringSelectMenuOptionBuilder().setLabel('Active War Time: 24 Hours (1 Day)').setValue('wartime_1440').setEmoji('⏱️').setDescription('24-hour campaign deadline'),
+      new StringSelectMenuOptionBuilder().setLabel('Active War Time: Custom Duration (Modal)').setValue('wartime_custom').setEmoji('⏱️').setDescription('Enter custom minutes, hours, or days'),
+      new StringSelectMenuOptionBuilder().setLabel('Level Limit: No Cap (All Allowed)').setValue('lvllimit_0').setEmoji('🔰').setDescription('No level cap for Heroic Spirits'),
+      new StringSelectMenuOptionBuilder().setLabel('Level Limit: Max Lv. 50 Cap').setValue('lvllimit_50').setEmoji('🔰').setDescription('Servants capped at Lv.50 (+5 buffer)'),
+      new StringSelectMenuOptionBuilder().setLabel('Level Limit: Max Lv. 70 Cap').setValue('lvllimit_70').setEmoji('🔰').setDescription('Servants capped at Lv.70 (+5 buffer)'),
+      new StringSelectMenuOptionBuilder().setLabel('Level Limit: Max Lv. 90 Cap').setValue('lvllimit_90').setEmoji('🔰').setDescription('Servants capped at Lv.90 (+5 buffer)'),
+      new StringSelectMenuOptionBuilder().setLabel('Level Limit: Custom Level Cap (Modal)').setValue('lvllimit_custom').setEmoji('🔰').setDescription('Enter custom max level threshold'),
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 1 Seal (Hardcore)').setValue('seals_1').setEmoji('🔱').setDescription('1 Command Seal per Master (Desolate)'),
-      new StringSelectMenuOptionBuilder().setLabel('Command Seals: 2 Seals (Tactical)').setValue('seals_2').setEmoji('🔱').setDescription('2 Command Seals per Master'),
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 3 Seals (Canon Standard)').setValue('seals_3').setEmoji('🔱').setDescription('Standard 3 Command Seals (Fuyuki)'),
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 5 Seals (Mana Surge)').setValue('seals_5').setEmoji('🔱').setDescription('High mana 5 Command Seals'),
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 10 Seals (Chaos / Unlimited)').setValue('seals_10').setEmoji('🔱').setDescription('10 Command Seals for ultimate freedom'),
@@ -1736,25 +1753,17 @@ export function buildAdminHub(
       new StringSelectMenuOptionBuilder().setLabel('Capacity: 30 Masters (Chaos Brawl)').setValue('cap_30').setEmoji('👥').setDescription('All-out server-wide 30 Masters chaos'),
       new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Canon Type-Moon Only').setValue('pool_canon').setEmoji('📖').setDescription('Only official Type-Moon/FGO Servants'),
       new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Canon + Custom Servants').setValue('pool_all').setEmoji('✨').setDescription('Allow all registered and custom Heroic Spirits'),
-      new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Custom Community Only').setValue('pool_custom').setEmoji('🎨').setDescription('Only user-created and meme Servants'),
       new StringSelectMenuOptionBuilder().setLabel('Class Exclusivity: Strict (1 per Class)').setValue('class_strict').setEmoji('🔒').setDescription('1 Saber, 1 Archer, etc.'),
-      new StringSelectMenuOptionBuilder().setLabel('Class Exclusivity: Open Classes').setValue('class_open').setEmoji('🔓').setDescription('Allow duplicate classes'),
       new StringSelectMenuOptionBuilder().setLabel('Permadeath: Classic Elimination').setValue('permadeath_on').setEmoji('☠️').setDescription('Defeated Masters without seals are eliminated'),
       new StringSelectMenuOptionBuilder().setLabel('Permadeath: Casual Training Mode').setValue('permadeath_off').setEmoji('🛡️').setDescription('Defeated Masters can recover and rejoin'),
       new StringSelectMenuOptionBuilder().setLabel('Leylines: High Surge (2x Fast Regen)').setValue('leyline_fast').setEmoji('⚡').setDescription('2.5 min full recovery in Sanctuaries'),
-      new StringSelectMenuOptionBuilder().setLabel('Leylines: Balanced Standard').setValue('leyline_standard').setEmoji('💧').setDescription('Standard 5 min full recovery'),
-      new StringSelectMenuOptionBuilder().setLabel('Leylines: Desolate (No Auto-Regen)').setValue('leyline_desolate').setEmoji('🏜️').setDescription('HP recovery only via Command Seals/rituals'),
       new StringSelectMenuOptionBuilder().setLabel('Church Sanctuary: Active Asylum').setValue('church_active').setEmoji('⛪').setDescription('Masters can take asylum with Father Kotomine'),
-      new StringSelectMenuOptionBuilder().setLabel('Church Sanctuary: Desecrated (No Asylum)').setValue('church_desecrated').setEmoji('🔥').setDescription('Church is unsafe; no sanctuary granted'),
-      new StringSelectMenuOptionBuilder().setLabel('Trap Limit: Max 1 per Master').setValue('trap_1').setEmoji('🕸️').setDescription('Limit each Master to 1 Channel Trap'),
-      new StringSelectMenuOptionBuilder().setLabel('Trap Limit: Max 3 per Master').setValue('trap_3').setEmoji('🕸️').setDescription('Standard 3 Traps per Master'),
-      new StringSelectMenuOptionBuilder().setLabel('Faction Mode: Free-For-All').setValue('faction_ffa').setEmoji('⚔️').setDescription('Every Master for themselves'),
       new StringSelectMenuOptionBuilder().setLabel('Faction Mode: Red vs Black Factions').setValue('faction_teams').setEmoji('🚩').setDescription('Apocrypha team war')
     ];
 
     return new StringSelectMenuBuilder()
       .setCustomId('admin_war_rule_select')
-      .setPlaceholder('⚙️ Fine-Tune War Rules (Seals, Pools, Capacity, Lethality)...')
+      .setPlaceholder('⚙️ Fine-Tune War Rules (Time Limits, Levels, Seals, Pools)...')
       .addOptions(rawOptions.slice(0, 25));
   };
 
@@ -1860,49 +1869,34 @@ export function buildAdminHub(
     );
 
     // 4. Action & Navigation Buttons
-    const executionButtons: ButtonBuilder[] = [];
-
     if (isCallActive) {
-      executionButtons.push(
-        new ButtonBuilder().setCustomId('admin_war_announce_force_ignite').setLabel('Ignite War Now').setEmoji('⚡').setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId('admin_war_announce_cancel').setLabel('Cancel Call').setEmoji('❌').setStyle(ButtonStyle.Secondary),
+      const limitsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('admin_war_ann_wartime').setLabel(`⏱️ War: ${adminAnnounceDraft.warDurationMinutes ? `${adminAnnounceDraft.warDurationMinutes}m` : 'Endless'}`).setStyle(adminAnnounceDraft.warDurationMinutes ? ButtonStyle.Primary : ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('admin_war_ann_lvllimit').setLabel(`🔰 Cap: ${adminAnnounceDraft.maxServantLevel ? `Lv.${adminAnnounceDraft.maxServantLevel}` : 'No Cap'}`).setStyle(adminAnnounceDraft.maxServantLevel ? ButtonStyle.Primary : ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('admin_war_announce_force_replace').setLabel('Replace & Broadcast').setEmoji('🔄').setStyle(ButtonStyle.Primary)
       );
-    } else {
-      executionButtons.push(
-        new ButtonBuilder().setCustomId('admin_war_announce_post_current').setLabel('Post Proclamation').setEmoji('📢').setStyle(ButtonStyle.Success)
+
+      const manageRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('admin_war_announce_force_ignite').setLabel('Ignite War Now').setEmoji('⚡').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('admin_war_announce_cancel').setLabel('Cancel Call').setEmoji('❌').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('admin_back_to_war').setLabel('Back to War Hub').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
       );
+
+      components.push(channelSelectRow, timerRow, presetRow, limitsRow, manageRow);
+    } else {
+      const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('admin_war_announce_post_current').setLabel('Post Proclamation').setEmoji('📢').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('admin_war_ann_wartime').setLabel(`⏱️ War: ${adminAnnounceDraft.warDurationMinutes ? `${adminAnnounceDraft.warDurationMinutes}m` : 'Endless'}`).setStyle(adminAnnounceDraft.warDurationMinutes ? ButtonStyle.Primary : ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('admin_war_ann_lvllimit').setLabel(`🔰 Cap: ${adminAnnounceDraft.maxServantLevel ? `Lv.${adminAnnounceDraft.maxServantLevel}` : 'No Cap'}`).setStyle(adminAnnounceDraft.maxServantLevel ? ButtonStyle.Primary : ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('admin_back_to_war').setLabel('Back to War Hub').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
+      );
+
+      components.push(channelSelectRow, timerRow, presetRow, actionRow);
     }
-
-    executionButtons.push(
-      new ButtonBuilder().setCustomId('admin_back_to_war').setLabel('Back to War Hub').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
-    );
-
-    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(executionButtons);
-
-    components.push(channelSelectRow, timerRow, presetRow, actionRow);
 
   } else if (category === 'war_rules') {
     const war = getOrInitWarSession();
     const rules = war.rules || WAR_PRESETS.fuyuki_7;
-
-    // DIRECT 1-CLICK COMMAND SEALS BUTTONS ROW
-    const sealsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('admin_set_seals_1').setLabel('1 Seal').setEmoji('🔱').setStyle(rules.startingCommandSeals === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_set_seals_2').setLabel('2 Seals').setEmoji('🔱').setStyle(rules.startingCommandSeals === 2 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_set_seals_3').setLabel('3 Seals (Canon)').setEmoji('🔱').setStyle(rules.startingCommandSeals === 3 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_set_seals_5').setLabel('5 Seals').setEmoji('🔱').setStyle(rules.startingCommandSeals === 5 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_set_seals_10').setLabel('10 Seals (Chaos)').setEmoji('🔱').setStyle(rules.startingCommandSeals === 10 ? ButtonStyle.Primary : ButtonStyle.Secondary)
-    );
-
-    // DIRECT 1-CLICK CAPACITY & POOL BUTTONS ROW
-    const capPoolRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('admin_set_cap_7').setLabel('7 Masters').setEmoji('👥').setStyle(rules.maxMasters === 7 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_set_cap_14').setLabel('14 Masters').setEmoji('👥').setStyle(rules.maxMasters === 14 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_set_cap_30').setLabel('30 Masters').setEmoji('👥').setStyle(rules.maxMasters === 30 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_set_pool_canon').setLabel('Canon Only').setEmoji('📖').setStyle(rules.servantPool === 'canon_only' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_set_pool_all').setLabel('All Servants').setEmoji('✨').setStyle(rules.servantPool === 'all' ? ButtonStyle.Primary : ButtonStyle.Secondary)
-    );
 
     // DIRECT 1-CLICK TOGGLE BUTTONS ROW
     const toggleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -1912,9 +1906,27 @@ export function buildAdminHub(
       new ButtonBuilder().setCustomId('admin_toggle_factions').setLabel(`Factions: ${rules.factionMode ? 'Teams 🚩' : 'FFA ⚔️'}`).setEmoji('🚩').setStyle(rules.factionMode ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
+    // DIRECT 1-CLICK WAR TIME LIMIT ROW
+    const warTimeRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_set_wartime_0').setLabel('Endless ⏱️').setStyle(!rules.warDurationMinutes ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_wartime_60').setLabel('1 Hour').setStyle(rules.warDurationMinutes === 60 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_wartime_360').setLabel('6 Hours').setStyle(rules.warDurationMinutes === 360 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_wartime_1440').setLabel('24 Hours').setStyle(rules.warDurationMinutes === 1440 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_wartime_custom').setLabel('Custom Time ⏱️').setStyle(rules.warDurationMinutes && ![60, 360, 1440].includes(rules.warDurationMinutes) ? ButtonStyle.Success : ButtonStyle.Secondary)
+    );
+
+    // DIRECT 1-CLICK SERVANT LEVEL LIMIT ROW
+    const lvlLimitRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_set_lvllimit_0').setLabel('No Cap 🔰').setStyle(!rules.maxServantLevel ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_lvllimit_50').setLabel('Lv. 50').setStyle(rules.maxServantLevel === 50 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_lvllimit_70').setLabel('Lv. 70').setStyle(rules.maxServantLevel === 70 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_lvllimit_90').setLabel('Lv. 90').setStyle(rules.maxServantLevel === 90 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_lvllimit_custom').setLabel('Custom Cap 🔰').setStyle(rules.maxServantLevel && ![50, 70, 90].includes(rules.maxServantLevel) ? ButtonStyle.Success : ButtonStyle.Secondary)
+    );
+
     const ruleSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(createRuleSelectMenu());
 
-    components.push(sealsRow, capPoolRow, toggleRow, ruleSelectRow);
+    components.push(toggleRow, warTimeRow, lvlLimitRow, ruleSelectRow);
 
   } else if (category === 'npsettings') {
     const settings = getDuelNpSettings();
@@ -1979,8 +1991,81 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       return;
     }
 
+    // Handle Active War Time Limit Modal Submissions (Rules & Announce)
+    if (customId === 'admin_modal_war_custom_timer' || customId === 'admin_modal_ann_custom_timer') {
+      let inputVal = '';
+      try { inputVal = interaction.fields.getTextInputValue('war_custom_timer_input')?.trim() || ''; } catch {}
+      const isAnnounce = customId === 'admin_modal_ann_custom_timer';
+
+      let minutes = 0;
+      if (inputVal === '0' || inputVal.toLowerCase() === 'none' || inputVal.toLowerCase() === 'endless') {
+        minutes = 0;
+      } else {
+        const parsed = parseCustomTimerInput(inputVal);
+        if (parsed) {
+          minutes = parsed.durationMinutes;
+        } else {
+          const directNum = parseInt(inputVal, 10);
+          if (!isNaN(directNum) && directNum >= 0) minutes = directNum;
+        }
+      }
+
+      if (isAnnounce) {
+        adminAnnounceDraft.warDurationMinutes = minutes > 0 ? minutes : undefined;
+        actionOutcome = `⏱️ **Proclamation Active War Duration:** Set to **${minutes > 0 ? `${minutes} Minutes` : 'Endless / No Limit'}**!`;
+        currentCategory = 'war_announce';
+      } else {
+        const war = getOrInitWarSession();
+        const updateRes = updateWarRules(war, { warDurationMinutes: minutes }, interaction.user.username);
+        actionOutcome = `⏱️ **Active War Time Limit:** Set to **${minutes > 0 ? `${minutes} Minutes` : 'Endless (No Limit)'}**!\n${updateRes.message}`;
+        currentCategory = 'war_rules';
+      }
+
+      const hub = buildAdminHub(currentCategory, actionOutcome);
+      await interaction.reply({
+        embeds: hub.embeds,
+        components: hub.components,
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
+    // Handle Servant Level Cap Modal Submissions (Rules & Announce)
+    if (customId === 'admin_modal_war_custom_level' || customId === 'admin_modal_ann_custom_level') {
+      let inputVal = '';
+      try { inputVal = interaction.fields.getTextInputValue('war_custom_level_input')?.trim() || ''; } catch {}
+      const isAnnounce = customId === 'admin_modal_ann_custom_level';
+
+      let lvl = 0;
+      if (inputVal === '0' || inputVal.toLowerCase() === 'none' || inputVal.toLowerCase() === 'no cap') {
+        lvl = 0;
+      } else {
+        const directNum = parseInt(inputVal.replace(/[^\d]/g, ''), 10);
+        if (!isNaN(directNum) && directNum > 0) lvl = directNum;
+      }
+
+      if (isAnnounce) {
+        adminAnnounceDraft.maxServantLevel = lvl > 0 ? lvl : undefined;
+        actionOutcome = `🔰 **Proclamation Servant Level Cap:** Set to **${lvl > 0 ? `Lv. ${lvl} (+5 Buffer)` : 'No Limit'}**!`;
+        currentCategory = 'war_announce';
+      } else {
+        const war = getOrInitWarSession();
+        const updateRes = updateWarRules(war, { maxServantLevel: lvl }, interaction.user.username);
+        actionOutcome = `🔰 **Servant Level Limit:** Set to **${lvl > 0 ? `Lv. ${lvl} (+5 Buffer)` : 'No Limit'}**!\n${updateRes.message}`;
+        currentCategory = 'war_rules';
+      }
+
+      const hub = buildAdminHub(currentCategory, actionOutcome);
+      await interaction.reply({
+        embeds: hub.embeds,
+        components: hub.components,
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
     // Detect category
-    if (customId === 'admin_tab_war_announce' || customId.startsWith('admin_war_announce') || customId.startsWith('admin_war_timer_') || customId.startsWith('admin_war_ann_preset_')) {
+    if (customId === 'admin_tab_war_announce' || customId.startsWith('admin_war_announce') || customId.startsWith('admin_war_timer_') || customId.startsWith('admin_war_ann_')) {
       currentCategory = 'war_announce';
     } else if (customId === 'admin_tab_war' || customId.startsWith('admin_war_') || customId.startsWith('admin_cata_')) {
       currentCategory = 'war';
@@ -2162,16 +2247,21 @@ export async function handleAdminGlobalInteraction(interaction: any) {
               durationMinutes: adminAnnounceDraft.durationMinutes,
               maxSlots: adminAnnounceDraft.maxSlots,
               presetKey: adminAnnounceDraft.presetKey,
-              customExpiresAt: adminAnnounceDraft.customTargetTimestamp
+              customExpiresAt: adminAnnounceDraft.customTargetTimestamp,
+              warDurationMinutes: adminAnnounceDraft.warDurationMinutes,
+              maxServantLevel: adminAnnounceDraft.maxServantLevel
             });
 
             if (res.success) {
               const sec = Math.floor((res.recruitment?.expiresAt || Date.now()) / 1000);
               const timerStr = res.recruitment?.expiresAt ? `<t:${sec}:R> (<t:${sec}:f>)` : 'Manual Start';
+              const warTimeNotice = adminAnnounceDraft.warDurationMinutes ? `\n• **Active War Time Limit:** \`${adminAnnounceDraft.warDurationMinutes} Minutes\`` : '';
+              const lvlCapNotice = adminAnnounceDraft.maxServantLevel ? `\n• **Servant Level Cap:** \`Lv. ${adminAnnounceDraft.maxServantLevel}\` (+5 Buffer)` : '';
               actionOutcome = `✅ **Holy Grail War Recruitment Broadcasted to <#${selectedChanId}>!**\n\n` +
                 `• **Target Channel:** <#${selectedChanId}>\n` +
                 `• **Format:** \`${WAR_PRESETS[adminAnnounceDraft.presetKey]?.formatName || 'Fuyuki 7'}\` (${adminAnnounceDraft.maxSlots} Max Masters)\n` +
-                `• **Countdown Deadline:** ${timerStr}\n` +
+                `• **Countdown Deadline:** ${timerStr}` +
+                warTimeNotice + lvlCapNotice + `\n` +
                 `• **Secrecy:** Magi can now safely click to enroll with complete anonymity!`;
             } else {
               actionOutcome = `❌ **Recruitment Dispatch Failed:** ${res.message}`;
@@ -2196,16 +2286,21 @@ export async function handleAdminGlobalInteraction(interaction: any) {
           durationMinutes: adminAnnounceDraft.durationMinutes,
           maxSlots: adminAnnounceDraft.maxSlots,
           presetKey: adminAnnounceDraft.presetKey,
-          customExpiresAt: adminAnnounceDraft.customTargetTimestamp
+          customExpiresAt: adminAnnounceDraft.customTargetTimestamp,
+          warDurationMinutes: adminAnnounceDraft.warDurationMinutes,
+          maxServantLevel: adminAnnounceDraft.maxServantLevel
         });
 
         if (res.success) {
           const sec = Math.floor((res.recruitment?.expiresAt || Date.now()) / 1000);
           const timerStr = res.recruitment?.expiresAt ? `<t:${sec}:R> (<t:${sec}:f>)` : 'Manual Start';
+          const warTimeNotice = adminAnnounceDraft.warDurationMinutes ? `\n• **Active War Time Limit:** \`${adminAnnounceDraft.warDurationMinutes} Minutes\`` : '';
+          const lvlCapNotice = adminAnnounceDraft.maxServantLevel ? `\n• **Servant Level Cap:** \`Lv. ${adminAnnounceDraft.maxServantLevel}\` (+5 Buffer)` : '';
           actionOutcome = `✅ **Holy Grail War Recruitment Broadcasted to <#${targetChan.id}>!**\n\n` +
             `• **Channel:** <#${targetChan.id}>\n` +
             `• **Countdown Deadline:** ${timerStr}\n` +
-            `• **Capacity:** ${adminAnnounceDraft.maxSlots} Masters\n` +
+            `• **Capacity:** ${adminAnnounceDraft.maxSlots} Masters` +
+            warTimeNotice + lvlCapNotice + `\n` +
             `• **Secrecy:** Magi enrollment is completely anonymous.`;
         } else {
           actionOutcome = `❌ **Recruitment Dispatch Blocked:** ${res.message}`;
@@ -2229,16 +2324,21 @@ export async function handleAdminGlobalInteraction(interaction: any) {
           maxSlots: adminAnnounceDraft.maxSlots,
           presetKey: adminAnnounceDraft.presetKey,
           forceRestart: true,
-          customExpiresAt: adminAnnounceDraft.customTargetTimestamp
+          customExpiresAt: adminAnnounceDraft.customTargetTimestamp,
+          warDurationMinutes: adminAnnounceDraft.warDurationMinutes,
+          maxServantLevel: adminAnnounceDraft.maxServantLevel
         });
 
         if (res.success) {
           const sec = Math.floor((res.recruitment?.expiresAt || Date.now()) / 1000);
           const timerStr = res.recruitment?.expiresAt ? `<t:${sec}:R> (<t:${sec}:f>)` : 'Manual Start';
+          const warTimeNotice = adminAnnounceDraft.warDurationMinutes ? `\n• **Active War Time Limit:** \`${adminAnnounceDraft.warDurationMinutes} Minutes\`` : '';
+          const lvlCapNotice = adminAnnounceDraft.maxServantLevel ? `\n• **Servant Level Cap:** \`Lv. ${adminAnnounceDraft.maxServantLevel}\` (+5 Buffer)` : '';
           actionOutcome = `✅ **Previous Call Cancelled & New Proclamation Broadcasted to <#${targetChan.id}>!**\n\n` +
             `• **Channel:** <#${targetChan.id}>\n` +
             `• **Countdown Deadline:** ${timerStr}\n` +
-            `• **Capacity:** ${adminAnnounceDraft.maxSlots} Masters\n` +
+            `• **Capacity:** ${adminAnnounceDraft.maxSlots} Masters` +
+            warTimeNotice + lvlCapNotice + `\n` +
             `• **Clean Transition:** The previous proclamation card was safely cancelled.`;
         } else {
           actionOutcome = `❌ **Recruitment Dispatch Failed:** ${res.message}`;
@@ -2310,6 +2410,42 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       currentCategory = 'war_announce';
       const res = await cancelRecruitmentCall(interaction.client, interaction.user.username, interaction.guildId || undefined);
       actionOutcome = res.message;
+    } else if (customId === 'admin_war_ann_wartime') {
+      const modal = new ModalBuilder()
+        .setCustomId('admin_modal_ann_custom_timer')
+        .setTitle('⏱️ War Duration (Time Limit)')
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('war_custom_timer_input')
+              .setLabel('Active War Time Limit (e.g. 1h, 6h, 24h)')
+              .setPlaceholder('Enter minutes, hours, or days (e.g. 60m, 6h, 24h, 3d, or 0/endless)')
+              .setValue(adminAnnounceDraft.warDurationMinutes ? `${adminAnnounceDraft.warDurationMinutes}m` : '0')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(30)
+          )
+        );
+      await interaction.showModal(modal);
+      return;
+    } else if (customId === 'admin_war_ann_lvllimit') {
+      const modal = new ModalBuilder()
+        .setCustomId('admin_modal_ann_custom_level')
+        .setTitle('🔰 Servant Level Cap')
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('war_custom_level_input')
+              .setLabel('Max Servant Level (0/none for no cap)')
+              .setPlaceholder('Enter max level (e.g. 50, 70, 90, 100, or 0 for no limit)')
+              .setValue(adminAnnounceDraft.maxServantLevel ? `${adminAnnounceDraft.maxServantLevel}` : '0')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(10)
+          )
+        );
+      await interaction.showModal(modal);
+      return;
     }
 
     // WAR PRESETS
@@ -2478,6 +2614,58 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       const updateRes = updateWarRules(war, { factionMode: !current }, interaction.user.username);
       actionOutcome = `🚩 **Faction War Mode is now ${!current ? 'ACTIVE (Red vs Black Teams)' : 'FREE-FOR-ALL (Every Master for themselves)'}!**\n${updateRes.message}`;
       currentCategory = 'war_rules';
+    } else if (customId === 'admin_set_wartime_custom') {
+      const war = getOrInitWarSession();
+      const currentMinutes = war.rules?.warDurationMinutes || 0;
+      const modal = new ModalBuilder()
+        .setCustomId('admin_modal_war_custom_timer')
+        .setTitle('⏱️ War Duration (Time Limit)')
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('war_custom_timer_input')
+              .setLabel('Active War Time Limit (e.g. 1h, 6h, 24h)')
+              .setPlaceholder('Enter minutes, hours, or days (e.g. 60m, 6h, 24h, 3d, or 0/endless)')
+              .setValue(currentMinutes > 0 ? `${currentMinutes}m` : '0')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(30)
+          )
+        );
+      await interaction.showModal(modal);
+      return;
+    } else if (customId.startsWith('admin_set_wartime_')) {
+      const minutes = parseInt(customId.replace('admin_set_wartime_', ''), 10);
+      const war = getOrInitWarSession();
+      const updateRes = updateWarRules(war, { warDurationMinutes: minutes }, interaction.user.username);
+      actionOutcome = `⏱️ **Active War Time Limit:** Set to **${minutes > 0 ? `${minutes} Minutes` : 'Endless (No Limit)'}**!\n${updateRes.message}`;
+      currentCategory = 'war_rules';
+    } else if (customId === 'admin_set_lvllimit_custom') {
+      const war = getOrInitWarSession();
+      const currentLvl = war.rules?.maxServantLevel || 0;
+      const modal = new ModalBuilder()
+        .setCustomId('admin_modal_war_custom_level')
+        .setTitle('🔰 Servant Level Cap')
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('war_custom_level_input')
+              .setLabel('Max Servant Level (0/none for no cap)')
+              .setPlaceholder('Enter max level (e.g. 50, 70, 90, 100, or 0 for no limit)')
+              .setValue(currentLvl > 0 ? `${currentLvl}` : '0')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(10)
+          )
+        );
+      await interaction.showModal(modal);
+      return;
+    } else if (customId.startsWith('admin_set_lvllimit_')) {
+      const lvl = parseInt(customId.replace('admin_set_lvllimit_', ''), 10);
+      const war = getOrInitWarSession();
+      const updateRes = updateWarRules(war, { maxServantLevel: lvl }, interaction.user.username);
+      actionOutcome = `🔰 **Servant Level Limit:** Set to **${lvl > 0 ? `Lv. ${lvl} (+5 Buffer)` : 'No Limit'}**!\n${updateRes.message}`;
+      currentCategory = 'war_rules';
     }
 
     // RULE CUSTOMIZATION SELECT MENU
@@ -2486,7 +2674,53 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       const war = getOrInitWarSession();
       let ruleChanges: Partial<WarRules> = {};
 
-      if (val === 'seals_1') ruleChanges = { startingCommandSeals: 1 };
+      if (val === 'wartime_custom') {
+        const currentMinutes = war.rules?.warDurationMinutes || 0;
+        const modal = new ModalBuilder()
+          .setCustomId('admin_modal_war_custom_timer')
+          .setTitle('⏱️ War Duration (Time Limit)')
+          .addComponents(
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId('war_custom_timer_input')
+                .setLabel('Active War Time Limit (e.g. 1h, 6h, 24h)')
+                .setPlaceholder('Enter minutes, hours, or days (e.g. 60m, 6h, 24h, 3d, or 0/endless)')
+                .setValue(currentMinutes > 0 ? `${currentMinutes}m` : '0')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setMaxLength(30)
+            )
+          );
+        await interaction.showModal(modal);
+        return;
+      } else if (val === 'lvllimit_custom') {
+        const currentLvl = war.rules?.maxServantLevel || 0;
+        const modal = new ModalBuilder()
+          .setCustomId('admin_modal_war_custom_level')
+          .setTitle('🔰 Servant Level Cap')
+          .addComponents(
+            new ActionRowBuilder<TextInputBuilder>().addComponents(
+              new TextInputBuilder()
+                .setCustomId('war_custom_level_input')
+                .setLabel('Max Servant Level (0/none for no cap)')
+                .setPlaceholder('Enter max level (e.g. 50, 70, 90, 100, or 0 for no limit)')
+                .setValue(currentLvl > 0 ? `${currentLvl}` : '0')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true)
+                .setMaxLength(10)
+            )
+          );
+        await interaction.showModal(modal);
+        return;
+      } else if (val === 'wartime_0') ruleChanges = { warDurationMinutes: 0 };
+      else if (val === 'wartime_60') ruleChanges = { warDurationMinutes: 60 };
+      else if (val === 'wartime_360') ruleChanges = { warDurationMinutes: 360 };
+      else if (val === 'wartime_1440') ruleChanges = { warDurationMinutes: 1440 };
+      else if (val === 'lvllimit_0') ruleChanges = { maxServantLevel: 0 };
+      else if (val === 'lvllimit_50') ruleChanges = { maxServantLevel: 50 };
+      else if (val === 'lvllimit_70') ruleChanges = { maxServantLevel: 70 };
+      else if (val === 'lvllimit_90') ruleChanges = { maxServantLevel: 90 };
+      else if (val === 'seals_1') ruleChanges = { startingCommandSeals: 1 };
       else if (val === 'seals_2') ruleChanges = { startingCommandSeals: 2 };
       else if (val === 'seals_3') ruleChanges = { startingCommandSeals: 3 };
       else if (val === 'seals_5') ruleChanges = { startingCommandSeals: 5 };
@@ -2515,6 +2749,7 @@ export async function handleAdminGlobalInteraction(interaction: any) {
 
       const updateRes = updateWarRules(war, ruleChanges, interaction.user.username);
       actionOutcome = `⚙️ **Rule Applied:** ${updateRes.message}`;
+      currentCategory = 'war_rules';
     }
 
     // SETTINGS ACTIONS

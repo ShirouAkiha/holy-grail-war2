@@ -688,6 +688,8 @@ export interface WarMasterParticipant {
   eliminatedBy?: string;
   fatalSkillUsed?: string;
   deathChannel?: string;
+  servantLevelAtEntry?: number;
+  levelWarningSent?: boolean;
   eliminatedReason?: string;
 }
 
@@ -735,6 +737,7 @@ export interface WarRules {
   trapLimitPerMaster: number;
   warDurationMinutes?: number;
   warEndAction?: 'grail_corruption';
+  maxServantLevel?: number;
   factionMode?: boolean;
   factions?: {
     red?: string[];
@@ -801,6 +804,8 @@ export interface WarRecruitmentCall {
   presetKey: string;
   applicantIds: string[]; // List of Discord User IDs who inscribed their seals
   applicantServantChoices?: Record<string, string>; // Maps userId -> servantId chosen for the war
+  warDurationMinutes?: number; // Active War duration once ignited
+  maxServantLevel?: number; // Level limit for participants
   initiatedBy: string; // Admin username
   initiatedById: string; // Admin discord ID
 }

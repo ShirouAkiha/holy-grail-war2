@@ -20,7 +20,7 @@ import {
   resolveAscensionArtwork 
 } from '../data/servantAscensions';
 import { getServantProfile } from '../engine/dialogue';
-import { getOrInitWarSession, exposeMasterInWar, getHealingStatus, getAllWarSessions } from '../engine/grailwar';
+import { getOrInitWarSession, exposeMasterInWar, getHealingStatus, getAllWarSessions, checkAndEnforceWarLevelLimits, WarLevelLimitResult } from '../engine/grailwar';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { allocateStatPoints, calculateServantMaxHp, calculateServantMaxAtk, getParameterRank, getParameterRankMultiplier, getServantDefaultParamRank, getEnduranceDamageReductionPercent } from '../engine/statSystem';
@@ -1095,6 +1095,16 @@ export async function handleGlobalServantInteraction(i: any) {
     let targetServant = findServantInRoster(master.servants, currentServantId) || master.servants[0];
     const sName = targetServant?.nickname || targetServant?.template?.name || 'Servant';
     let actionOutcomeMsg = '';
+    let warLevelLimitNotice: any = null;
+    const checkLevelLimit = () => {
+      if (master.environmentMode === 'war') {
+        const limitRes = checkAndEnforceWarLevelLimits(undefined, master, targetServant);
+        if (limitRes) {
+          warLevelLimitNotice = limitRes;
+          actionOutcomeMsg += `\n\n${limitRes.message}`;
+        }
+      }
+    };
 
       // DROPDOWN PAGE NAVIGATION
       if (i.customId.startsWith('servant_pagedrop_prev_')) {
@@ -1449,6 +1459,7 @@ export async function handleGlobalServantInteraction(i: any) {
           actionOutcomeMsg = `✨ Synthesized ${result.fedEssences.length} Universal EXP Embers!\n` +
             `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
             (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
+          if (levelDiff > 0) checkLevelLimit();
         }
       }
       else if (i.customId === 'servant_act_feed_3star') {
@@ -1469,6 +1480,7 @@ export async function handleGlobalServantInteraction(i: any) {
           actionOutcomeMsg = `⚡ Synthesized ${result.fedEssences.length} Low-Rarity (1-3★) Craft Essences!\n` +
             `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
             (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
+          if (levelDiff > 0) checkLevelLimit();
         }
       } else if (i.customId === 'servant_act_feed_dupes') {
         const owned = (master.craftEssences || []).filter(Boolean);
@@ -1499,6 +1511,7 @@ export async function handleGlobalServantInteraction(i: any) {
           actionOutcomeMsg = `🔥 Synthesized ${result.fedEssences.length} Duplicate Craft Essences!\n` +
             `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
             (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
+          if (levelDiff > 0) checkLevelLimit();
         }
       } else if (i.customId === 'servant_act_unlock_all_ces') {
         const owned = (master.craftEssences || []).filter(Boolean);
@@ -1527,6 +1540,7 @@ export async function handleGlobalServantInteraction(i: any) {
           actionOutcomeMsg = `☣️ Synthesized ALL ${result.fedEssences.length} Unlocked Craft Essences!\n` +
             `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
             (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
+          if (levelDiff > 0) checkLevelLimit();
         }
       }
       // EQUIP CRAFT ESSENCE DROPDOWN
@@ -1569,6 +1583,7 @@ export async function handleGlobalServantInteraction(i: any) {
         actionOutcomeMsg = `✨ Synthesized ${result.fedEssences.length} Craft Essence${result.fedEssences.length > 1 ? 's' : ''}!\n` +
           `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
           (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
+        if (levelDiff > 0) checkLevelLimit();
       }
       // SET ACTIVE CONTRACT
       else if (i.customId === 'servant_act_set_active') {
@@ -2023,6 +2038,10 @@ export async function handleGlobalServantInteraction(i: any) {
         true, // isUpdate = true
         servantPage
       );
+
+      if (warLevelLimitNotice?.embed) {
+        hub.embeds.unshift(warLevelLimitNotice.embed);
+      }
 
       if (i.deferred || i.replied) {
         await i.editReply({

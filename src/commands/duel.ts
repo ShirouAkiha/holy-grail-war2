@@ -14,7 +14,7 @@ import { getOrCreateMaster, saveMaster, getDuelNpSettings, getAllMasters, getAll
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
 import { resolveAscensionSprite } from '../data/servantAscensions';
-import { getOrInitWarSession, findActiveWarSessionForMaster, recordDuelOutcome, calculateCurrentHp, getReputationInfo, isUserSlainCivilianInWar } from '../engine/grailwar';
+import { getOrInitWarSession, findActiveWarSessionForMaster, recordDuelOutcome, calculateCurrentHp, getReputationInfo, isUserSlainCivilianInWar, checkAndEnforceWarLevelLimits } from '../engine/grailwar';
 import { getMasterEnvironment } from '../engine/environmentService';
 import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard, renderMasterCommandSealDialogueCard, renderSkillDialogueCard, cleanCanvasText } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
@@ -8424,6 +8424,12 @@ async function finalizeDuelRewardsAndSync(
 
       await saveMaster(wMaster);
 
+      let warLevelNotice = null;
+      if (battleDidLvl && !isWinnerSafe) {
+        const winServant = wMaster.servants.find(srv => srv.id === winner.servant.id) || wMaster.servants[0];
+        warLevelNotice = checkAndEnforceWarLevelLimits(warSession, wMaster, winServant);
+      }
+
       const totalWinBonusPts = (!isFreeBattle && winStatPoints > 0 ? winStatPoints : 0) + battlePtsGained;
       const statStr = totalWinBonusPts > 0 ? ` | 📊 +${totalWinBonusPts} Stat Pts` : '';
       const battleLvlStr = battleDidLvl ? ` 🌟 **[LEVEL UP! Lv.${battleNewLvl}]**` : '';
@@ -8437,6 +8443,18 @@ async function finalizeDuelRewardsAndSync(
       winnerRewardLines.push(
         `• 🏆 **Master ${winner.username}** (${sName})${roleStr}: +${winSq} SQ 💎 | +${winLevelExp.toLocaleString()} Level EXP ⚔️ | +${winBondExp} Bond EXP 💖 | +${winManaPrisms} Prisms 🔵${statStr}${battleLvlStr}${bondLvlStr}`
       );
+
+      if (warLevelNotice) {
+        if (warLevelNotice.status === 'disqualified') {
+          winnerRewardLines.push(
+            `  🚨 **WAR DISQUALIFICATION:** **${sName}** reached **Lv. ${battleNewLvl}** (exceeded Lv. ${warLevelNotice.maxLevel} war cap by 5+ levels). Master **${winner.username}** disqualified and demobilized to Safe Mode!`
+          );
+        } else if (warLevelNotice.status === 'warning') {
+          winnerRewardLines.push(
+            `  ⚠️ **LEVEL CAP WARNING:** **${sName}** reached **Lv. ${battleNewLvl}** (War Cap: **Lv. ${warLevelNotice.maxLevel}**). Gaining **${warLevelNotice.levelsUntilDisqualification} more level(s)** will trigger disqualification!`
+          );
+        }
+      }
     }
 
     if (!isWinnerSafe) {

@@ -13,6 +13,7 @@ import { clearServantWarMemories } from './servantMemoryService';
 import { getParameterRankMultiplier, getServantDefaultParamRank } from './statSystem';
 import fs from 'fs';
 import path from 'path';
+import { EmbedBuilder } from 'discord.js';
 
 // =========================================================================
 // WAR PRESETS & RITUAL CONFIGURATIONS
@@ -701,6 +702,23 @@ export function attemptJoinWar(
     };
   }
 
+  // Validate Servant Level against War Level Limit
+  const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+  const sLevel = activeServant?.level || 1;
+  const sName = (activeServant as any)?.nickname || (activeServant as any)?.template?.name || (activeServant as any)?.name || 'Heroic Spirit';
+
+  if (targetWar.rules?.maxServantLevel && sLevel > targetWar.rules.maxServantLevel) {
+    return {
+      success: false,
+      message: `🚫 **CANNOT JOIN WAR — SERVANT LEVEL LIMIT EXCEEDED**\n\n` +
+        `This Holy Grail War has a maximum Servant level threshold of **Lv. ${targetWar.rules.maxServantLevel}**.\n` +
+        `Your active champion **${sName}** is **Lv. ${sLevel}**, which exceeds the allowed tournament threshold.\n\n` +
+        `• 🕊️ **Safe Mode Active:** You remain safely in Chaldea Sanctuary Safe Mode.\n` +
+        `• ⚔️ **Alternative:** Select a Servant at or below Lv. ${targetWar.rules.maxServantLevel} via \`/servant\` before entering the war.`,
+      war: targetWar
+    };
+  }
+
   if (!master.guildEnvironmentModes) {
     master.guildEnvironmentModes = {};
   }
@@ -709,9 +727,7 @@ export function attemptJoinWar(
 
   // If master is not yet registered in targetWar participants, register them immediately
   if (!targetWar.participants[master.discordId]) {
-    const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
     const sMaxHp = activeServant ? calculateServantMaxHp(activeServant) : 50000;
-    const sName = (activeServant as any)?.nickname || (activeServant as any)?.template?.name || (activeServant as any)?.name || 'Heroic Spirit';
     const sClass = (activeServant as any)?.template?.servantClass || (activeServant as any)?.servantClass || 'Saber';
     const avatar = (activeServant as any)?.template?.avatarUrl || (activeServant as any)?.avatarUrl || master.avatarUrl;
 
@@ -728,7 +744,8 @@ export function attemptJoinWar(
       isAlive: true,
       isExposed: false,
       kills: 0,
-      innocentKills: 0
+      innocentKills: 0,
+      servantLevelAtEntry: sLevel
     };
     saveWarToDisk();
   }
@@ -737,6 +754,123 @@ export function attemptJoinWar(
     success: true,
     message: `⚔️ **WAR MODE ACTIVATED!** You are an active competitor in this server's Holy Grail War!`,
     war: targetWar
+  };
+}
+
+export interface WarLevelLimitResult {
+  status: 'disqualified' | 'warning';
+  maxLevel: number;
+  currentLevel: number;
+  levelDiff: number;
+  levelsUntilDisqualification?: number;
+  embed: EmbedBuilder;
+  message: string;
+}
+
+/**
+ * Validates a Master's active Servant level against the Holy Grail War level cap.
+ * - If current level > maxLevel and < maxLevel + 5: triggers a warning notification.
+ * - If current level >= maxLevel + 5: immediately disqualifies the participant,
+ *   logs the elimination, and restores them to Safe Mode via demobilizeMasterToSafeMode.
+ */
+export function checkAndEnforceWarLevelLimits(
+  warSession?: HolyGrailWarSession,
+  master?: MasterProfile,
+  servant?: any
+): WarLevelLimitResult | null {
+  if (!master || !servant) return null;
+
+  const targetWar = warSession || getOrInitWarSession(master, master.guildId);
+  if (!targetWar || targetWar.status !== 'active') return null;
+
+  const participant = targetWar.participants[master.discordId] ||
+    Object.values(targetWar.participants).find(x => x.discordId === master.discordId);
+
+  if (!participant || !participant.isAlive) return null;
+
+  const maxLevel = targetWar.rules?.maxServantLevel;
+  if (!maxLevel || maxLevel <= 0) return null;
+
+  const currentLevel = servant.level || 1;
+  if (currentLevel <= maxLevel) return null;
+
+  const sName = servant.nickname || servant.template?.name || servant.name || participant.servantName || 'Heroic Spirit';
+
+  // Case A: Exceeds threshold by 5 levels -> Disqualification
+  if (currentLevel >= maxLevel + 5) {
+    participant.isAlive = false;
+    participant.deathTimestamp = Date.now();
+    participant.eliminatedReason = 'level_limit_disqualified';
+
+    targetWar.eventLogs.unshift({
+      id: `evt_dq_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `⚖️ **DISQUALIFICATION:** Master **${master.username}** (${sName}) exceeded the Holy Grail War level cap of **Lv. ${maxLevel}** by 5+ levels (Current: Lv. ${currentLevel}) and has been immediately expelled back to Safe Mode!`,
+      type: 'casualty'
+    });
+
+    demobilizeMasterToSafeMode(master.discordId, targetWar.guildId, master.username).catch((err) => {
+      console.error('[checkAndEnforceWarLevelLimits] Demobilize failed:', err);
+    });
+
+    saveWarToDisk();
+
+    const embed = new EmbedBuilder()
+      .setTitle('⚖️ HOLY GRAIL WAR DISQUALIFICATION NOTICE')
+      .setColor(0xdc2626) // Deep Crimson Red
+      .setDescription(
+        `🚨 **TOURNAMENT DISQUALIFICATION: LEVEL THRESHOLD VIOLATION**\n\n` +
+        `Master **${master.username}**, your champion **${sName}** has reached **Lv. ${currentLevel}**, which exceeds the active Holy Grail War level cap of **Lv. ${maxLevel}** by **${currentLevel - maxLevel} levels** (threshold limit: +5 levels).\n\n` +
+        `Church regulations and the Greater Grail have **immediately revoked your Command Seals** for this war cycle to preserve tournament equilibrium.\n\n` +
+        `• 🕊️ **Safe Mode Restored:** You have been demobilized back to **Sanctuary Safe Mode**.\n` +
+        `• ❤️ **Vitality Restored:** Servant HP fully recovered to 100% Max HP.\n` +
+        `• ✦ **Command Seals Restored:** 3 Command Seals replenished for peaceful Chaldea operations.`
+      )
+      .setFooter({ text: 'Fuyuki Church Overseer • Level Regulation Enforcement' })
+      .setTimestamp();
+
+    const message = `🚨 **WAR DISQUALIFICATION:** **${sName}** reached **Lv. ${currentLevel}**, exceeding the **Lv. ${maxLevel}** threshold by 5+ levels. Master **${master.username}** has been disqualified and returned to Safe Mode!`;
+
+    return {
+      status: 'disqualified',
+      maxLevel,
+      currentLevel,
+      levelDiff: currentLevel - maxLevel,
+      embed,
+      message
+    };
+  }
+
+  // Case B: Warning Zone (1 to 4 levels over threshold)
+  const remaining = (maxLevel + 5) - currentLevel;
+  participant.levelWarningSent = true;
+  saveWarToDisk();
+
+  const embed = new EmbedBuilder()
+    .setTitle('⚠️ HOLY GRAIL WAR LEVEL CAP WARNING')
+    .setColor(0xf59e0b) // Amber Warning
+    .setDescription(
+      `⚡ **WARNING: SERVANT EXCEEDS WAR LEVEL THRESHOLD**\n\n` +
+      `Master **${master.username}**, your champion **${sName}** has reached **Lv. ${currentLevel}**, which exceeds the tournament level cap of **Lv. ${maxLevel}**!\n\n` +
+      `⚠️ **Disqualification Buffer Active:**\n` +
+      `Under Holy Church tournament rules, a grace buffer of **+5 levels** is permitted before mandatory expulsion.\n\n` +
+      `• **Current Level:** \`Lv. ${currentLevel}\` / Cap: \`Lv. ${maxLevel}\`\n` +
+      `• **Disqualification Threshold:** \`Lv. ${maxLevel + 5}\` (**${remaining} level${remaining === 1 ? '' : 's'}** remaining!)\n\n` +
+      `🚨 **CRITICAL NOTICE:** If your Servant increases by **${remaining} more level${remaining === 1 ? '' : 's'}** (reaching **Lv. ${maxLevel + 5}**), you will be **immediately disqualified** from the Holy Grail War and demobilized to Safe Mode!`
+    )
+    .setFooter({ text: 'Fuyuki Church Overseer • Level Cap Warning' })
+    .setTimestamp();
+
+  const message = `⚠️ **LEVEL CAP WARNING:** **${sName}** is **Lv. ${currentLevel}** (War Cap: **Lv. ${maxLevel}**). Gaining **${remaining} more level${remaining === 1 ? '' : 's'}** (+5 over cap) will cause immediate disqualification!`;
+
+  return {
+    status: 'warning',
+    maxLevel,
+    currentLevel,
+    levelDiff: currentLevel - maxLevel,
+    levelsUntilDisqualification: remaining,
+    embed,
+    message
   };
 }
 
@@ -3305,7 +3439,10 @@ export function startOrRestartWar(
     `💀 **Lethality:** ${newRules.permadeath ? '☠️ Classic Permadeath' : '🛡️ Casual Training (Recovery Allowed)'}\n` +
     `⚡ **Command Seals:** **${newRules.startingCommandSeals} Seals** per Master\n` +
     `💧 **Leylines:** ${newRules.leylineDensity === 'fast' ? '⚡ High Surge (2x Fast Recovery)' : newRules.leylineDensity === 'desolate' ? '🏜️ Desolate (No Auto-Regen)' : 'Balanced Standard'}\n` +
-    `⛪ **Church Sanctuary:** ${newRules.churchAsylum ? '🟢 Active Asylum under Father Kotomine' : '🔴 Desecrated (No Asylum)'}\n\n` +
+    `⛪ **Church Sanctuary:** ${newRules.churchAsylum ? '🟢 Active Asylum under Father Kotomine' : '🔴 Desecrated (No Asylum)'}\n` +
+    (newRules.warDurationMinutes && newRules.warDurationMinutes > 0 ? `⏳ **Time Horizon:** **${newRules.warDurationMinutes} Minutes** until Greater Grail Corruption\n` : '') +
+    (newRules.maxServantLevel && newRules.maxServantLevel > 0 ? `🔰 **Level Threshold:** Max **Lv. ${newRules.maxServantLevel}** (+5 Disqualification buffer)\n` : '') +
+    `\n` +
     (options.wipeRoster 
       ? `🧹 **Fresh Season:** The war roster has been cleared! All Masters must perform the Summoning Ritual (\`/summon ritual\`) to form new contracts.\n`
       : `*All Master HP and Command Seals have been fully restored. Summon your Servant or enter the shadows with \`/patrol\` or \`/profile\`!*\n`);
@@ -3396,7 +3533,23 @@ export function updateWarRules(
     }
   }
 
-  const changeSummaries = Object.entries(ruleChanges).map(([k, v]) => `• **${k}:** \`${String(v)}\``).join('\n');
+  if (ruleChanges.maxServantLevel !== undefined) {
+    if (ruleChanges.maxServantLevel > 0) {
+      targetWar.rules.maxServantLevel = ruleChanges.maxServantLevel;
+    } else {
+      targetWar.rules.maxServantLevel = undefined;
+    }
+  }
+
+  const changeSummaries = Object.entries(ruleChanges).map(([k, v]) => {
+    if (k === 'warDurationMinutes') {
+      return `• **War Time Limit:** \`${v && Number(v) > 0 ? `${v} Minutes` : 'Endless / None'}\``;
+    }
+    if (k === 'maxServantLevel') {
+      return `• **Servant Level Cap:** \`${v && Number(v) > 0 ? `Lv. ${v}` : 'No Limit'}\``;
+    }
+    return `• **${k}:** \`${String(v)}\``;
+  }).join('\n');
   const msg = `⚙️ **War Rules Updated by Admin (${adminUsername}):**\n${changeSummaries}`;
 
   targetWar.eventLogs.unshift({

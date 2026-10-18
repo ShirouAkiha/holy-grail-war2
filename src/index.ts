@@ -719,7 +719,7 @@ client.on(Events.InteractionCreate, async interaction => {
           components: card.components
         });
       }
-      else if (interaction.customId.startsWith('admin_modal_custom_timer') || interaction.customId.startsWith('admin_modal_custom_date')) {
+      else if (interaction.customId.startsWith('admin_modal_')) {
         await adminCommand.handleAdminGlobalInteraction(interaction);
       }
       else if (interaction.customId.startsWith('modal_set_api_key:') || interaction.customId.startsWith('modal_set_custom_model:')) {

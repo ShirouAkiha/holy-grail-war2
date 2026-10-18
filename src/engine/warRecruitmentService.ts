@@ -103,6 +103,8 @@ export function buildRecruitmentEmbed(
         value: 
           `👥 **Inscribed Aspirants:** **${applicantCount} Magi** have etched their souls onto the roster\n` +
           `🎯 **Ritual Architecture:** **${maxSlots} Master Seats** (${preset.formatName})\n` +
+          (recruitment.warDurationMinutes && recruitment.warDurationMinutes > 0 ? `⏳ **Active War Time Limit:** **${recruitment.warDurationMinutes} Minutes** (auto-corruption on timeout)\n` : '') +
+          (recruitment.maxServantLevel && recruitment.maxServantLevel > 0 ? `🔰 **Servant Level Cap:** Max **Lv. ${recruitment.maxServantLevel}** (+5 Disqualification buffer)\n` : '') +
           `📊 **Leyline Saturation:** ${progressBar} **${applicantCount}/${maxSlots}**\n` +
           `🩸 **Threshold State:** ${capacityNotice}`,
         inline: false
@@ -111,6 +113,8 @@ export function buildRecruitmentEmbed(
         name: '🛡️ SOVEREIGN DECREE OF SECRECY & SACRED EDICTS',
         value: 
           `• 🕶️ **Absolute Anonymity:** Master and Servant identities remain strictly cloaked under Holy Church thaumaturgical seals. No public registry shall be unveiled.\n` +
+          (recruitment.maxServantLevel && recruitment.maxServantLevel > 0 ? `• 🔰 **Level Threshold Decree:** Servants above **Lv. ${recruitment.maxServantLevel}** are barred from entry. Exceeding by +5 levels during the war triggers automatic disqualification!\n` : '') +
+          (recruitment.warDurationMinutes && recruitment.warDurationMinutes > 0 ? `• ⏳ **Time Horizon:** The war concludes within **${recruitment.warDurationMinutes} minutes**. Stalemate causes Greater Grail corruption!\n` : '') +
           `• 🎲 **The Chalice's Arbitrament:** Should inscriptions exceed **${maxSlots} Candidates**, the Greater Grail itself impartially selects the **${maxSlots} Destined Masters** upon ignition.\n` +
           `• 📬 **Telepathic Dispatch (DM):** Anointed Masters receive their confidential war codex, combat interface, and awakened Command Seals via private message directly.\n` +
           `• 🕊️ **Inviolable Sanctuary:** Those unchosen or choosing to withdraw dwell safely under Church protection in **Safe Mode**, free from all Holy Grail War combat.`,
@@ -166,6 +170,8 @@ export async function startWarRecruitment(
     presetKey?: string;
     forceRestart?: boolean;
     customExpiresAt?: number;
+    warDurationMinutes?: number;
+    maxServantLevel?: number;
   }
 ): Promise<{ success: boolean; message: string; recruitment?: WarRecruitmentCall }> {
   const war = getOrInitWarSession(undefined, channel.guild?.id);
@@ -204,6 +210,8 @@ export async function startWarRecruitment(
     durationMinutes: options.durationMinutes,
     maxSlots: options.maxSlots || 7,
     presetKey,
+    warDurationMinutes: options.warDurationMinutes,
+    maxServantLevel: options.maxServantLevel,
     applicantIds: [],
     initiatedBy: adminUser.username,
     initiatedById: adminUser.id
@@ -360,12 +368,15 @@ export async function handleRecruitmentInteraction(interaction: any, client: Cli
         const sClass = s.template?.servantClass || (s as any).servantClass || 'Saber';
         const npName = s.template?.noblePhantasm?.name || 'Noble Phantasm';
         const isDefault = s.id === (recruitment.applicantServantChoices?.[userId] || master.activeServantId || master.servants[0].id);
+        const sLvl = s.level || 1;
+        const exceedsCap = !!(recruitment.maxServantLevel && sLvl > recruitment.maxServantLevel);
+        const capTag = exceedsCap ? ` ⚠️ EXCEEDS LV.${recruitment.maxServantLevel} CAP` : '';
 
         return {
-          label: `${sName} (${sClass})`,
+          label: `${sName} (${sClass})${exceedsCap ? ' [Exceeds Cap]' : ''}`.slice(0, 100),
           value: s.id,
-          description: `Level ${s.level || 1} • NP: ${npName.slice(0, 45)}`,
-          emoji: '🗡️',
+          description: `Level ${sLvl}${capTag} • NP: ${npName}`.slice(0, 100),
+          emoji: exceedsCap ? '⚠️' : '🗡️',
           default: isDefault
         };
       });
@@ -385,7 +396,8 @@ export async function handleRecruitmentInteraction(interaction: any, client: Cli
         content:
           `👑 **Choose Your Champion Servant for the Holy Grail War**\n\n` +
           `You hold contracts with **${master.servants.length} Heroic Spirits**.\n` +
-          `Currently selected default: **${activeName}** (\`${activeClass}\`)\n\n` +
+          `Currently selected default: **${activeName}** (\`${activeClass}\`)\n` +
+          (recruitment.maxServantLevel ? `🔰 **Tournament Level Cap:** Max **Lv. ${recruitment.maxServantLevel}** (Servants above this cap cannot enter)\n\n` : '\n') +
           `Select the Servant you wish to deploy from the dropdown below to finalize your inscription:`,
         components: [selectMenu],
         flags: MessageFlags.Ephemeral
@@ -395,6 +407,22 @@ export async function handleRecruitmentInteraction(interaction: any, client: Cli
 
     // Master only has 1 servant
     const singleServant = master.servants[0];
+    const singleLvl = singleServant.level || 1;
+    const sName = singleServant.nickname || singleServant.template?.name || 'Heroic Spirit';
+    const sClass = singleServant.template?.servantClass || (singleServant as any).servantClass || 'Saber';
+
+    if (recruitment.maxServantLevel && singleLvl > recruitment.maxServantLevel) {
+      await interaction.reply({
+        content: `🚫 **SERVANT LEVEL LIMIT EXCEEDED**\n\n` +
+          `This Holy Grail War has a maximum Servant level threshold of **Lv. ${recruitment.maxServantLevel}**.\n` +
+          `Your champion **${sName}** is **Lv. ${singleLvl}**, exceeding the tournament entry cap!\n\n` +
+          `• 🕊️ You remain safely in Chaldea Sanctuary Safe Mode.\n` +
+          `• 🗡️ Summon or deploy a Servant at or below Lv. ${recruitment.maxServantLevel} to inscribe your Command Seals.`,
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
     recruitment.applicantServantChoices[userId] = singleServant.id;
 
     if (!recruitment.applicantIds.includes(userId)) {
@@ -405,13 +433,10 @@ export async function handleRecruitmentInteraction(interaction: any, client: Cli
     // Update announcement card
     await updateRecruitmentMessage(interaction.channel as any, recruitment, war);
 
-    const sName = singleServant.nickname || singleServant.template?.name || 'Heroic Spirit';
-    const sClass = singleServant.template?.servantClass || (singleServant as any).servantClass || 'Saber';
-
     await interaction.reply({
       content:
         `🔱 **COMMAND SEALS INSCRIBED!**\n\n` +
-        `Your soul has been submitted to the Greater Grail's applicant pool with champion **${sName}** (\`${sClass}\`).\n\n` +
+        `Your soul has been submitted to the Greater Grail's applicant pool with champion **${sName}** (\`${sClass}\` • Lv.${singleLvl}).\n\n` +
         `• 🕶️ **Identity Concealed:** Your name and Servant remain completely confidential.\n` +
         `• 🎲 **Selection Draw:** When the countdown concludes, **${recruitment.maxSlots} Masters** will be chosen randomly.\n` +
         `• 📬 **Telepathic Notice:** If selected, you will receive an immediate private Discord DM with your battle orders!`,
@@ -434,6 +459,21 @@ export async function handleRecruitmentInteraction(interaction: any, client: Cli
       return;
     }
 
+    const chosenLvl = chosenServant.level || 1;
+    const sName = chosenServant.nickname || chosenServant.template?.name || 'Heroic Spirit';
+    const sClass = chosenServant.template?.servantClass || (chosenServant as any).servantClass || 'Saber';
+
+    if (recruitment.maxServantLevel && chosenLvl > recruitment.maxServantLevel) {
+      await interaction.reply({
+        content: `🚫 **SERVANT LEVEL LIMIT EXCEEDED**\n\n` +
+          `This Holy Grail War has a maximum Servant level threshold of **Lv. ${recruitment.maxServantLevel}**.\n` +
+          `Selected champion **${sName}** is **Lv. ${chosenLvl}**, which exceeds the tournament entry cap!\n\n` +
+          `Please select a Servant at or below Lv. ${recruitment.maxServantLevel} to finalize your inscription.`,
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
     recruitment.applicantServantChoices[userId] = chosenServant.id;
     if (!recruitment.applicantIds.includes(userId)) {
       recruitment.applicantIds.push(userId);
@@ -442,9 +482,6 @@ export async function handleRecruitmentInteraction(interaction: any, client: Cli
 
     // Update announcement card
     await updateRecruitmentMessage(interaction.channel as any, recruitment, war);
-
-    const sName = chosenServant.nickname || chosenServant.template?.name || 'Heroic Spirit';
-    const sClass = chosenServant.template?.servantClass || (chosenServant as any).servantClass || 'Saber';
 
     await interaction.reply({
       content:
@@ -1038,6 +1075,20 @@ export async function igniteWarFromRecruitment(
     targetGuildId
   );
 
+  // Apply active war time limit and level threshold from recruitment settings if configured
+  if (!freshWar.rules) {
+    freshWar.rules = { ...WAR_PRESETS.fuyuki_7 };
+  }
+  if (recruitment.warDurationMinutes && recruitment.warDurationMinutes > 0) {
+    freshWar.durationMinutes = recruitment.warDurationMinutes;
+    freshWar.deadlineTimestamp = Date.now() + recruitment.warDurationMinutes * 60 * 1000;
+    freshWar.rules.warDurationMinutes = recruitment.warDurationMinutes;
+    freshWar.rules.warEndAction = 'grail_corruption';
+  }
+  if (recruitment.maxServantLevel && recruitment.maxServantLevel > 0) {
+    freshWar.rules.maxServantLevel = recruitment.maxServantLevel;
+  }
+
   // Register each chosen Master into the active war session
   const chosenSummaryList: string[] = [];
 
@@ -1082,7 +1133,8 @@ export async function igniteWarFromRecruitment(
       isAlive: true,
       isExposed: false, // Stealth concealment
       kills: 0,
-      innocentKills: 0
+      innocentKills: 0,
+      servantLevelAtEntry: activeServant.level || 1
     };
 
     chosenSummaryList.push(`<@${discordId}>`);

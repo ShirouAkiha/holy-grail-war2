@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for Holy Grail War Safe Mode reversion upon death and war conclusion, and debugging the Command Seal visual novel dialogue cut-in canvas to display the user's Discord profile picture.",
-  "updatedAt": "2026-10-17T16:05:39.956906908Z",
+  "summary": "Implementation plan to recover and fix the Holy Grail War time limit controls in the Admin Hub (Rules and War Announcement setup), and implement the Servant level limit rule with entry restriction, warning embeds upon exceeding the threshold, and automatic disqualification at +5 levels over the limit.",
+  "updatedAt": "2026-10-18T07:11:38.071083113Z",
   "requestFeedback": true,
   "userFacing": true
 }
