@@ -521,17 +521,18 @@ export async function buildServantHub(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** \`Lv.${expStatus.level}/500\` *(${expNeeded.toLocaleString()} XP to Lv.${Math.min(500, expStatus.level + 1)})\*\n` +
         `📊 **Total Allocated:** \`${totalAllocated.toLocaleString()} pts\` | 📈 **Unspent Stat Points:** \`${availPoints.toLocaleString()} pts\`\n\n` +
-        formatStatDetailLine('💪', 'Strength', 'STR', base.strength || 10, alloc.strength || 0, strRank, 'Increases base attack damage') +
-        formatStatDetailLine('🛡️', 'Endurance', 'END', base.endurance || 10, alloc.endurance || 0, endRank, 'Increases max HP (+300 HP/pt) & up to 50% native damage reduction') +
-        formatStatDetailLine('⚡', 'Agility', 'AGI', base.agility || 10, alloc.agility || 0, agiRank, 'Boosts crit generation & dodge') +
-        formatStatDetailLine('🔮', 'Mana', 'MNA', base.mana || 10, alloc.mana || 0, mnaRank, 'Accelerates NP gauge gain') +
-        formatStatDetailLine('🍀', 'Luck', 'LCK', base.luck || 10, alloc.luck || 0, lckRank, 'Enhances status & crit resistance') + '\n' +
+        formatStatDetailLine('💪', 'Strength', 'STR', base.strength || 10, alloc.strength || 0, strRank, '+80 Base ATK/eff. pt — scales card strikes, Extra Attacks & NP') +
+        formatStatDetailLine('🛡️', 'Endurance', 'END', base.endurance || 10, alloc.endurance || 0, endRank, '+300 Max HP/pt, up to +25% HP resilience, & up to 50% native DMG cut') +
+        formatStatDetailLine('⚡', 'Agility', 'AGI', base.agility || 10, alloc.agility || 0, agiRank, '+0.8 Turn 1 Starting Stars/pt (up to 40) & +5% Tactical Flee rate') +
+        formatStatDetailLine('🔮', 'Mana', 'MNA', base.mana || 10, alloc.mana || 0, mnaRank, 'Up to +35% Arts NP gain & NP refund, and wins Mana aura contests') +
+        formatStatDetailLine('🍀', 'Luck', 'LCK', base.luck || 10, alloc.luck || 0, lckRank, 'Increases Critical Strike Damage by up to +35% (stacks with Crit buffs)') + '\n' +
         `💡 **ALLOCATION & OMNIPOTENCE CONTROLS:**\n` +
-        `• **Cap:** 1,000 max points for each attribute (Complete Omnipotence at 1000 in all 5 parameters!).\n` +
-        `• **Step Multipliers:** Click \`1x\`, \`10x\`, or \`100x/MAX\` to change increment size, then click parameter buttons.\n` +
+        `• **Cap:** 1,000 max points per parameter (5,000 pts total for Complete Omnipotence at Lv. 500!).\n` +
+        `• **Step Multipliers:** Click \`1x\`, \`10x\`, or \`100x/MAX\` to change step size, then click parameter buttons.\n` +
         `• **Custom Input:** Click **📝 Custom Input** to type exact numeric amounts for each stat.\n` +
         `• **Auto-Distribute:** Click **✨ Auto-Distribute** to split remaining points evenly.\n` +
-        `• **🔄 Respec Stats:** Click **🔄 Respec** to refund all **${totalAllocated} allocated points** back to your unspent pool!`
+        `• **Stats Guide:** Click **📖 Stats Guide** for in-depth formulas, scaling curves & combat mechanics!\n` +
+        `• **🔄 Respec Stats:** Click **🔄 Respec** to refund all **${totalAllocated.toLocaleString()} allocated points** back to your pool!`
       )
       .setColor(availPoints > 0 ? 0x22c55e : 0x38bdf8)
       .setFooter({ text: `Contracted to Master ${master.username} • Level 500 Cap with +10 Stat Points/Level!` });
@@ -884,16 +885,22 @@ export async function buildServantHub(
       new ButtonBuilder().setCustomId('servant_add_lck').setLabel(`+${stepLabel} LCK`).setEmoji('🍀').setStyle(ButtonStyle.Success).setDisabled(avail <= 0)
     );
 
-    // Row 2: Bulk Allocation, Custom Input, Auto-Distribute & Stat Respec
+    // Row 2: Step Multipliers, Auto-Distribute & Custom Input
     const ctrlRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('servant_step_1').setLabel('1x').setStyle(currentStep === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('servant_step_10').setLabel('10x').setStyle(currentStep === 10 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_step_100').setLabel(currentStep === 9999 ? 'MAX' : '100x').setStyle((currentStep === 100 || currentStep === 9999) ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('servant_add_auto').setLabel('Auto-Distribute').setEmoji('✨').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
-      new ButtonBuilder().setCustomId('servant_act_open_stat_modal').setLabel('Custom Input').setEmoji('📝').setStyle(ButtonStyle.Primary).setDisabled(avail <= 0),
+      new ButtonBuilder().setCustomId('servant_act_open_stat_modal').setLabel('Custom Input').setEmoji('📝').setStyle(ButtonStyle.Primary).setDisabled(avail <= 0)
+    );
+
+    // Row 3: In-Depth Stats Guide & Stat Respec
+    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('servant_act_stats_guide').setLabel('Stats Guide').setEmoji('📖').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('servant_act_respec_stats').setLabel('Respec Stats').setEmoji('🔄').setStyle(ButtonStyle.Danger).setDisabled(totalAllocated <= 0)
     );
 
-    components.push(paramRow, ctrlRow);
+    components.push(paramRow, ctrlRow, actionRow);
   } else if (category === 'equip_ce' || category === 'feed_ce') {
     if (category === 'equip_ce') {
       const ceSubTabRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -1751,6 +1758,87 @@ export async function handleGlobalServantInteraction(i: any) {
         );
 
         await i.showModal(modal);
+        return;
+      }
+      // OPEN IN-DEPTH STATS & PARAMETER GUIDE EMBED
+      else if (i.customId === 'servant_act_stats_guide') {
+        const { EmbedBuilder } = await import('discord.js');
+        const guideEmbed = new EmbedBuilder()
+          .setTitle('📖 Saint Graph Codex: In-Depth Servant Parameter & Stat Guide')
+          .setDescription(
+            `Master **${master.username}**, here is the comprehensive breakdown of Servant battle parameters, formulas, and combat mechanics.\n\n` +
+            `⚔️ **THE 5,000 STAT POINT SYSTEM (OMNIPOTENCE):**\n` +
+            `• **Level Cap:** Servants can ascend up to **Level 500**.\n` +
+            `• **Points Per Level:** Servants earn **+10 Stat Points** on every level up, providing up to **5,000 Stat Points** at Level 500.\n` +
+            `• **Individual Parameter Cap:** Each of the 5 battle parameters has an individual cap of **1,000 allocated points**.\n` +
+            `• **Omnipotence:** Allocating 1,000 points across all 5 parameters attains transcendent **OMNIPOTENCE (1000)**!\n` +
+            `• **Free Respec:** Click **🔄 Respec Stats** at any time to refund 100% of your allocated points with zero cost or penalty.`
+          )
+          .addFields(
+            {
+              name: '👑 Parameter Rank Aptitude Multipliers',
+              value:
+                `Every Heroic Spirit possesses canonical natural ranks (E to EX) for each parameter. These ranks act as **Growth Aptitude Multipliers**, directly magnifying the value of allocated points:\n` +
+                `• **EX / Omnipotent:** **1.45x** (+45% bonus efficiency)\n` +
+                `• **A+++ / A++:** **1.40x** | **A+:** **1.35x** | **A:** **1.30x**\n` +
+                `• **B+:** **1.20x** | **B:** **1.15x**\n` +
+                `• **C+ / C++:** **1.05x** | **C:** **1.00x** *(Standard baseline)*\n` +
+                `• **D:** **0.85x** | **E+ / E++:** **0.80x** | **E:** **0.75x**\n` +
+                `📐 *Formula:* \`Effective Stat = Base Stat + Round(Allocated Points × Aptitude Multiplier)\``
+            },
+            {
+              name: '💪 Strength (STR) — Physical Might & Damage Scaling',
+              value:
+                `• **Combat Role:** Direct Attack Power (ATK) scaling.\n` +
+                `• **Formula:** \`Max ATK = Base ATK + (Effective STR × 80) + CE ATK\`\n` +
+                `• **Mechanics:** Each effective point of Strength grants **+80 Base ATK**. This flat ATK boost scales all attack cards:\n` +
+                `  - **Buster Cards:** Heavy damage multiplier with +50% 1st-card damage lead bonus.\n` +
+                `  - **Arts & Quick Cards:** Card hits deal damage directly derived from total ATK.\n` +
+                `  - **Extra Attacks & Noble Phantasms:** Massive scaling with your total ATK.\n` +
+                `• **Tactical Value:** Essential for burst-damage specialists and Noble Phantasm nukers.`
+            },
+            {
+              name: '🛡️ Endurance (END) — Maximum HP, Resilience & Native DMG Cut',
+              value:
+                `• **Combat Role:** Survivability, defense rating, and native damage reduction.\n` +
+                `• **Formula (Max HP):** \`(Base HP + Effective END × 300 + CE HP) × (1 + (Effective END / 1000) × 0.25)\`\n` +
+                `• **Formula (Native DMG Cut):** \`Damage Reduction % = (Effective END / (Effective END + 800)) × 50%\`\n` +
+                `• **Formula (Base DEF):** \`Base DEF = 10 + (Effective END × 2)\`\n` +
+                `• **Mechanics:** Each point grants **+300 Max HP**, plus up to a **+25% bonus HP Resilience multiplier** at 1,000 END. Furthermore, high Endurance permanently cuts all incoming damage in half (up to **50% native damage reduction** on a smooth diminishing-returns curve).\n` +
+                `• **Tactical Value:** The backbone of tank and sustain builds, enabling Servants to endure enemy Noble Phantasms and outlast rivals in long duels.`
+            },
+            {
+              name: '⚡ Agility (AGI) — Opening Initiative & Tactical Disengagement',
+              value:
+                `• **Combat Role:** Turn 1 Critical Star generation & retreat mastery.\n` +
+                `• **Formula (Turn 1 Stars):** \`Opening Stars = Min(40, Max(5, Round(Effective AGI × 0.8) + Passives))\`\n` +
+                `• **Formula (Flee Success):** Servants with AGI ≥ 12 (or Rider/Lancer/Assassin classes) gain a **+5% Flee Success Rate** advantage.\n` +
+                `• **Important Clarification:** Agility does **not** grant random evasion or RNG dodge in combat (evasion is strictly provided by Evade/Invincible buffs). Instead, it loads your opening hand with up to **40 Critical Stars** on Turn 1 for devastating early critical burst chains!\n` +
+                `• **Tactical Value:** Critical for fast-start aggression, Assassin ambush tactics, and escaping dangerous Holy Grail War skirmishes.`
+            },
+            {
+              name: '🔮 Mana (MNA) — Magical Circuit Output & NP Acceleration',
+              value:
+                `• **Combat Role:** Arts card NP generation, refund efficiency & aura clashes.\n` +
+                `• **Formula (Arts NP Bonus):** \`Bonus NP Gain = Min(35%, (Effective MNA / (Effective MNA + 120)) × 35%)\`\n` +
+                `• **Mechanics:** Mana directly enhances Arts card NP gain and Arts Noble Phantasm refund scaling by up to **+35%**.\n` +
+                `• **Magical Aura Contests:** In clashes of magical pressure (such as the *The Weight of Heaven* gravitational aura), combatants with superior Mana inflict unblockable true damage on rivals each turn.\n` +
+                `• **Magecraft Interaction:** Servants with high Mana trigger special anti-caster armament interactions (such as *Origin Bullet* damage amplification).\n` +
+                `• **Tactical Value:** Essential for Arts NP-looping builds and rapid Noble Phantasm readiness.`
+            },
+            {
+              name: '🍀 Luck (LCK) — Critical Strike Amplification & Lethality',
+              value:
+                `• **Combat Role:** Critical Strike Damage multiplier.\n` +
+                `• **Formula (Crit DMG Boost):** \`Bonus Crit DMG % = Min(35%, (Effective LCK / (Effective LCK + 120)) × 35%)\`\n` +
+                `• **Important Clarification:** Contrary to older misconceptions, Luck does **not** grant "status resistance" or "crit defense". In the battle engine, Luck is pure critical lethality! It adds up to **+35% bonus Critical Damage**, stacking with base crits (1.75x) and passives like *Independent Action* and *Oblivion Correction*.\n` +
+                `• **Tactical Value:** Synergizes perfectly with Quick cards and Agility. When your attacks land as critical strikes, high Luck turns ordinary strikes into fatal executions!`
+            }
+          )
+          .setColor(0xd4af37)
+          .setFooter({ text: 'Master Servant Workshop • Omnipotence Cap: 1,000 pts per stat' });
+
+        await i.reply({ embeds: [guideEmbed], flags: MessageFlags.Ephemeral });
         return;
       }
       // CANCEL WAR RESET

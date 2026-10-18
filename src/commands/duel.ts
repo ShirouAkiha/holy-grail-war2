@@ -110,6 +110,7 @@ export interface DuelCombatant {
   def: number;
   enduranceDamageReduction?: number;
   effectiveEndurance?: number;
+  effectiveStats?: { strength: number; endurance: number; agility: number; mana: number; luck: number };
   npGauge: number;
   critStars: number;
   isStunned?: boolean;
@@ -257,14 +258,20 @@ function createCombatant(
   const strRank = getServantDefaultParamRank(servant, 'strength');
   const endRank = getServantDefaultParamRank(servant, 'endurance');
   const agiRank = getServantDefaultParamRank(servant, 'agility');
+  const mnaRank = getServantDefaultParamRank(servant, 'mana');
+  const lckRank = getServantDefaultParamRank(servant, 'luck');
 
   const strRankMult = getParameterRankMultiplier(strRank);
   const endRankMult = getParameterRankMultiplier(endRank);
   const agiRankMult = getParameterRankMultiplier(agiRank);
+  const mnaRankMult = getParameterRankMultiplier(mnaRank);
+  const lckRankMult = getParameterRankMultiplier(lckRank);
 
   const totalStr = (base.strength || 10) + Math.round((alloc.strength || 0) * strRankMult);
   const totalEnd = (base.endurance || 10) + Math.round((alloc.endurance || 0) * endRankMult);
   const totalAgi = (base.agility || 10) + Math.round((alloc.agility || 0) * agiRankMult);
+  const totalMna = (base.mana || 10) + Math.round((alloc.mana || 0) * mnaRankMult);
+  const totalLck = (base.luck || 10) + Math.round((alloc.luck || 0) * lckRankMult);
 
   const ceAtk = servant.equippedCe?.atkBonus || 0;
   const ceHp = servant.equippedCe?.hpBonus || 0;
@@ -352,6 +359,13 @@ function createCombatant(
     def: baseDef,
     enduranceDamageReduction,
     effectiveEndurance: totalEnd,
+    effectiveStats: {
+      strength: totalStr,
+      endurance: totalEnd,
+      agility: totalAgi,
+      mana: totalMna,
+      luck: totalLck
+    },
     npGauge: initialNp,
     critStars: initialStars,
     passives,
@@ -1140,7 +1154,7 @@ function buildCombatButtons(
   const npType = getCombatantEffectiveNpCardType(combatant);
   const npDisplayType = getCombatantNpCardTypeDisplay(combatant);
   const sClass = combatant.servant.template?.servantClass || 'Saber';
-  const agility = combatant.servant.template?.baseStats?.agility || combatant.servant.allocatedStats?.agility || 10;
+  const agility = combatant.effectiveStats?.agility ?? ((combatant.servant.template?.baseStats?.agility || 10) + (combatant.servant.allocatedStats?.agility || 0));
   const fleeCalc = calculateFleeChance(combatant.currentHp, combatant.maxHp, sClass, agility);
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -2938,8 +2952,8 @@ function resolveStrike(
   // The Weight of Heaven (Adiosa) gravitational field
   const weightOfHeaven = attackerPassives.find(p => p.type === 'the_weight_of_heaven');
   if (weightOfHeaven) {
-    const atkMana = (attacker.servant.template?.baseStats?.mana || 10) + (attacker.servant.allocatedStats?.mana || 0);
-    const defMana = (defender.servant.template?.baseStats?.mana || 10) + (defender.servant.allocatedStats?.mana || 0);
+    const atkMana = attacker.effectiveStats?.mana ?? ((attacker.servant.template?.baseStats?.mana || 10) + (attacker.servant.allocatedStats?.mana || 0));
+    const defMana = defender.effectiveStats?.mana ?? ((defender.servant.template?.baseStats?.mana || 10) + (defender.servant.allocatedStats?.mana || 0));
     if (atkMana > defMana) {
       const gravDmg = Math.round(weightOfHeaven.value * PVP_DAMAGE_MODIFIER);
       defender.currentHp = Math.max(0, defender.currentHp - gravDmg);
@@ -3023,7 +3037,7 @@ function resolveStrike(
   critDmgBonus += critPassiveBonus / 100;
 
   // Luck (LCK) parameter soft-capped scaling (+0% to +35% Crit DMG boost)
-  const attackerLuck = (attacker.servant.template?.baseStats?.luck || 10) + (attacker.servant.allocatedStats?.luck || 0);
+  const attackerLuck = attacker.effectiveStats?.luck ?? ((attacker.servant.template?.baseStats?.luck || 10) + (attacker.servant.allocatedStats?.luck || 0));
   const luckCritBonus = Math.min(0.35, (attackerLuck / (attackerLuck + 120)) * 0.35);
   critDmgBonus += luckCritBonus;
 
@@ -3843,7 +3857,7 @@ function resolveStrike(
           npStars = npScope === 'aoe' ? 5 : 2;
         } else if (npCardType === 'Arts') {
           const baseRefund = npScope === 'aoe' ? 18 : 12;
-          const totalAtkMana = (attacker.servant.template?.baseStats?.mana || 10) + (attacker.servant.allocatedStats?.mana || 0);
+          const totalAtkMana = attacker.effectiveStats?.mana ?? ((attacker.servant.template?.baseStats?.mana || 10) + (attacker.servant.allocatedStats?.mana || 0));
           const manaNpBonus = Math.min(0.35, (totalAtkMana / (totalAtkMana + 120)) * 0.35);
           let artsRefundScale = 1.0 + (artsBuff / 100) + manaNpBonus;
           if (attackerCe?.id === 'ce_jeweled_sword') artsRefundScale *= 1.15;
@@ -3955,7 +3969,7 @@ function resolveStrike(
       let ceNpArtScale = 1.0;
       if (attackerCe?.id === 'ce_jeweled_sword') ceNpArtScale *= 1.15;
       if (attackerCe?.id === 'ce_formal_craft') ceNpArtScale *= 1.10;
-      const totalAtkMana = (attacker.servant.template?.baseStats?.mana || 10) + (attacker.servant.allocatedStats?.mana || 0);
+      const totalAtkMana = attacker.effectiveStats?.mana ?? ((attacker.servant.template?.baseStats?.mana || 10) + (attacker.servant.allocatedStats?.mana || 0));
       const manaNpBonus = Math.min(0.35, (totalAtkMana / (totalAtkMana + 120)) * 0.35);
       let npGain = Math.round(baseArtsNp * posMult * npGenBonus * ceNpArtScale * (hitCrit ? 1.5 : 1.0) * (1.0 + (territoryBonus + artsBuff + Math.round(manaNpBonus * 100)) / 100));
       if (i > 0 && isArtsFirst) npGain = Math.round(npGain * 1.5); // Arts Lead Bonus
@@ -7245,7 +7259,7 @@ async function startInteractiveDuel(
       if (i.customId === 'card_flee' || i.customId === 'duel_flee' || i.customId === 'card_run') {
         const fleeActor = activeCombatant;
         const sClass = fleeActor.servant.template?.servantClass || 'Saber';
-        const agility = fleeActor.servant.template?.baseStats?.agility || fleeActor.servant.allocatedStats?.agility || 10;
+        const agility = fleeActor.effectiveStats?.agility ?? ((fleeActor.servant.template?.baseStats?.agility || 10) + (fleeActor.servant.allocatedStats?.agility || 0));
         const fleeInfo = calculateFleeChance(fleeActor.currentHp, fleeActor.maxHp, sClass, agility);
 
         const success = rollFleeSuccess(fleeInfo.chancePercent);
