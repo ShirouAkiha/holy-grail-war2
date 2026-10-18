@@ -1768,6 +1768,87 @@ export async function handleGlobalServantInteraction(i: any) {
         await i.showModal(modal);
         return;
       }
+      // OPEN IN-DEPTH STATS & PARAMETER GUIDE EMBED
+      else if (i.customId === 'servant_act_stats_guide') {
+        const { EmbedBuilder } = await import('discord.js');
+        const guideEmbed = new EmbedBuilder()
+          .setTitle('📖 Saint Graph Codex: In-Depth Servant Parameter & Stat Guide')
+          .setDescription(
+            `Master **${master.username}**, here is the comprehensive breakdown of Servant battle parameters, formulas, and combat mechanics.\n\n` +
+            `⚔️ **THE 5,000 STAT POINT SYSTEM (OMNIPOTENCE):**\n` +
+            `• **Level Cap:** Servants can ascend up to **Level 500**.\n` +
+            `• **Points Per Level:** Servants earn **+10 Stat Points** on every level up, providing up to **5,000 Stat Points** at Level 500.\n` +
+            `• **Individual Parameter Cap:** Each of the 5 battle parameters has an individual cap of **1,000 allocated points**.\n` +
+            `• **Omnipotence:** Allocating 1,000 points across all 5 parameters attains transcendent **OMNIPOTENCE (1000)**!\n` +
+            `• **Free Respec:** Click **🔄 Respec Stats** at any time to refund 100% of your allocated points with zero cost or penalty.`
+          )
+          .addFields(
+            {
+              name: '👑 Parameter Rank Aptitude Multipliers',
+              value:
+                `Every Heroic Spirit possesses canonical natural ranks (E to EX) for each parameter. These ranks act as **Growth Aptitude Multipliers**, directly magnifying the value of allocated points:\n` +
+                `• **EX / Omnipotent:** **1.45x** (+45% bonus efficiency)\n` +
+                `• **A+++ / A++:** **1.40x** | **A+:** **1.35x** | **A:** **1.30x**\n` +
+                `• **B+:** **1.20x** | **B:** **1.15x**\n` +
+                `• **C+ / C++:** **1.05x** | **C:** **1.00x** *(Standard baseline)*\n` +
+                `• **D:** **0.85x** | **E+ / E++:** **0.80x** | **E:** **0.75x**\n` +
+                `📐 *Formula:* \`Effective Stat = Base Stat + Round(Allocated Points × Aptitude Multiplier)\``
+            },
+            {
+              name: '💪 Strength (STR) — Physical Might & Damage Scaling',
+              value:
+                `• **Combat Role:** Direct Attack Power (ATK) scaling.\n` +
+                `• **Formula:** \`Max ATK = Base ATK + (Effective STR × 80) + CE ATK\`\n` +
+                `• **Mechanics:** Each effective point of Strength grants **+80 Base ATK**. This flat ATK boost scales all attack cards:\n` +
+                `  - **Buster Cards:** Heavy damage multiplier with +50% 1st-card damage lead bonus.\n` +
+                `  - **Arts & Quick Cards:** Card hits deal damage directly derived from total ATK.\n` +
+                `  - **Extra Attacks & Noble Phantasms:** Massive scaling with your total ATK.\n` +
+                `• **Tactical Value:** Essential for burst-damage specialists and Noble Phantasm nukers.`
+            },
+            {
+              name: '🛡️ Endurance (END) — Maximum HP, Resilience & Native DMG Cut',
+              value:
+                `• **Combat Role:** Survivability, defense rating, and native damage reduction.\n` +
+                `• **Formula (Max HP):** \`(Base HP + Effective END × 300 + CE HP) × (1 + (Effective END / 1000) × 0.25)\`\n` +
+                `• **Formula (Native DMG Cut):** \`Damage Reduction % = (Effective END / (Effective END + 800)) × 50%\`\n` +
+                `• **Formula (Base DEF):** \`Base DEF = 10 + (Effective END × 2)\`\n` +
+                `• **Mechanics:** Each point grants **+300 Max HP**, plus up to a **+25% bonus HP Resilience multiplier** at 1,000 END. Furthermore, high Endurance permanently cuts all incoming damage in half (up to **50% native damage reduction** on a smooth diminishing-returns curve).\n` +
+                `• **Tactical Value:** The backbone of tank and sustain builds, enabling Servants to endure enemy Noble Phantasms and outlast rivals in long duels.`
+            },
+            {
+              name: '⚡ Agility (AGI) — Opening Initiative & Tactical Disengagement',
+              value:
+                `• **Combat Role:** Turn 1 Critical Star generation & retreat mastery.\n` +
+                `• **Formula (Turn 1 Stars):** \`Opening Stars = Min(40, Max(5, Round(Effective AGI × 0.8) + Passives))\`\n` +
+                `• **Formula (Flee Success):** Servants with AGI ≥ 12 (or Rider/Lancer/Assassin classes) gain a **+5% Flee Success Rate** advantage.\n` +
+                `• **Important Clarification:** Agility does **not** grant random evasion or RNG dodge in combat (evasion is strictly provided by Evade/Invincible buffs). Instead, it loads your opening hand with up to **40 Critical Stars** on Turn 1 for devastating early critical burst chains!\n` +
+                `• **Tactical Value:** Critical for fast-start aggression, Assassin ambush tactics, and escaping dangerous Holy Grail War skirmishes.`
+            },
+            {
+              name: '🔮 Mana (MNA) — Magical Circuit Output & NP Acceleration',
+              value:
+                `• **Combat Role:** Arts card NP generation, refund efficiency & aura clashes.\n` +
+                `• **Formula (Arts NP Bonus):** \`Bonus NP Gain = Min(35%, (Effective MNA / (Effective MNA + 120)) × 35%)\`\n` +
+                `• **Mechanics:** Mana directly enhances Arts card NP gain and Arts Noble Phantasm refund scaling by up to **+35%**.\n` +
+                `• **Magical Aura Contests:** In clashes of magical pressure (such as the *The Weight of Heaven* gravitational aura), combatants with superior Mana inflict unblockable true damage on rivals each turn.\n` +
+                `• **Magecraft Interaction:** Servants with high Mana trigger special anti-caster armament interactions (such as *Origin Bullet* damage amplification).\n` +
+                `• **Tactical Value:** Essential for Arts NP-looping builds and rapid Noble Phantasm readiness.`
+            },
+            {
+              name: '🍀 Luck (LCK) — Critical Strike Amplification & Lethality',
+              value:
+                `• **Combat Role:** Critical Strike Damage multiplier.\n` +
+                `• **Formula (Crit DMG Boost):** \`Bonus Crit DMG % = Min(35%, (Effective LCK / (Effective LCK + 120)) × 35%)\`\n` +
+                `• **Important Clarification:** Contrary to older misconceptions, Luck does **not** grant "status resistance" or "crit defense". In the battle engine, Luck is pure critical lethality! It adds up to **+35% bonus Critical Damage**, stacking with base crits (1.75x) and passives like *Independent Action* and *Oblivion Correction*.\n` +
+                `• **Tactical Value:** Synergizes perfectly with Quick cards and Agility. When your attacks land as critical strikes, high Luck turns ordinary strikes into fatal executions!`
+            }
+          )
+          .setColor(0xd4af37)
+          .setFooter({ text: 'Master Servant Workshop • Omnipotence Cap: 1,000 pts per stat' });
+
+        await i.reply({ embeds: [guideEmbed], flags: MessageFlags.Ephemeral });
+        return;
+      }
       // CANCEL WAR RESET
       else if (i.customId === 'servant_cancel_reset') {
         await i.reply({
