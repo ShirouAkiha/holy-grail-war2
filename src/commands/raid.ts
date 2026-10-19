@@ -904,11 +904,18 @@ async function runRaidBattle(
     const participants = battleState.participants;
     if (!participants || participants.length === 0) return;
 
+    const isParticipantDead = (p: RaidParticipantState | undefined) => !p || p.isDead || (p.currentHp || 0) <= 0;
+
     const curr = participants[battleState.activeMasterIndex];
-    if (!curr || curr.isDead) {
-      const livingIdx = participants.findIndex(p => !p.isDead);
-      if (livingIdx !== -1) {
-        battleState.activeMasterIndex = livingIdx;
+    if (isParticipantDead(curr)) {
+      let nextIdx = (battleState.activeMasterIndex + 1) % participants.length;
+      let loops = 0;
+      while (isParticipantDead(participants[nextIdx]) && loops < participants.length) {
+        nextIdx = (nextIdx + 1) % participants.length;
+        loops++;
+      }
+      if (loops < participants.length && !isParticipantDead(participants[nextIdx])) {
+        battleState.activeMasterIndex = nextIdx;
       }
     }
     currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
@@ -1222,7 +1229,7 @@ async function runRaidBattle(
         .setLabel('Auto/Pass')
         .setEmoji('⏭️')
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(shouldDisableAll || active.isDead),
+        .setDisabled(shouldDisableAll),
       new ButtonBuilder()
         .setCustomId('raid_flee')
         .setLabel('Run')
@@ -1285,6 +1292,9 @@ async function runRaidBattle(
   };
 
   const renderAndPostTurn = async () => {
+    // Ensure active participant is always a living Servant before rendering or resetting turn timers
+    ensureActiveParticipantIsAlive();
+
     // If a boss VN cut-in was queued during enemy phase / reaction, trigger it now
     if (battleState.pendingBossVnCutIn) {
       await triggerDarkSakuraVnCutIn(battleState.pendingBossVnCutIn);
@@ -2170,7 +2180,7 @@ async function runRaidBattle(
         const bossTurnResult = await executeBossTurn(battleState);
         bossUsedNp = bossTurnResult?.bossUsedNp || false;
 
-        const anyAlive = battleState.participants.some(p => !p.isDead);
+        const anyAlive = battleState.participants.some(p => !p.isDead && (p.currentHp || 0) > 0);
         if (!anyAlive) {
           clearTurnTimer();
           clearVnCutInTimer();
@@ -2193,7 +2203,7 @@ async function runRaidBattle(
             });
             p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
           }
-          if (!p.isDead) {
+          if (!p.isDead && (p.currentHp || 0) > 0) {
             processCeTurnStartEffects(p);
           }
         });
@@ -2206,6 +2216,13 @@ async function runRaidBattle(
         }
 
         battleState.round++;
+
+        // At the start of a brand new round, set activeMasterIndex to the first living participant starting from index 0!
+        const firstLivingIdx = battleState.participants.findIndex(p => !p.isDead && (p.currentHp || 0) > 0);
+        if (firstLivingIdx !== -1) {
+          battleState.activeMasterIndex = firstLivingIdx;
+          currentActiveParticipant = battleState.participants[firstLivingIdx];
+        }
 
         // Keep Boss turn HUD action active so players see the Boss's damage & action on the new turn
         // 5. Render and post the new round turn canvas (with active buttons & boss damage HUD)
@@ -2413,7 +2430,7 @@ async function runRaidBattle(
         return;
       }
 
-      if (!isSelf && turnElapsed < 30_000) {
+      if (!isSelf && turnElapsed < 30_000 && !active.isDead && (active.currentHp || 0) > 0) {
         const remainingSec = Math.ceil((30_000 - turnElapsed) / 1000);
         await i.reply({
           content: `⏳ Please give <@${active.userId}> at least **${remainingSec}s** before initiating a team auto-play!`,
@@ -3858,12 +3875,14 @@ async function runRaidBattle(
     let nextIdx = (battleState.activeMasterIndex + 1) % living.length;
     let loops = 0;
 
-    while (living[nextIdx].isDead && loops < living.length) {
+    const isParticipantDead = (p: RaidParticipantState | undefined) => !p || p.isDead || (p.currentHp || 0) <= 0;
+
+    while (isParticipantDead(living[nextIdx]) && loops < living.length) {
       nextIdx = (nextIdx + 1) % living.length;
       loops++;
     }
 
-    const completedRound = nextIdx <= battleState.activeMasterIndex;
+    const completedRound = nextIdx <= battleState.activeMasterIndex || loops >= living.length;
     battleState.activeMasterIndex = nextIdx;
     currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
 

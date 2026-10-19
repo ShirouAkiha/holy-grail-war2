@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan to recover and fix the Holy Grail War time limit controls in the Admin Hub (Rules and War Announcement setup), and implement the Servant level limit rule with entry restriction, warning embeds upon exceeding the threshold, and automatic disqualification at +5 levels over the limit.",
-  "updatedAt": "2026-10-18T07:11:38.071083113Z",
+  "summary": "Implementation plan to fix raid turn stalling when Servants in positions 1, 2, or 3 fall in battle, ensuring instant turn transitions to living allies with zero delay.",
+  "updatedAt": "2026-10-19T07:40:22.765710296Z",
   "requestFeedback": true,
   "userFacing": true
 }
