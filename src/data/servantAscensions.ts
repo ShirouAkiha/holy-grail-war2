@@ -338,6 +338,34 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
       stage3: 'https://static.atlasacademy.io/JP/CharaFigure/23005002/23005002_merged.png',
       stage4: 'https://static.atlasacademy.io/JP/CharaFigure/23005002/23005002_merged.png'
     }
+  },
+  ciel_executor: {
+    stage1: 'https://static.atlasacademy.io/JP/CharaGraph/2300900/2300900a@1.png',
+    stage2: 'https://static.atlasacademy.io/JP/CharaGraph/2300900/2300900a@2.png',
+    stage3: 'https://static.atlasacademy.io/JP/CharaGraph/2300900/2300900b@1.png',
+    stage4: 'https://static.atlasacademy.io/JP/CharaGraph/2300900/2300900b@2.png',
+    costume: 'https://static.atlasacademy.io/JP/CharaGraph/2300930/2300930a.png',
+    costumes: [
+      {
+        id: '2300930',
+        name: 'Open Summer (Swimsuit Mode)',
+        url: 'https://static.atlasacademy.io/JP/CharaGraph/2300930/2300930a.png',
+        spriteUrl: 'https://static.atlasacademy.io/JP/CharaFigure/23009300/23009300_merged.png'
+      },
+      {
+        id: '2300940',
+        name: 'Glasses Off Mode',
+        url: 'https://static.atlasacademy.io/JP/CharaGraph/2300940/2300940a.png',
+        spriteUrl: 'https://static.atlasacademy.io/JP/CharaFigure/23009400/23009400_merged.png'
+      }
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/JP/CharaFigure/23009000/23009000_merged.png',
+      stage2: 'https://static.atlasacademy.io/JP/CharaFigure/23009001/23009001_merged.png',
+      stage3: 'https://static.atlasacademy.io/JP/CharaFigure/23009002/23009002_merged.png',
+      stage4: 'https://static.atlasacademy.io/JP/CharaFigure/23009002/23009002_merged.png',
+      costume: 'https://static.atlasacademy.io/JP/CharaFigure/23009300/23009300_merged.png'
+    }
   }
 };
 
@@ -429,7 +457,13 @@ export function findCanonicalAscensionData(identifier?: any): { key: string; dat
     archetype_earth_mooncancer: 'archetype_earth',
     arcueid: 'archetype_earth',
     arcueid_brunestud: 'archetype_earth',
-    earth: 'archetype_earth'
+    earth: 'archetype_earth',
+    ciel: 'ciel_executor',
+    ciel_executor: 'ciel_executor',
+    mysterious_executor_ciel: 'ciel_executor',
+    mysterious_executor_c_i_e_l: 'ciel_executor',
+    space_ciel: 'ciel_executor',
+    ultra_ciel: 'ciel_executor'
   };
 
   if (ALIAS_MAP[raw] && CANONICAL_SERVANT_ASCENSIONS[ALIAS_MAP[raw]]) {
@@ -510,13 +544,19 @@ export function getUnlockedAscensionStages(
     },
     ...(data.costumes && data.costumes.length > 0
       ? data.costumes.map(c => ({
-          stage: 'costume' as const,
+          stage: `costume_${c.id}` as any,
           name: `Costume: ${c.name}`,
           url: c.url,
           unlocked: isAscensionStageUnlocked('costume', level, bondLevel),
           reqText: 'Requires Level 50 OR Bond Level 5'
         }))
-      : [])
+      : (data.costume ? [{
+          stage: 'costume' as const,
+          name: 'Costume: Spiritron Dress',
+          url: data.costume,
+          unlocked: isAscensionStageUnlocked('costume', level, bondLevel),
+          reqText: 'Requires Level 50 OR Bond Level 5'
+        }] : []))
   ];
 }
 
@@ -588,6 +628,12 @@ export function resolveAscensionArtwork(
       return data.stage1;
     }
     if (sStr.includes('costume') || sStr === 'costume') {
+      if (data.costumes && data.costumes.length > 0) {
+        const matched = data.costumes.find(c => sStr.includes(c.id.toLowerCase()) || sStr.includes(c.name.toLowerCase()));
+        if (matched) return matched.url;
+        if (sStr.includes('2') && data.costumes[1]) return data.costumes[1].url;
+        return data.costumes[0].url;
+      }
       return data.costume || (data.costumes && data.costumes[0]?.url) || data.stage4;
     }
   }
@@ -662,6 +708,12 @@ export function resolveAscensionSprite(
       return sprites.stage1 || '';
     }
     if (sStr.includes('costume') || sStr === 'costume') {
+      if (match.data.costumes && match.data.costumes.length > 0) {
+        const matched = match.data.costumes.find(c => sStr.includes(c.id.toLowerCase()) || sStr.includes(c.name.toLowerCase()));
+        if (matched && matched.spriteUrl) return matched.spriteUrl;
+        if (sStr.includes('2') && match.data.costumes[1]?.spriteUrl) return match.data.costumes[1].spriteUrl;
+        if (match.data.costumes[0]?.spriteUrl) return match.data.costumes[0].spriteUrl;
+      }
       return sprites.costume || sprites.stage3 || sprites.stage1 || '';
     }
   }

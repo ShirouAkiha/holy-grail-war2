@@ -12,7 +12,7 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { RAID_BOSSES, RaidBossConfig } from '../data/raidBosses';
 import { renderRaidBattlefield, renderDarkSakuraVNDialogueImage, RaidBattleState, RaidParticipantState } from '../canvas/raidRenderer';
-import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
+import { getNoblePhantasmGif, getNoblePhantasmChant, getNoblePhantasmName } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
 import { addServantBattleExp, createExpEmberCraftEssence } from '../engine/customization';
@@ -946,7 +946,7 @@ async function runRaidBattle(
     await cleanupNpGif();
     const npGif = getNoblePhantasmGif(servant);
     const chant = getNoblePhantasmChant(servant);
-    const npName = servant.template?.noblePhantasm?.name || 'Noble Phantasm';
+    const npName = getNoblePhantasmName(servant);
     const sName = servant.nickname || servant.template?.name || 'Heroic Spirit';
 
     const npFiles: AttachmentBuilder[] = [];
@@ -1486,7 +1486,13 @@ async function runRaidBattle(
       const busterBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'buster_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus + madnessBonus) / 100);
       const artsBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'arts_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus + territoryBonus) / 100);
       const quickBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'quick_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus + ridingBonus) / 100);
-      const critDmgBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'crit_dmg' || b.type === 'crit_up').reduce((acc, b) => acc + b.value, 0) || 0) + critPassiveBonus) / 100);
+      const hp50CritBonus = (active.activeBuffs?.some(b => b.type === 'ciel_crit_hp_50') && (active.currentHp >= active.maxHp * 0.50)) ? 50 : 0;
+      const hp100CritBonus = (active.activeBuffs?.some(b => b.type === 'ciel_crit_hp_100') && (active.currentHp >= active.maxHp)) ? 50 : 0;
+      const critDmgBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'crit_dmg' || b.type === 'crit_up').reduce((acc, b) => acc + b.value, 0) || 0) + critPassiveBonus + hp50CritBonus + hp100CritBonus) / 100);
+
+      const isSaberBoss = ((boss.servantClass || '') as string).toLowerCase() === 'saber';
+      const hasSaberAdvantage = activePassives.some((p: any) => p.type === 'class_advantage_saber' || (p.name && p.name.includes('Executor (Archer)')));
+      const classAdvantageMult = (isSaberBoss && hasSaberAdvantage) ? 1.5 : 1.0;
 
       const isBossThreat = (boss.traits || []).some(t => ['threat_to_humanity', 'beast', 'demonic'].includes(t.toLowerCase()));
       const antiThreatBuff = (active.activeBuffs?.filter(b => b.type === 'anti_threat').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
@@ -1518,7 +1524,7 @@ async function runRaidBattle(
 
         const totalLuckAtk = (baseStatsAtk.luck || 10) + (allocAtk.luck || 0);
         const luckCritBonus = Math.min(0.35, (totalLuckAtk / (totalLuckAtk + 120)) * 0.35);
-        const critDmgMult = isCrit ? (2.0 + luckCritBonus) : 1.0;
+        const critDmgMult = isCrit ? ((2.0 + luckCritBonus) * critDmgBuffMult) : 1.0;
         const critNpBonus = isCrit ? 1.5 : 1.0;
         const critStarBonus = isCrit ? 1.4 : 1.0;
 
@@ -1531,19 +1537,40 @@ async function runRaidBattle(
         }
 
         if (card === 'Buster') {
-          totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * classAdvantageMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           starsGenerated += Math.round(3 * critStarBonus);
           let bsterNp = Math.round(5 * critNpBonus);
-          if (active.activeBuffs && active.activeBuffs.some(b => b.type === 'buff_on_attack_buster_np' || (b.name && b.name.includes('Knight of Utopia')))) {
+          if (active.activeBuffs && active.activeBuffs.some(b => b.type === 'buff_on_attack_buster_np' || b.type === 'ciel_buster_on_attack' || (b.name && b.name.includes('Knight of Utopia')))) {
             bsterNp += 10;
+            npEffectsLog.push('⚡ [Ciel Buster: +10% NP Gauge!]');
           }
           npGained += bsterNp;
         } else if (card === 'Arts') {
-          totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * classAdvantageMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           const totalAtkMana = (baseStatsAtk.mana || 10) + (allocAtk.mana || 0);
           const manaNpBonus = Math.min(0.35, (totalAtkMana / (totalAtkMana + 120)) * 0.35);
           npGained += Math.round(25 * critNpBonus * (1.0 + manaNpBonus));
           starsGenerated += Math.round(2 * critStarBonus);
+
+          // Ciel Arts On-Attack effects: -20% Healing Received (3T), strip boss Guts, 30% chance for 1 Diamond drain
+          if (active.activeBuffs && active.activeBuffs.some(b => b.type === 'ciel_arts_on_attack')) {
+            battleState.bossBuffs = battleState.bossBuffs || [];
+            battleState.bossBuffs.push({
+              name: 'Phasing Fluid Blade (Heal Down)',
+              type: 'healing_received_down',
+              value: 20,
+              remainingTurns: 3
+            });
+            const hadGuts = battleState.bossBuffs.some(b => b.type === 'guts' || b.name.includes('Guts'));
+            if (hadGuts) {
+              battleState.bossBuffs = battleState.bossBuffs.filter(b => b.type !== 'guts' && !b.name.includes('Guts'));
+              npEffectsLog.push('✨ [Phasing Fluid Blade: Stripped Boss Guts status!]');
+            }
+            if (Math.random() < 0.30) {
+              battleState.bossCharge = Math.max(0, (battleState.bossCharge || 0) - 1);
+              npEffectsLog.push('🔒 [Phasing Fluid Blade: Drained 1 Boss Charge Diamond!]');
+            }
+          }
         } else if (card === 'Quick') {
           totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           starsGenerated += Math.round(12 * critStarBonus);
@@ -2064,13 +2091,48 @@ async function runRaidBattle(
               npEffectsHud.push('Buff/Skill/NP Seal');
             }
 
-            const effectiveBossDef = (isIgnoreDef || isApocryphaTerminus) ? Math.max(0.2, 1 + bossDefDown) : bossDefFactor;
+            let cielDemonicRaidScale = 1.0;
+            const isCielNp = active.servant.templateId === 'ciel_executor' ||
+              active.servant.template?.id === 'ciel_executor' ||
+              /code:\s*original sin|calvaria galgalim|seventh holy scripture/i.test(npName);
+            if (isCielNp) {
+              // Increases own Buster performance by 20% for 1 turn (Activates first)
+              active.activeBuffs = active.activeBuffs || [];
+              active.activeBuffs.push({
+                name: 'Ciel NP (Buster Up)',
+                type: 'buster_up',
+                value: 20,
+                remainingTurns: 1
+              });
+
+              // 150% Super effective against Demonic enemies
+              const bossTraits = (boss.traits || []).map((t: string) => t.toLowerCase());
+              const isDemonicBoss = bossTraits.includes('demonic') || /demonic|tiāmat|tiamat/i.test(boss.name + ' ' + (boss.title || ''));
+              if (isDemonicBoss) {
+                cielDemonicRaidScale = 2.50; // +150% extra damage
+                npEffectsLog.push('✝️ [Demonic Purge: +150% Super Effective Holy Damage to Boss!]');
+                npEffectsHud.push('+150% Demonic Purge');
+              }
+
+              // 40% Chance to instantly kill them in raids
+              if (Math.random() < 0.40) {
+                totalTurnDmg = Math.max(totalTurnDmg, battleState.bossCurrentHp);
+                npEffectsLog.push('⚡ [CALVARIA GALGALIM / SEVENTH SCRIPTURE: INSTANT DEATH INFLICTED!]');
+                npEffectsHud.push('💀 Instant Death');
+              }
+
+              // Charges own NP gauge by 20% (Refund)
+              npGained += 20;
+              npEffectsLog.push('✨ [NP Refund: +20% Gauge Recharged!]');
+            }
+
+            const effectiveBossDef = (isIgnoreDef || isApocryphaTerminus || isCielNp) ? Math.max(0.2, 1 + bossDefDown) : bossDefFactor;
             const npOverrideBuff = active.activeBuffs?.find(b => b.type === 'np_card_override');
             const effectiveNpCardType = (npOverrideBuff as any)?.cardType || (active.servant.template?.noblePhantasm?.cardType === '???' ? 'Buster' : (active.servant.template?.noblePhantasm?.cardType || 'Buster'));
             const cardPerfMult = effectiveNpCardType === 'Arts' ? artsBuffMult : effectiveNpCardType === 'Quick' ? quickBuffMult : busterBuffMult;
             const npCeDmgMult = 1.0 + (moonMargaretNpDmgBonus / 100);
 
-            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * cardPerfMult * typhonRaidDebuffScale * archetypeChaoticRaidScale * apocryphaRaidScale * atkBuffMult * specialAtkMult * effectiveBossDef * npSpecialMult * npCeDmgMult * (0.95 + Math.random() * 0.1));
+            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * cardPerfMult * typhonRaidDebuffScale * archetypeChaoticRaidScale * apocryphaRaidScale * cielDemonicRaidScale * classAdvantageMult * atkBuffMult * specialAtkMult * effectiveBossDef * npSpecialMult * npCeDmgMult * (0.95 + Math.random() * 0.1));
             if (effectiveNpCardType === 'Arts') {
               npGained += Math.round(25 * (1.0 + (artsBuffMult - 1.0)));
               starsGenerated += 5;
@@ -2321,6 +2383,23 @@ async function runRaidBattle(
             }
             if (pPassives.some((ps: any) => ps.type === 'progenitor_dragon' || (ps.name && ps.name.includes('Progenitor Dragon')))) {
               p.npGauge = Math.min(300, (p.npGauge || 0) + 5);
+            }
+            // Self Preservation Magecraft A (+2% HP/turn)
+            if (pPassives.some((ps: any) => ps.type === 'regen_hp' || (ps.name && ps.name.includes('Self Preservation')))) {
+              const passiveHeal = Math.round(p.maxHp * 0.02);
+              p.currentHp = Math.min(p.maxHp, p.currentHp + passiveHeal);
+            }
+            // Active HP Regen and NP Regen buffs (e.g. from Human Mana Factory A)
+            if (p.activeBuffs) {
+              p.activeBuffs.forEach(b => {
+                if (b.type === 'hp_regen') {
+                  const healVal = b.value || Math.round(p.maxHp * 0.05);
+                  p.currentHp = Math.min(p.maxHp, p.currentHp + healVal);
+                }
+                if (b.type === 'np_regen_turn') {
+                  p.npGauge = Math.min(300, (p.npGauge || 0) + (b.value || 10));
+                }
+              });
             }
           }
         });
@@ -2856,6 +2935,99 @@ async function runRaidBattle(
               }
             });
             buffLog = `(🦇 Party: Invincibility [1 Hit, 3T], +100% Buff Removal Resistance [1T]${isCastleActive ? ', +30% NP to Allies [Millennium Castle Bonus]' : ''}!)`;
+          } else if (skillObj?.id === 'human_mana_factory_a' || /human mana factory/i.test(sName)) {
+            // Ciel S1: Human Mana Factory A
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: 'Human Mana Factory (NP Regen)',
+              type: 'np_regen_turn',
+              value: 10,
+              remainingTurns: 5
+            });
+            const maxHp = active.maxHp || calculateServantMaxHp(active.servant);
+            active.activeBuffs.push({
+              name: 'Human Mana Factory (HP Regen)',
+              type: 'hp_regen',
+              value: Math.round(maxHp * 0.05),
+              remainingTurns: 5
+            });
+            active.activeBuffs.push({
+              name: 'Human Mana Factory (Debuff Res)',
+              type: 'debuff_res',
+              value: 50,
+              remainingTurns: 5
+            });
+            active.activeBuffs.push({
+              name: 'Human Mana Factory (Buff Removal Res)',
+              type: 'buff_removal_res',
+              value: 100,
+              remainingTurns: 5
+            });
+            buffLog = `(✝️ +10% NP/T [5T], +5% HP/T [5T], +50% Debuff Res [5T], +100% Buff Removal Res [5T]!)`;
+          } else if (skillObj?.id === 'phasing_fluid_blade_b_plus' || /phasing fluid blade/i.test(sName)) {
+            // Ciel S2: Phasing Fluid Blade B+
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: 'Phasing Fluid Blade (Arts Up)',
+              type: 'arts_up',
+              value: 30,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: 'Phasing Fluid Blade (Buster Up)',
+              type: 'buster_up',
+              value: 30,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: 'Phasing Fluid Blade (Arts On-Attack)',
+              type: 'ciel_arts_on_attack',
+              value: 20,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: 'Phasing Fluid Blade (Buster On-Attack)',
+              type: 'ciel_buster_on_attack',
+              value: 10,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: 'Phasing Fluid Blade (Crit HP ≥ 50%)',
+              type: 'ciel_crit_hp_50',
+              value: 50,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: 'Phasing Fluid Blade (Crit HP 100%)',
+              type: 'ciel_crit_hp_100',
+              value: 50,
+              remainingTurns: 3
+            });
+            buffLog = `(🗡️ +30% Arts/Buster [3T], Arts On-Attack [Strip Boss Guts, -20% Heal, 1 Diamond Drain], Buster On-Attack [+10% NP], HP-Conditional Crit DMG [3T]!)`;
+          } else if (skillObj?.id === 'idea_blood_hemonomic_principle_b' || /idea blood/i.test(sName)) {
+            // Ciel S3: Idea Blood: Hemonomic Principle B
+            const cardTypes: ('Buster' | 'Arts' | 'Quick')[] = ['Buster', 'Arts', 'Quick'];
+            const chosenType = cardTypes[Math.floor(Math.random() * cardTypes.length)];
+            if (active.currentHand && active.currentHand.length > 0) {
+              active.currentHand = active.currentHand.map(() => chosenType);
+            }
+            active.npGauge = Math.min(300, (active.npGauge || 0) + 50); // 50% in raids!
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: 'Idea Blood (DEF Up +100%)',
+              type: 'def_up',
+              value: 100,
+              remainingTurns: 3 // 3 turns in raids!
+            });
+            active.activeBuffs.push({
+              name: 'Idea Blood (Buff-On-Defense: Heal)',
+              type: 'buff_on_defense_heal',
+              value: 10,
+              remainingHits: 3,
+              remainingTurns: 3,
+              isHitCount: true
+            } as any);
+            buffLog = `(🩸 Hand converted to All ${chosenType} [1T]!, +50% NP Gauge, +100% DEF [3T], +10% HP Heal on Hit [3 Hits/3T]!)`;
           } else if (skillObj?.id === 'knight_of_utopia_ex' || /knight of utopia/i.test(sName)) {
             // Artoria S1: Knight of Utopia EX
             participants.forEach(p => {
@@ -4867,6 +5039,24 @@ function applyDamageToRaidParticipant(
   const endMitigation = 1.0 - (getEnduranceDamageReductionPercent(effEnd) / 100);
   const finalDamage = Math.round(damage * endMitigation);
   p.currentHp = p.currentHp - finalDamage;
+
+  // Idea Blood: Recover 10% HP when taking damage (3 times, 3 turns)
+  if (finalDamage > 0 && p.currentHp > 0 && p.activeBuffs) {
+    const healOnDef = p.activeBuffs.find(b => b.type === 'buff_on_defense_heal') as any;
+    if (healOnDef && (healOnDef.remainingHits === undefined || healOnDef.remainingHits > 0)) {
+      const healAmt = Math.round(p.maxHp * 0.10);
+      p.currentHp = Math.min(p.maxHp, p.currentHp + healAmt);
+      if (healOnDef.remainingHits !== undefined) {
+        healOnDef.remainingHits--;
+        if (healOnDef.remainingHits <= 0) {
+          const idx = p.activeBuffs.indexOf(healOnDef);
+          if (idx !== -1) p.activeBuffs.splice(idx, 1);
+        }
+      }
+      const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+      state.recentLogs.push(`🩸 **[Idea Blood]** **${pName}** recovered **+${healAmt.toLocaleString()} HP** upon taking damage! (${healOnDef.remainingHits ?? 0} hits left)`);
+    }
+  }
   if (p.currentHp <= 0) {
     const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
     const gutsIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'guts') : -1;

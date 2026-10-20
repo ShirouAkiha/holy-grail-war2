@@ -175,6 +175,31 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     gifUrl: 'https://ella.janitorai.com/media-approved/_lDposzhmPLDeSsGf6k70.gif',
     fallbackGif: 'https://ella.janitorai.com/media-approved/_lDposzhmPLDeSsGf6k70.gif',
     chant: 'I shall reconstruct this celestial world... Awaken, True Ancestor Throne! MARBLE PHANTASM!'
+  },
+  'Mysterious Executor C.I.E.L': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/2FK82Z4D2WXmDXZ9cL4lB.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/2FK82Z4D2WXmDXZ9cL4lB.gif',
+    chant: 'Seventh Scripture, activate! Break through all sin and guilt... Seventh Holy Scripture - Final Judgment!'
+  },
+  'ciel_executor': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/2FK82Z4D2WXmDXZ9cL4lB.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/2FK82Z4D2WXmDXZ9cL4lB.gif',
+    chant: 'Seventh Scripture, activate! Break through all sin and guilt... Seventh Holy Scripture - Final Judgment!'
+  },
+  'Ciel': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/2FK82Z4D2WXmDXZ9cL4lB.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/2FK82Z4D2WXmDXZ9cL4lB.gif',
+    chant: 'Seventh Scripture, activate! Break through all sin and guilt... Seventh Holy Scripture - Final Judgment!'
+  },
+  'Code: Original Sin': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/2FK82Z4D2WXmDXZ9cL4lB.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/2FK82Z4D2WXmDXZ9cL4lB.gif',
+    chant: 'Seventh Scripture, activate! Break through all sin and guilt... Seventh Holy Scripture - Final Judgment!'
+  },
+  'Calvaria Galgalim': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/mLP_-8WbJfVio7dzHLF3n.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/mLP_-8WbJfVio7dzHLF3n.gif',
+    chant: 'Idea Blood, manifest. Divine halo of retribution, descend upon the wicked! CALVARIA GALGALIM!'
   }
 };
 
@@ -217,6 +242,14 @@ export function getNoblePhantasmGif(servantOrTemplate: any, stage?: number): str
       return normalizeMediaUrl('https://ella.janitorai.com/media-approved/gc_jc1p1H5Gj6NlUuDG1Y.gif');
     }
     return normalizeMediaUrl('https://ella.janitorai.com/media-approved/_lDposzhmPLDeSsGf6k70.gif');
+  }
+
+  if (servantId.includes('ciel') || cleanRawName.includes('ciel')) {
+    const effectiveStage = stage ?? (typeof servantOrTemplate === 'object' ? (servantOrTemplate.selectedAscensionStage ?? servantOrTemplate.servant?.selectedAscensionStage ?? servantOrTemplate.ascensionStage ?? servantOrTemplate.servant?.ascensionStage ?? 1) : 1);
+    if (effectiveStage === 3 || effectiveStage === 4 || String(effectiveStage).includes('costume')) {
+      return normalizeMediaUrl('https://ella.janitorai.com/media-approved/mLP_-8WbJfVio7dzHLF3n.gif');
+    }
+    return normalizeMediaUrl('https://ella.janitorai.com/media-approved/2FK82Z4D2WXmDXZ9cL4lB.gif');
   }
 
   // 1. Check direct servant template configuration
@@ -348,6 +381,17 @@ export function getNoblePhantasmChant(servantOrTemplate: any): string {
     return cleanChantText(CUSTOM_NP_ANIMATIONS_REGISTRY[cleanRawName].chant!);
   }
 
+  // Check dynamic stage chant for Ciel
+  if (servantId.includes('ciel') || cleanRawName.includes('ciel')) {
+    const effectiveStage = typeof servantOrTemplate === 'object'
+      ? (servantOrTemplate.selectedAscensionStage ?? servantOrTemplate.servant?.selectedAscensionStage ?? servantOrTemplate.ascensionStage ?? servantOrTemplate.servant?.ascensionStage ?? 1)
+      : 1;
+    if (effectiveStage === 3 || effectiveStage === 4 || String(effectiveStage).includes('costume')) {
+      return 'Idea Blood, manifest. Divine halo of retribution, descend upon the wicked! CALVARIA GALGALIM!';
+    }
+    return 'Seventh Scripture, activate! Break through all sin and guilt... Seventh Holy Scripture - Final Judgment!';
+  }
+
   if (templateNp?.chant) return cleanChantText(templateNp.chant);
 
   if (cleanRawName) {
@@ -368,4 +412,43 @@ export function getNoblePhantasmChant(servantOrTemplate: any): string {
   }
 
   return 'True Name Unleashed — Receive the full divine power of this Heroic Spirit!';
+}
+
+/**
+ * Resolves dynamic Noble Phantasm name based on servant and equipped stage/costume.
+ * For Mysterious Executor C.I.E.L:
+ *   - Stages 1-2: Code: Original Sin
+ *   - Stages 3-4 (or costumes): Calvaria Galgalim
+ */
+export function getNoblePhantasmName(servantOrTemplate: any, stage?: number): string {
+  if (!servantOrTemplate) return 'Noble Phantasm';
+
+  const rawName = typeof servantOrTemplate === 'string'
+    ? servantOrTemplate
+    : (servantOrTemplate.name || servantOrTemplate.servant?.template?.name || servantOrTemplate.template?.name || '');
+
+  const servantId = (
+    typeof servantOrTemplate === 'string'
+      ? servantOrTemplate
+      : (servantOrTemplate.id || servantOrTemplate.templateId || servantOrTemplate.servant?.templateId || servantOrTemplate.template?.id || '')
+  ).toLowerCase();
+
+  const cleanRawName = rawName.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
+
+  if (servantId.includes('ciel') || cleanRawName.includes('ciel')) {
+    const effectiveStage = stage ?? (typeof servantOrTemplate === 'object'
+      ? (servantOrTemplate.selectedAscensionStage ?? servantOrTemplate.servant?.selectedAscensionStage ?? servantOrTemplate.ascensionStage ?? servantOrTemplate.servant?.ascensionStage ?? 1)
+      : 1);
+    if (effectiveStage === 3 || effectiveStage === 4 || String(effectiveStage).includes('costume')) {
+      return 'Calvaria Galgalim';
+    }
+    return 'Code: Original Sin';
+  }
+
+  const templateNp = typeof servantOrTemplate === 'object'
+    ? (servantOrTemplate.noblePhantasm || servantOrTemplate.template?.noblePhantasm)
+    : undefined;
+  if (templateNp?.name) return templateNp.name;
+
+  return 'Noble Phantasm';
 }

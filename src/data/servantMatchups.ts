@@ -2705,6 +2705,307 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['arcueid_brunestud'] = SERVANT_MATCHUP_DATABASE.archetype_earth;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['earth'] = SERVANT_MATCHUP_DATABASE.archetype_earth;
 
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['ciel_executor'] = {
+  artoria_pendragon: {
+    intro: "A king blessed by holy light and high moral standing. As an upright class rep, I respect that! Though, how is Camelot's cafeteria curry selection?",
+    retort: "A righteous spirit, yet your focus wanders to spices mid-battle. Very well, Executor—show me the conviction behind that holy scripture!",
+    tag: "HOLY LIGHT VS COSMIC CURRY"
+  },
+  artoria_pendragon_alter: {
+    intro: "Dressed in pitch-black armor with a terrible junk-food diet... I smell unrepentant delinquency. Time for some strict after-school disciplinary action!",
+    retort: "Loud-mouthed nun. Wave that oversized pile bunker elsewhere before I turn your cosmic toys into scrap metal.",
+    tag: "CLASS REP DISCIPLINE VS JUNK-FOOD DELINQUENT"
+  },
+  artoria_caster: {
+    intro: "Exhausted from cramming duties and saving the world on an empty stomach? Here, take this curry bun—it's supercharged with cosmic calories!",
+    retort: "Wait, it's glowing blue?! Is this safe to eat?! You look like a kind senpai, but your gear looks entirely sci-fi terrifying!",
+    tag: "COSMIC CURRY BUN VS PILGRIM CASTER"
+  },
+  jeanne_alter: {
+    intro: "A rogue witch burning scriptures out of spite? Blasphemy is one thing, but running a sloppy pyrotechnic show without a permit is unacceptable.",
+    retort: "A galactic fake nun lecturing me on proper scripture?! I'll roast that goofy halo right off your head, you pompous class rep!",
+    tag: "SAFETY PERMIT VS DRAGON WITCH"
+  },
+  gilgamesh_archer: {
+    intro: "Babylon's vault holds countless treasures, yet I notice a distinct lack of Seventh Holy Scripture space retrofits. Care to update your inventory?",
+    retort: "Impudent girl! A high schooler wielding celestial scrap dares critique the King’s treasury? I shall pin you to the earth for that insolence!",
+    tag: "TREASURY RETROFIT VS KING OF HEROES"
+  },
+  emiya_archer: {
+    intro: "I recognize that posture anywhere—the tragic, underpaid vanguard doing everyone else's dirty work. Tell me, do you take freelance kitchen shifts?",
+    retort: "An immortal Church agent turned space idol... As if my deployment list wasn't chaotic enough. And no, I am not cooking for your fan club.",
+    tag: "UNPAID VANGUARD VS FREELANCE KITCHEN"
+  },
+  cu_chulainn_lancer: {
+    intro: "High agility, crimson spear, beast-like reflexes... Reminds me of a certain annoying spear user, but you seem far more agreeable.",
+    retort: "Flattery won't stop this spear, sister! Though bringing a bunker-buster to a duel makes you my kind of crazy!",
+    tag: "ANNOYING SPEAR REMINISCENCE VS BUNKER BUSTER"
+  },
+  scathach_lancer: {
+    intro: "Immortality cursed by the boundary of the world? Believe me, I understand the headache. But stepping down isn't in my schedule.",
+    retort: "An immortal vessel of paradoxical flesh... Fascinating. Let us see if that cosmic armory of yours can pierce a curse of eternity.",
+    tag: "BOUNDARIES OF IMMORTALITY"
+  },
+  heracles_berserker: {
+    intro: "Target classified: Colossal brute with Twelve Labors. Perfect test data for the Seventh Holy Scripture’s super-heavy kinetic ordnance!",
+    retort: "■■■■■■■■■—!! (The demigod roars, his stony skin unaffected by the hum of hovering space-age bits.)",
+    tag: "HEAVY KINETIC ORDNANCE VS TWELVE LABORS"
+  },
+  van_gogh: {
+    intro: "Anomalous extraterrestrial entity confirmed. However, student counseling takes priority—wipe those tears, take a deep breath, and stand straight.",
+    retort: "Ah, ehehe... a holy, shining light... but wait, why are you aiming that giant metal stake right at my forehead...?! S-Scary!",
+    tag: "STUDENT COUNSELING VS EXTRATERRESTRIAL ENTITY"
+  },
+  tamamo_no_mae: {
+    intro: "A wicked fox spirit trying to play the docile, devoted wife? That sweet facade doesn't fool an Executor's sensory net for a second.",
+    retort: "Hmph! Look who's talking, Miss 'High School Senior Nun Space-Idol'! Your backstory has so many cover jobs it makes my tails spin!",
+    tag: "SENSORY NET VS COVER JOB OVERLOAD"
+  },
+  altera: {
+    intro: "A wandering star engine calibrated for destruction. As the Sapphire Galaxy's top protector, I cannot permit any unapproved planetary deconstruction.",
+    retort: "The light around you... It is alien, yet anchored to human order. If you obstruct my path, I must harvest you.",
+    tag: "SAPPHIRE PROTECTOR VS STAR ENGINE HARVEST"
+  },
+  hassan_i_sabbah_azrael: {
+    intro: "The founder of the Assassins... That aura of strict dogma is familiar. Still, my paradox isn't something an evening bell can sever so easily.",
+    retort: "A wanderer entangled in the knot of unliving fate. The toll matters not to the flesh, but to the sin thy vessel harbors. Stand forth.",
+    tag: "STRICT DOGMA VS UNLIVING PARADOX"
+  },
+  jeanne_darc_ruler: {
+    intro: "The Holy Maiden herself! A pleasure to meet an authentic saint. Rest assured, all of my weapons are fully certified by the... cosmic clergy.",
+    retort: "Pleased to meet you, Ciel-san! Though, um... I'm quite certain the Holy See never approved rocket-propelled sacramental pile bunkers...",
+    tag: "AUTHENTIC SAINT VS COSMIC CLERGY"
+  },
+  mhx_alter: {
+    intro: "A Dark Rounds operative loitering around convenience stores! Surrender your contraband sweets, or face emergency detention!",
+    retort: "C.I.E.L... Cosmic Infidel Eliminating Lunches. You will never take my premium bean paste paste-rations alive, space nun.",
+    tag: "CONTRABAND SWEETS VS EMERGENCY DETENTION"
+  },
+  nero_claudius_saber: {
+    intro: "So you're the notorious fifth emperor... Excessive theater budgets, terrible discipline, and no modesty whatsoever. Detention for a month!",
+    retort: "Detention?! Absurd! The world itself is my auditorium! If you claim to be a cosmic idol, let our performance settle the score!",
+    tag: "CLASS REP DETENTION VS GOLDEN THEATER"
+  },
+  karna_lancer: {
+    intro: "The Hero of Charity. Your piercing insight is troublesome, but the Seventh Scripture’s output won't falter against solar radiance.",
+    retort: "Your eyes carry the sorrow of thousands of deaths, yet your stance remains immaculate. An admirable warrior. I shall answer in full.",
+    tag: "SOLAR RADIANCE VS SEVENTH SCRIPTURE"
+  },
+  aoko_aozaki: {
+    intro: "Aozaki-san! How many times must I warn you about improper timeline discharge?! Leaving cosmic bills unpaid is a galactic offense!",
+    retort: "Gah, spare me the hall monitor routine, Ciel! And what is with that ridiculously high-tech getup?! Did you raid an alien warehouse?!",
+    tag: "TIMELINE DISCHARGE VS HALL MONITOR ROUTINE"
+  },
+  typhon_ephemeros: {
+    intro: "Planetary-class dragon spawn identified. Locking kinetic anchors... Time to show you the standard disciplinary procedure of the Sapphire Galaxy!",
+    retort: "Annoying insect with bright floating toys! No matter how dense your light frame is, my storm will grind you down into scrap!",
+    tag: "SAPPHIRE DISCIPLINE VS DRAGON STORM"
+  },
+  okita_souji: {
+    intro: "Your lung condition triggers multiple medical hazard protocols! You should be resting in the infirmary, not brandishing a katana!",
+    retort: "Haha, an infirmary pass? The Shinsengumi pushes through any ailment! Prepare yourself, Mysterious Executor-san! *Gah-cough!*",
+    tag: "MEDICAL HAZARD PROTOCOL VS SHINSENGUMI SPIRIT"
+  },
+  archetype_earth: {
+    intro: "Well, well. If it isn't the haughty shut-in sitting on her moonlit throne. Fancy armaments or not, exterminating true ancestors is my favorite hobby.",
+    retort: "Still running about like a frantic bird, French heretic. No matter how much cosmic scrap you strap to your back, dust remains dust.",
+    tag: "TRUE ANCESTOR EXTERMINATION VS MOONLIT THRONE"
+  },
+  luvria_greenharte: {
+    intro: "Nullifying concepts? That sounds dangerously close to True Magic violations. As an upright enforcer, I can't overlook such reckless hacking!",
+    retort: "Hark, a nun bearing cosmic steel! Speak not of violations, maiden, for when I negate the concept of distance, thy artillery mattereth not!",
+    tag: "CONCEPT NULLIFICATION VS UPRIGHT ENFORCER"
+  },
+  lucia_lyozes: {
+    intro: "A vanguard leader with five-second precognition. Impressive, but the firing velocity of this pile bunker exceeds conventional reaction thresholds.",
+    retort: "I saw your shot land five seconds ago. Your weapons carry terrifying force, Executor, but precision wins where brute power fails.",
+    tag: "PRECOGNITION VS PILE BUNKER VELOCITY"
+  },
+  adiosa_dragon_envoy: {
+    intro: "Cataclysm-tier dragon entity radiating lethal gravitational pressure... Switching to Seventh Holy Scripture: Star-Buster Mode. Let's make this clean.",
+    retort: "Krav'nok zul grol drazk'hlor aeth'ra. Voth zul ruk'thar xal rhun. (Dust speaks pathetic power. I shall annihilate its weapon.)",
+    tag: "STAR-BUSTER MODE VS GRAVITATIONAL PRESSURE"
+  },
+  amamiya_no_chihaya_tenkohime: {
+    intro: "A shrine maiden who neglects her shrine for naps and snacks? Unacceptable behavior! Come along, proper etiquette lessons begin right now!",
+    retort: "Eeeek! Stay away ja nee! Washi doesn't want etiquette lessons from a crazy nun wielding a rocket drill! Shoo! Shoo!",
+    tag: "ETIQUETTE LESSONS VS SHRINE MAIDEN NAPS"
+  },
+  ciel_executor: {
+    intro: "An imposter sporting the exact same pseudo-light frame?! Identity theft in the Servant Universe carries a fifty-year prison sentence, you know!",
+    retort: "Please! You're clearly the low-budget bootleg copy trying to ride my popularity coattails! Let's see whose curry recipe reigns supreme!",
+    tag: "COSMIC IDOL VS STRICT CLASS REP"
+  }
+};
+
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['ciel'] = SERVANT_MATCHUP_DATABASE.ciel_executor;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['mysterious_executor_ciel'] = SERVANT_MATCHUP_DATABASE.ciel_executor;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['space_ciel'] = SERVANT_MATCHUP_DATABASE.ciel_executor;
+
+const addCielOpponentMatchup = (oppId: string, intro: string, retort: string, tag: string) => {
+  if (!SERVANT_MATCHUP_DATABASE[oppId]) {
+    (SERVANT_MATCHUP_DATABASE as Record<string, any>)[oppId] = {};
+  }
+  SERVANT_MATCHUP_DATABASE[oppId].ciel_executor = { intro, retort, tag };
+  SERVANT_MATCHUP_DATABASE[oppId].ciel = { intro, retort, tag };
+};
+
+addCielOpponentMatchup('artoria_pendragon', 
+  "A warrior of the Church carrying such bizarre, celestial weaponry... State your allegiance, Executor, before the holy sword passes judgment!",
+  "My allegiance is to galactic peace and wholesome school lunches! Don't let the rocket boosters confuse you, King of Knights—my faith is strictly orthodox!",
+  "HOLY SWORD JUDGMENT VS ORTHODOX FAITH"
+);
+
+addCielOpponentMatchup('artoria_pendragon_alter',
+  "Out of my sight, noisy nuisance. One more word about detention and I will bury that ridiculous bit crown beneath the earth.",
+  "Resisting disciplinary action with threats of violence? Tsk, tsk. Looks like someone needs a remedial course in manners, delivered at Mach 10!",
+  "BLACKENED THREATS VS MACH 10 REMEDIAL"
+);
+
+addCielOpponentMatchup('artoria_caster',
+  "Wh-Why are you staring at me like that?! Is carrying an oversized wooden staff a violation of galactic school regulations?!",
+  "Not at all, junior! But your posture screams 'chronic sleep deprivation.' Finish this duel quickly so I can prescribe you a hot bowl of curry!",
+  "WOODEN STAFF PERFORMS VS CHRONIC SLEEP DEPRIVATION"
+);
+
+addCielOpponentMatchup('jeanne_alter',
+  "A fake nun dressed like a sci-fi idol preaching discipline?! I’m going to turn you, your pile bunker, and your obnoxious halo into black ash!",
+  "Go ahead and vent, problem child! My pseudo-light frame has already survived total atomic disintegration—your tantrums won't even singe my sleeves!",
+  "BLACK ASH VS ATOMIC DISINTEGRATION SURVIVOR"
+);
+
+addCielOpponentMatchup('gilgamesh_archer',
+  "Mongrel! How dare an unrefined Church hound wave cheap, hovering scrap before the King of Heroes! Kneel and beg for mercy!",
+  "Cheap scrap?! This is state-of-the-art Seventh Holy Scripture engineering! Let's see if that dusty antique vault of yours can block a direct bunker strike!",
+  "KING's MERCY VS BUNKER STRIKE"
+);
+
+addCielOpponentMatchup('emiya_archer',
+  "That face... and that familiar, clinical scripture craftsmanship. Don't tell me you brought your Church black-ops nonsense all the way into the cosmos?",
+  "My, my, if it isn't the red-coated stray! I see you're still putting that holy shroud I gave you to good use. Try not to get it torn today, bowman!",
+  "BLACK-OPS NONSENSE VS HOLY SHROUD"
+);
+
+addCielOpponentMatchup('cu_chulainn_lancer',
+  "Heh! A nun with a rocket-powered battering ram? The modern Church sure has gotten wild! Come on, let's see how fast you can fire that monster!",
+  "Faster than your eyes can track, hound of Culann! Prepare yourself—getting pinned by a holy kinetic anchor stings quite a bit!",
+  "WILD MODERN CHURCH VS HOLY KINETIC ANCHOR"
+);
+
+addCielOpponentMatchup('cu_chulainn',
+  "Heh! A nun with a rocket-powered battering ram? The modern Church sure has gotten wild! Come on, let's see how fast you can fire that monster!",
+  "Faster than your eyes can track, hound of Culann! Prepare yourself—getting pinned by a holy kinetic anchor stings quite a bit!",
+  "WILD MODERN CHURCH VS HOLY KINETIC ANCHOR"
+);
+
+addCielOpponentMatchup('scathach_lancer',
+  "A living human paradox anchored by the Counter Force itself... Can your immortal flesh withstand the twin death of Gáe Bolg?",
+  "Countless heretics have tried asking that very question, Gatekeeper. Spoilers: the paradox always wins, and it usually leaves quite a mess!",
+  "TWIN DEATH VS PARADOX VICTORIOUS"
+);
+
+addCielOpponentMatchup('heracles_berserker',
+  "■■■■■■■■■—!! (The Mad Warrior bounds forward, tearing up boulders as an oppressive wave of primal savagery crashes inward.)",
+  "Hostile target closing distance! Rerouting Idea Blood output to primary thrusters—brace for heavy impact, big guy!",
+  "PRIMAL SAVAGERY VS THRUSTER OVERDRIVE"
+);
+
+addCielOpponentMatchup('van_gogh',
+  "A radiant, shining crown... You look like an angel from the heavens, but... why is your mechanical stake locking onto me?! E-Eeeeek!",
+  "Target lock is purely standard safety procedure! Don't panic, little sunflower—I'm only here to prune the eldritch parasites, not you!",
+  "MECHANICAL STAKE LOCK VS SAFETY PROCEDURE"
+);
+
+addCielOpponentMatchup('tamamo_no_mae',
+  "Ugh, the unmistakable, suffocating stench of Church bureaucracy! And what is with that blindingly tacky halo?! You're ruining my mood!",
+  "Bureaucracy? How rude! This is an officially recognized galactic savior badge. Now tuck those fluffy tails in before they get caught in the turbine!",
+  "SUFFOCATING BUREAUCRACY VS GALACTIC SAVIOR BADGE"
+);
+
+addCielOpponentMatchup('altera',
+  "You carry an armament meant for hunting leviathans among the stars. Are you a civilization-reaping entity... or an obstacle to be dismantled?",
+  "Neither! I'm just a high school senior and devoted executor keeping the peace! Let's talk things out before you swing that rainbow sword!",
+  "LEVIATHAN HUNTER VS HIGH SCHOOL SENIOR"
+);
+
+addCielOpponentMatchup('hassan_i_sabbah_azrael',
+  "The toll of the bell rings for all who harbor unholy life. Does thy borrowed eternity seek respite beneath the executioner's edge?",
+  "Respite? Not while there are heretics to hunt and duties to finish. My eternity may be an anomaly, Grand Assassin, but it will not falter today!",
+  "TOLL OF THE BELL VS ANOMALOUS ETERNITY"
+);
+
+addCielOpponentMatchup('jeanne_darc_ruler',
+  "Um, excuse me, Ciel-san? That immense firearm... are you entirely sure the Lord’s word is meant to be delivered via heavy artillery?",
+  "Of course, Holy Maiden! In deep space, sometimes you have to deliver salvation at several thousand rounds per minute!",
+  "LORD's WORD VS HEAVY ARTILLERY SALVATION"
+);
+
+addCielOpponentMatchup('mhx_alter',
+  "Halt, executor of the Galactic Police. If you step between me and the last limited-edition sweet bean bun, you will taste the red blade of the dark side.",
+  "Threatening an officer over convenience store pastries?! That is an immediate suspension! Put the bean buns down and put your hands up!",
+  "LIMITED SWEET BEAN BUN VS IMMEDIATE SUSPENSION"
+);
+
+addCielOpponentMatchup('nero_claudius_saber',
+  "A competitor in the realm of star-spanning idols?! Hah! Roma's dazzling brilliance will outshine whatever laser tricks you brought from the Sapphire Galaxy!",
+  "An idol stage isn't just about showing off fancy dresses, Emperor! True star power comes from relentless discipline and delivering under pressure!",
+  "ROMA'S BRILLIANCE VS RELENTLESS DISCIPLINE"
+);
+
+addCielOpponentMatchup('karna_lancer',
+  "Behind that cheerful, student-like exterior lies a warrior who has cast away all earthly attachments. A formidable opponent. Take your stance.",
+  "Sharp eyes as always, Hero of Charity. Don't worry—even stripped of personal desires, my aim never wavers!",
+  "NO EARTHLY ATTACHMENTS VS UNWAVERING AIM"
+);
+
+addCielOpponentMatchup('aoko_aozaki',
+  "Hey, Ciel! Don't point that ridiculous rocket launcher at me! What did I even do this time to make the Burial Agency come knocking?!",
+  "You know exactly what you did, Aozaki-san! Property damage, spatial distortions, and skipping out on cafeteria bills! Prepare to be apprehended!",
+  "BURIAL AGENCY KNOCKING VS PROPERTY DAMAGE & BILLS"
+);
+
+addCielOpponentMatchup('typhon_ephemeros',
+  "A petty human playing soldier with alien toys! My storm will rip through that fragile armor and swallow your very core!",
+  "A giant lizard with an attitude problem. I've taken down beasts ten times your size across three star systems—settle down and take your medicine!",
+  "PETTY HUMAN SOLDIER VS THREE STAR SYSTEMS EXTERMINATOR"
+);
+
+addCielOpponentMatchup('okita_souji',
+  "The first unit captain of the Shinsengumi, Okita Souji, challenges you! That huge metal cannon looks heavy—let's see if you can keep up with my Sandanzuki!",
+  "Oh, trust me, Okita-san, these thrusters provide plenty of mobility! Just try not to overexert yourself before the first exchange!",
+  "SHINSENGUMI CAPTAIN VS HIGH MOBILITY THRUSTERS"
+);
+
+addCielOpponentMatchup('archetype_earth',
+  "A pest clinging to an unnatural life, now masquerading as a celestial arbiter. Did you truly believe a change of clothes would cleanse your blood, heretic?",
+  "My blood may be stained, Princess, but my trigger finger has never been cleaner. Time to drag you off that high-and-mighty throne once and for all!",
+  "UNNATURAL LIFE VS CLEAN TRIGGER FINGER"
+);
+
+addCielOpponentMatchup('luvria_greenharte',
+  "Hark! A maiden of iron faith and star-borne steel! Canst thy holy sacrament withstand the total negation of the very air thou breathest?",
+  "Bypassing the concept of air? A neat parlor trick, Miss Greenharte, but my pseudo-light frame doesn't rely on mortal lungs to operate!",
+  "TOTAL NEGATION OF AIR VS PSEUDO-LIGHT FRAME"
+);
+
+addCielOpponentMatchup('lucia_lyozes',
+  "I foresee the trajectory of your artillery five seconds ahead. A weapon of that magnitude leaves no room for adaptation once fired.",
+  "Seeing the future is great and all, Miss Lyozes, but knowing a bunker-buster is coming and actually dodging the blast radius are two very different things!",
+  "5-SECOND PRECOGNITION VS BLAST RADIUS REALITY"
+);
+
+addCielOpponentMatchup('adiosa_dragon_envoy',
+  "Krav'nok. Shak voth aeth'ra maz zek. Voth zul ruk'thar gath xal'nok. (Dust. Obey my power and kneel. I will annihilate all swarms.)",
+  "Severe gravitational pressure confirmed... Initiating Bit Crown barrier overdrive! You might be an ancient world-pruner, dragon, but I'm the galaxy's exterminator!",
+  "ANCIENT WORLD-PRUNER VS GALAXY EXTERMINATOR"
+);
+
+addCielOpponentMatchup('amamiya_no_chihaya_tenkohime',
+  "Hyaaa! Don't aim that weird humming drill at Washi ja nee! Amazakura will slice your metal bits into firewood if you take one more step!",
+  "Don't fret, little shrine fox! This pile bunker is strictly calibrated for evil spirits—if you behave yourself, you won't feel a thing!",
+  "AMAZAKURA KATANA VS EVIL SPIRIT CALIBRATION"
+);
+
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.
  * Generates compelling class-advantage, trait-based, and alignment-based dialogues.
@@ -2804,6 +3105,8 @@ export function getServantMatchupDialogue(
     if (id === 'hassan_i_sabbah_azrael') return 'azrael';
     if (id === 'okita' || id === 'saber_okita' || id === 'souji_okita') return 'okita_souji';
     if (id === 'okita_souji') return 'okita';
+    if (id === 'ciel' || id === 'mysterious_executor_ciel' || id === 'space_ciel') return 'ciel_executor';
+    if (id === 'ciel_executor') return 'ciel';
     return id;
   };
   const cAlt = getAltId(cId);

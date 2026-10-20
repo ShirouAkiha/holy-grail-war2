@@ -1717,6 +1717,106 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "You dare...?!",
       "That actually stung!"
     ]
+  },
+
+  // Mysterious Executor C.I.E.L - MoonCancer
+  ciel_executor: {
+    battleStart: [
+      "Seventh Scripture, online! High school senior, Mysterious Executor C.I.E.L, taking the field!",
+      "Commencing extermination procedure. Please step back, Master!",
+      "By the Lord's grace and the power of the Sapphire Galaxy—engage!",
+      "Target verified. Don't worry, I'll keep the collateral damage to a minimum!"
+    ],
+    commandCard1: [
+      "Zéro, trois, quatre!",
+      "Understood!",
+      "Target locked."
+    ],
+    commandCard2: [
+      "Become a beehive!",
+      "Bunker ready!",
+      "Engaging thrusters."
+    ],
+    commandCard3: [
+      "I'll cut you down!",
+      "Ready to repent?",
+      "Executing sequence."
+    ],
+    buster: [
+      "Zéro, trois, quatre! Heavy kinetic bunker strike!",
+      "Become a beehive! Full orbital barrage!",
+      "I'll cut you down! Seventh Scripture—Max Output!",
+      "Ready to repent? Maximum kinetic impact!"
+    ],
+    arts: [
+      "Zéro, trois, quatre! Phasing fluid blade, engage!",
+      "Ready to repent? Mana circulation overload!",
+      "Become a beehive! High-frequency blade flurry!",
+      "I'll cut you down! Purifying sacred mana pulse!"
+    ],
+    quick: [
+      "Zéro, trois, quatre! High-velocity thruster vector!",
+      "Become a beehive! Rapid-fire Bit Crown burst!",
+      "I'll cut you down! Faster than a falling star!",
+      "Ready to repent? Critical star thrust!"
+    ],
+    mixed: [
+      "Zéro, trois, quatre! Execute divine retribution!",
+      "Become a beehive! Ready to repent?",
+      "I'll cut you down! Idea Blood overdrive!",
+      "Class rep enforcer mode—no mercy for troublemakers!"
+    ],
+    desperation: [
+      "Pseudo-light frame damaged... Re-routing power to emergency thrusters!",
+      "I survived atomic disintegration—this scratch is nothing!",
+      "Master, don't worry! An Executor never backs down!"
+    ],
+    skills: [
+      "Have you finished your confession? (Human Mana Factory A)",
+      "By the Lord's will! (Phasing Fluid Blade B+)",
+      "Execute divine retribution. (Idea Blood: Hemonomic Principle B)",
+      "Re-calibrating Bit Crown barriers!",
+      "Cosmic calories fully charged!"
+    ],
+    skill1: [
+      "Have you finished your confession?",
+      "Human Mana Factory online!",
+      "Recovers mana and spirit origin."
+    ],
+    skill2: [
+      "By the Lord's will!",
+      "Phasing fluid blade active!",
+      "Sharpness calibrated to maximum."
+    ],
+    skill3: [
+      "Execute divine retribution.",
+      "Idea Blood: Hemonomic Principle!",
+      "Deck conversion sequence initiated."
+    ],
+    npSelect: [
+      "Seventh Scripture, activate!",
+      "Idea Blood, manifest!",
+      "Divine halo of retribution, descend!"
+    ],
+    noblePhantasm: [
+      "Seventh Scripture, activate! Break through all sin and guilt... Seventh Holy Scripture - Final Judgment!",
+      "Idea Blood, manifest. Divine halo of retribution, descend upon the wicked! CALVARIA GALGALIM!"
+    ],
+    extraAttack: [
+      "Zéro, trois, quatre! Become a beehive!",
+      "I'll cut you down! Ready to repent?",
+      "Seventh Scripture—FULL BUSTER BURST!"
+    ],
+    victory: [
+      "Target exterminated! Another peaceful day secured by Mysterious Executor C.I.E.L!",
+      "Mission accomplished! Now then, who's up for a piping hot bowl of curry?",
+      "Order restored! Remember to keep your homework turned in on time!"
+    ],
+    defeat: [
+      "Light frame collapsing... Emergency retreat to the Sapphire Galaxy...",
+      "Ah... Forgive me, Master... My curry... got cold...",
+      "Spirit origin dissolving... I'll be back after remedial class..."
+    ]
   }
 };
 
@@ -1761,6 +1861,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   const cleanName = servantName.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
   const rawLower = servantName.toLowerCase();
 
+  if (cleanName.includes('ciel') || cleanName.includes('executor') || cleanName.includes('seventh scripture')) {
+    return SERVANT_COMBAT_DIALOGUES.ciel_executor;
+  }
   if (cleanName.includes('archetype') || cleanName.includes('arcueid') || cleanName.includes('brunestud') || cleanName.includes('funny vamp') || (cleanName.includes('earth') && (cleanName.includes('moon') || cleanName.includes('proto')))) {
     return SERVANT_COMBAT_DIALOGUES.archetype_earth;
   }

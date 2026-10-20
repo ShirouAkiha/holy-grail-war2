@@ -5347,10 +5347,425 @@ export const ARCHETYPE_EARTH_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const CIEL_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'ciel_bond_event_1',
+    servantTemplateId: 'ciel_executor',
+    requiredBondLevel: 1,
+    title: 'The Cosmic Nun & The One-Braincell Master',
+    subtitle: 'Bond Interlude: Mysterious Executor C.I.E.L',
+    description: 'Summoned by an undead anomaly chewing on her star-silk cape, the galaxy\'s premier Executor forms an unlikely covenant in an abandoned warehouse.',
+    rewardBondExp: 500,
+    rewardSaintQuartz: 3,
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "Please stop chewing on my cape, Master. It is reinforced with star-silk, so your teeth won't even leave a mark.\n\nHonestly... of all the Masters across the cosmos, I get summoned by a reanimated corpse running on a single braincell.",
+        choices: [
+          {
+            id: 's1_a',
+            text: '"Grrr... chomp."',
+            response: "Are you trying to eat my Black Keys now? Please spit that out immediately, it is consecrated steel!",
+            bondExpGain: 150,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 's1_b',
+            text: '"Uuuuugh..."',
+            response: "Yes, yes, I hear you. Your vocal cords are completely degraded, so don't strain yourself trying to form words.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 's1_c',
+            text: '"Blargh?"',
+            response: "Don't give me that blank look. Even if you don't understand me, as your senior in this war, I expect basic manners.",
+            bondExpGain: 150,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "The magus who prepared this summoning circle is dead in the corner. He probably used you as a cheap catalyst or a sacrifice.\n\nYet the Command Spells manifested on your rotting hand instead. Do you remember anything at all about who you used to be?",
+        choices: [
+          {
+            id: 's2_a',
+            text: '"...?"',
+            response: "Nothing at all, huh? Not a name, a family, or a hometown. Your mind was wiped completely clean when you died.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 's2_b',
+            text: '"Nom."',
+            response: "Biting your own arm won't jog your memory! Stop that before you accidentally gnaw your own fingers off!",
+            bondExpGain: 150,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 's2_c',
+            text: '"Guuuuh..."',
+            response: "A hollow groan is all that's left of your soul. It is infuriating how casually magi trample on human lives.",
+            bondExpGain: 150,
+            reactionEmotion: 'somber',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "Under normal Holy Church protocols, an undead anomaly like you should be purified on sight. I am an Executor, after all.\n\nWhether it's planetary bloodsuckers or terrestrial ghouls, putting the dead to rest is my foundational duty.",
+        choices: [
+          {
+            id: 's3_a',
+            text: '"Grrr?"',
+            response: "Don't tilt your head at me like a confused puppy. Do you not even have the survival instinct to fear an executioner?",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 's3_b',
+            text: '"Chomp."',
+            response: "And now you're biting my gauntlet. You really have zero malice in you, don't you? Just pure, empty instinct.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 's3_c',
+            text: '"Aaaah..."',
+            response: "Relax, I am not drawing my weapons. You aren't a Dead Apostle or a ghoul feeding on the living. You're just... broken.",
+            bondExpGain: 150,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "Besides, your teeth don't carry any curse or infection. You're less of a monster and more of a magical malfunction.\n\nStill, sustaining a MoonCancer-class Servant while your own body is clinically dead... how are we even linked right now?",
+        choices: [
+          {
+            id: 's4_a',
+            text: '"Uhn..."',
+            response: "My own mana reserves are A-rank, so I can sustain us both. You don't need to worry about being drained dry.",
+            bondExpGain: 150,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 's4_b',
+            text: '"Munch."',
+            response: "That is my boot, Master! I swear, if you get saliva on my footwear again, I am putting a muzzle on you!",
+            bondExpGain: 150,
+            reactionEmotion: 'indignant',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 's4_c',
+            text: '"...!"',
+            response: "Oh, did a spark of thought just cross that single braincell of yours? No, never mind, you're just staring at a dust mote.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "Look at us. A cosmic idol Executor and a mindless zombie hiding out in an abandoned Japanese warehouse.\n\nIf my fans in the Sapphire Galaxy saw this, the ticket prices for my next Star Live would plummet overnight.",
+        choices: [
+          {
+            id: 's5_a',
+            text: '"Guh?"',
+            response: "Never mind, it's a Servant Universe thing. Explaining galactic real estate to a corpse is a new low for me.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 's5_b',
+            text: '"Chomp, chomp."',
+            response: "Stop gnawing on the furniture! Even if you can't taste anything, putting dusty wood in your mouth is unsanitary!",
+            bondExpGain: 150,
+            reactionEmotion: 'strict',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 's5_c',
+            text: '"Uwaaah..."',
+            response: "Are you yawning? Do zombies even get tired, or is your motor function just lagging again?",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "Speaking of taste... I brought emergency curry rations, though I doubt your digestive tract functions anymore.\n\nIt is a shame. Sharing a warm meal of curry bread is the best way for a senpai to bond with her junior.",
+        choices: [
+          {
+            id: 's6_a',
+            text: '"Sniff... chomp."',
+            response: "Hey! Not the wrapper too! Hold still, let me pull the plastic out of your mouth before you choke!",
+            bondExpGain: 150,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 's6_b',
+            text: '"Groaaan..."',
+            response: "Does the spice smell bother your nose? Too bad, curry is the ultimate life-giving food in any universe.",
+            bondExpGain: 150,
+            reactionEmotion: 'pout',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 's6_c',
+            text: '"..."',
+            response: "Staring blankly at a masterpiece of culinary spice... Your condition is truly more tragic than I realized.",
+            bondExpGain: 150,
+            reactionEmotion: 'somber',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "You know, looking at you reminds me of something unpleasant. Being a walking corpse that refuses to stay dead...\n\nIn a way, you and I aren't so different. I know what it is like to have your body move when it shouldn't.",
+        choices: [
+          {
+            id: 's7_a',
+            text: '"Grrr..."',
+            response: "Don't mind me. I'm just venting to someone who can't repeat my secrets. It's surprisingly therapeutic.",
+            bondExpGain: 160,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 's7_b',
+            text: '"Nom..."',
+            response: "Giving my knee a gentle bite isn't going to comfort me, Master. Though... I suppose that's your version of a pat on the back.",
+            bondExpGain: 160,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 's7_c',
+            text: '"Huh?"',
+            response: "It's nothing for you to worry your one braincell over. Just the old memories of a girl from a French village.",
+            bondExpGain: 160,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_8'
+          }
+        ]
+      },
+      {
+        id: 'scene_8',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "Back then, my body was stolen by a monster, and I couldn't die no matter how many times I was broken.\n\nAt least you don't have to remember the pain of dying. Having an empty head might actually be a mercy for you.",
+        choices: [
+          {
+            id: 's8_a',
+            text: '"Uuuu..."',
+            response: "Wait, did that sound sad? No, it's just air escaping your lungs. I'm projecting human feelings onto a puppet.",
+            bondExpGain: 160,
+            reactionEmotion: 'melancholic',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 's8_b',
+            text: '"Bite."',
+            response: "Ow—okay, that didn't hurt, it's just wet! Stop trying to eat my sleeve while I'm having a serious moment!",
+            bondExpGain: 160,
+            reactionEmotion: 'pout',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 's8_c',
+            text: '"Gaaah."',
+            response: "You really don't care about gloomy talk, do you? Honestly, your simplicity is almost refreshing.",
+            bondExpGain: 160,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_9'
+          }
+        ]
+      },
+      {
+        id: 'scene_9',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "I used to think my only purpose was to hunt evil until everything ended. I never cared much about my own wishes.\n\nWhen you are an anomaly kept alive by a paradox, wanting things for yourself feels like an unforgivable luxury.",
+        choices: [
+          {
+            id: 's9_a',
+            text: '"..."',
+            response: "Thank you for listening quietly for once. You're actually a pretty good audience when you aren't chewing on steel.",
+            bondExpGain: 170,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_10'
+          },
+          {
+            id: 's9_b',
+            text: '"Chomp?"',
+            response: "You want to bite my hand again? Fine, here. Just the glove. If it keeps you calm, I don't mind.",
+            bondExpGain: 170,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_10'
+          },
+          {
+            id: 's9_c',
+            text: '"Guuuh..."',
+            response: "Yes, I know it sounds bleak. A cosmic heroine shouldn't have such dark baggage, right?",
+            bondExpGain: 170,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_10'
+          }
+        ]
+      },
+      {
+        id: 'scene_10',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "That is why I have made a decision regarding this Holy Grail War. I have no personal use for an omnipotent wish-granting chalice.\n\nHowever, I cannot stand seeing an innocent person reduced to a rotting chew-toy because of some selfish magus's ritual.",
+        choices: [
+          {
+            id: 's10_a',
+            text: '"Blargh?"',
+            response: "It means I am going to win this war for you, Master. I will use the Grail to restore your true life and memories.",
+            bondExpGain: 180,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_11'
+          },
+          {
+            id: 's10_b',
+            text: '"Munch, munch."',
+            response: "Keep chewing on my glove if you want. Once we get the Grail, you'll be eating real food with a beating heart.",
+            bondExpGain: 180,
+            reactionEmotion: 'heroic',
+            nextSceneId: 'scene_11'
+          },
+          {
+            id: 's10_c',
+            text: '"Uhn!"',
+            response: "Was that enthusiasm? Good. Even with one braincell, you should want your own humanity back.",
+            bondExpGain: 180,
+            reactionEmotion: 'cheerful',
+            nextSceneId: 'scene_11'
+          }
+        ]
+      },
+      {
+        id: 'scene_11',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "Of course, when you finally wake up as a normal human, you probably won't remember any of this time we spent together.\n\nYou won't remember biting my armor, or listening to my rambling, or fighting beside me in this war.",
+        choices: [
+          {
+            id: 's11_a',
+            text: '"Grrr..."',
+            response: "And honestly? That is for the best. No normal boy wants to remember the days he spent as a drooling zombie.",
+            bondExpGain: 180,
+            reactionEmotion: 'calm',
+            nextSceneId: 'scene_12'
+          },
+          {
+            id: 's11_b',
+            text: '"Nom."',
+            response: "Though I might tease you about it anyway. Imagine your face when a cute senpai tells you that you used to chew on her boots.",
+            bondExpGain: 180,
+            reactionEmotion: 'playful',
+            nextSceneId: 'scene_12'
+          },
+          {
+            id: 's11_c',
+            text: '"...?"',
+            response: "Don't worry about it. Even if you forget me the moment you're revived, seeing you live a normal life will be enough.",
+            bondExpGain: 180,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_12'
+          }
+        ]
+      },
+      {
+        id: 'scene_12',
+        speakerName: 'Mysterious Executor C.I.E.L',
+        ascensionStage: 1,
+        backgroundTheme: 'fuyuki_burning',
+        dialogueText: "Enemy Servant signatures are approaching the perimeter. It looks like our quiet break is officially over, Master.\n\nStay right behind me and try not to wander into the line of fire. Let's go win your life back.",
+        choices: [
+          {
+            id: 's12_a',
+            text: '"Grrr! Chomp!"',
+            response: "Let go of my arm so I can draw the Seventh Holy Scripture! We will play bite-the-gauntlet after I pulverize them!",
+            bondExpGain: 200,
+            reactionEmotion: 'heroic',
+            nextSceneId: 'end'
+          },
+          {
+            id: 's12_b',
+            text: '"Uwaaaah!"',
+            response: "That's the spirit! Give them your fiercest zombie roar while I handle all the actual fighting!",
+            bondExpGain: 200,
+            reactionEmotion: 'cheerful',
+            nextSceneId: 'end'
+          },
+          {
+            id: 's12_c',
+            text: '"..."',
+            response: "Good boy, staying right at my heels. Hold onto my cape—without putting it in your mouth—and watch your senpai work!",
+            bondExpGain: 200,
+            reactionEmotion: 'confident',
+            nextSceneId: 'end'
+          }
+        ]
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
 export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
+  ciel_executor: CIEL_BOND_EVENTS,
+  ciel: CIEL_BOND_EVENTS,
+  mysterious_executor_ciel: CIEL_BOND_EVENTS,
+  space_ciel: CIEL_BOND_EVENTS,
   archetype_earth: ARCHETYPE_EARTH_BOND_EVENTS,
   archetype: ARCHETYPE_EARTH_BOND_EVENTS,
   arcueid: ARCHETYPE_EARTH_BOND_EVENTS,
@@ -6637,8 +7052,98 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       requiredBondLevel: 5,
       quoteText: "If you're willing to stand in front of the abyss, I'll be the brush that paints your shield! Ehe... ehehe! Look up at the golden stars—『De Sterrennacht』!"
     }
+  ],
+  ciel_executor: [
+    {
+      id: 'ciel_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: "Hello. Thank you for summoning me. I'm Cie... I mean, I'm a high school senior kind of Servant and possible nun here to hunt down space vampires and spread the Lord's teachings. Yes, that's right. I'm Mysterious Executor C.I.E.L! I can't tell you what that top-secret acronym stands for, but please, just call me Ciel. Thank you for having me. ...By the way, just to make sure, you don't have any annoying True Ancestor royalty there, do you?"
+    },
+    {
+      id: 'ciel_bond_1',
+      title: 'Bond 1: Class Rep Enforcer',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: "Don't let this high-tech pseudo-light frame fool you, Master! At my core, I'm a diligent student enforcer and a devout servant of the Lord. If you ever need help with homework, scheduling, or exterminating cataclysm-tier heretics, just say the word!"
+    },
+    {
+      id: 'ciel_bond_2',
+      title: 'Bond 2: Cosmic Calories & Curry',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: "Curry isn't just food, Master—it's a spiritual discipline! The combination of aromatic spices, heat, and rich flavor fuels both body and soul. I've prepared a special batch infused with cosmic calories. Go on, take a bite! It's guaranteed to restore 100% of your stamina!"
+    },
+    {
+      id: 'ciel_bond_3',
+      title: 'Bond 3: The Paradox Vessel',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: "You ask about my past? ...It's a long story filled with blood, regret, and an immortality I never asked for. The world once refused to let me die because my existence was tied to a certain monster. But standing beside you in this Sanctum, carrying these Seventh Scripture retrofits... I feel like I'm finally fighting for a future I chose myself."
+    },
+    {
+      id: 'ciel_bond_4',
+      title: 'Bond 4: Unyielding Duty',
+      category: 'bond_4',
+      requiredBondLevel: 4,
+      quoteText: "I've watched empires crumble and centuries drift by like dust. Eternity can be an unbearable weight when borne alone. But with you as my Master, every battle feels meaningful, and every quiet moment in this room feels precious. Thank you for giving this paradoxical nun a place to belong."
+    },
+    {
+      id: 'ciel_bond_5',
+      title: 'Bond 5: Sacred Covenant',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: "Master... No matter what threats descend upon this world—be it ancient True Ancestors, space leviathans, or cosmic anomalies—I swear upon the Seventh Holy Scripture and my immortal soul to protect you. As long as I stand, no harm shall ever reach you. That is my solemn vow."
+    },
+    {
+      id: 'ciel_dialogue_1',
+      title: 'Dialogue 1: Daily Routine',
+      category: 'lore',
+      requiredBondLevel: 1,
+      quoteText: "Maintenance on the Seventh Scripture takes two hours every morning. After that, it's morning prayers, room inspection, and checking the cafeteria inventory. A disciplined lifestyle is the secret to peak combat performance!"
+    },
+    {
+      id: 'ciel_dialogue_2',
+      title: 'Dialogue 2: The Seventh Scripture',
+      category: 'lore',
+      requiredBondLevel: 2,
+      quoteText: "The Seventh Holy Scripture is a sacred conceptual weapon forged to execute unliving anomalies. In this form, it's upgraded with hovering Bit Crown anchors and a Star-Buster pile bunker. Isn't it wonderful how faith and sci-fi technology can harmonize?"
+    },
+    {
+      id: 'ciel_dialogue_3',
+      title: 'Dialogue 3: School & Future',
+      category: 'lore',
+      requiredBondLevel: 3,
+      quoteText: "Being a high school senior means balancing exams, extracurriculars, and saving the universe. But honestly? I wouldn't trade this hectic youth for anything."
+    },
+    {
+      id: 'ciel_likes',
+      title: 'Likes',
+      category: 'special',
+      requiredBondLevel: 1,
+      quoteText: "What do I like? Piping hot, extra-spicy curry! Also, well-organized schedules, quiet library afternoons, and seeing you smile after a hard-fought victory, Master."
+    },
+    {
+      id: 'ciel_dislikes',
+      title: 'Dislikes',
+      category: 'special',
+      requiredBondLevel: 1,
+      quoteText: "What I dislike? Arrogant True Ancestor princesses who think the moon revolves around them, tardiness, skipped meals, and people who slander the perfection of Indian spices!"
+    },
+    {
+      id: 'ciel_about_master',
+      title: 'About Master',
+      category: 'special',
+      requiredBondLevel: 1,
+      quoteText: "Master is kind, hardworking, and remarkably resilient. You remind me of why humanity is worth fighting for every single day. I'm honored to be your Servant."
+    }
   ]
 };
+
+SERVANT_BOND_DIALOGUE_LINES.ciel = SERVANT_BOND_DIALOGUE_LINES.ciel_executor;
+SERVANT_BOND_DIALOGUE_LINES.mysterious_executor_ciel = SERVANT_BOND_DIALOGUE_LINES.ciel_executor;
+SERVANT_BOND_DIALOGUE_LINES.space_ciel = SERVANT_BOND_DIALOGUE_LINES.ciel_executor;
 
 /**
  * Resolves all unlocked dialogue lines for a servant based on their current Bond Level.
@@ -6745,6 +7250,78 @@ export function getServantGiftReaction(
   const cleanId = rawId.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
   const reactions: Record<string, Record<string, { responseText: string; emotion: 'happy' | 'flustered' | 'amused' | 'thoughtful' }>> = {
+    ciel_executor: {
+      chaldea_tea: {
+        responseText: "A steaming cup of afternoon tea? ...Ah, the warmth is delightful, Master! Though, if I may suggest, a side of extra-spicy curry samosas would make this afternoon tea truly divine!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Is this... a feast for us?! Look at these gourmet delicacies! ...Wait, is that a giant pot of special Indian curry in the center?! Master, you're the absolute best! Let's dig in!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple brimming with dense magical energy... Consuming this fully recharges my pseudo-light frame and Seventh Scripture thrusters. Thank you for your thoughtfulness, Master!",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A consecrated relic of immense spiritual purity... Holding this resonates deeply with my Executor vows. I will cherish this token of your trust, Master.",
+        emotion: 'thoughtful'
+      }
+    },
+    ciel: {
+      chaldea_tea: {
+        responseText: "A steaming cup of afternoon tea? ...Ah, the warmth is delightful, Master! Though, if I may suggest, a side of extra-spicy curry samosas would make this afternoon tea truly divine!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Is this... a feast for us?! Look at these gourmet delicacies! ...Wait, is that a giant pot of special Indian curry in the center?! Master, you're the absolute best! Let's dig in!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple brimming with dense magical energy... Consuming this fully recharges my pseudo-light frame and Seventh Scripture thrusters. Thank you for your thoughtfulness, Master!",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A consecrated relic of immense spiritual purity... Holding this resonates deeply with my Executor vows. I will cherish this token of your trust, Master.",
+        emotion: 'thoughtful'
+      }
+    },
+    mysterious_executor_ciel: {
+      chaldea_tea: {
+        responseText: "A steaming cup of afternoon tea? ...Ah, the warmth is delightful, Master! Though, if I may suggest, a side of extra-spicy curry samosas would make this afternoon tea truly divine!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Is this... a feast for us?! Look at these gourmet delicacies! ...Wait, is that a giant pot of special Indian curry in the center?! Master, you're the absolute best! Let's dig in!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple brimming with dense magical energy... Consuming this fully recharges my pseudo-light frame and Seventh Scripture thrusters. Thank you for your thoughtfulness, Master!",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A consecrated relic of immense spiritual purity... Holding this resonates deeply with my Executor vows. I will cherish this token of your trust, Master.",
+        emotion: 'thoughtful'
+      }
+    },
+    space_ciel: {
+      chaldea_tea: {
+        responseText: "A steaming cup of afternoon tea? ...Ah, the warmth is delightful, Master! Though, if I may suggest, a side of extra-spicy curry samosas would make this afternoon tea truly divine!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Is this... a feast for us?! Look at these gourmet delicacies! ...Wait, is that a giant pot of special Indian curry in the center?! Master, you're the absolute best! Let's dig in!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple brimming with dense magical energy... Consuming this fully recharges my pseudo-light frame and Seventh Scripture thrusters. Thank you for your thoughtfulness, Master!",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A consecrated relic of immense spiritual purity... Holding this resonates deeply with my Executor vows. I will cherish this token of your trust, Master.",
+        emotion: 'thoughtful'
+      }
+    },
     altera: {
       chaldea_tea: {
         responseText: "Warm tea. The steam rises into the night air. Drinking this slowly... is good civilization.",
@@ -7668,6 +8245,22 @@ export function getServantSparringDebrief(
   const cleanId = rawId.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
   const drills: Record<string, { responseText: string; emotion: 'happy' | 'amused' | 'thoughtful' }> = {
+    ciel_executor: {
+      responseText: "Excellent drill, Master! Your tactical callouts and reaction timing were top-notch! The Bit Crown anchors synchronized perfectly with your commands. Keep up this level of discipline and we'll be completely unstoppable!",
+      emotion: 'happy'
+    },
+    ciel: {
+      responseText: "Excellent drill, Master! Your tactical callouts and reaction timing were top-notch! The Bit Crown anchors synchronized perfectly with your commands. Keep up this level of discipline and we'll be completely unstoppable!",
+      emotion: 'happy'
+    },
+    mysterious_executor_ciel: {
+      responseText: "Excellent drill, Master! Your tactical callouts and reaction timing were top-notch! The Bit Crown anchors synchronized perfectly with your commands. Keep up this level of discipline and we'll be completely unstoppable!",
+      emotion: 'happy'
+    },
+    space_ciel: {
+      responseText: "Excellent drill, Master! Your tactical callouts and reaction timing were top-notch! The Bit Crown anchors synchronized perfectly with your commands. Keep up this level of discipline and we'll be completely unstoppable!",
+      emotion: 'happy'
+    },
     altera: {
       responseText: "Your movements are steady. You did not flinch from the swing of Photon Ray. A Master who stands firm before the destroyer... is good civilization.",
       emotion: 'thoughtful'

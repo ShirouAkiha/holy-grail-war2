@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for auto-relaying raid battle embeds to the bottom of the channel on new turns/rounds (matching /duel behavior) while keeping in-place edits for card selection and mid-turn strike animations.",
-  "updatedAt": "2026-10-20T06:24:14.644027888Z",
+  "summary": "Implementation plan for adding the new 5★ MoonCancer Servant: Mysterious Executor C.I.E.L with 4 ascension stages, 2 Spiritron Dress costumes, full skill mechanics (dynamic HP-conditional crit buffs, card convert, on-attack/defense triggers), 2 stage-dependent Noble Phantasms with animations, and her signature Bond 10 CE Moon Bow.",
+  "updatedAt": "2026-10-20T11:22:32.562126926Z",
   "requestFeedback": true,
   "userFacing": true
 }

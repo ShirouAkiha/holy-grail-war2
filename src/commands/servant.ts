@@ -21,7 +21,7 @@ import {
 } from '../data/servantAscensions';
 import { getServantProfile } from '../engine/dialogue';
 import { getOrInitWarSession, exposeMasterInWar, getHealingStatus, getAllWarSessions, checkAndEnforceWarLevelLimits, WarLevelLimitResult } from '../engine/grailwar';
-import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
+import { getNoblePhantasmGif, getNoblePhantasmChant, getNoblePhantasmName } from '../data/noblePhantasmGifs';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { allocateStatPoints, calculateServantMaxHp, calculateServantMaxAtk, getParameterRank, getParameterRankMultiplier, getServantDefaultParamRank, getEnduranceDamageReductionPercent } from '../engine/statSystem';
 import { 
@@ -408,9 +408,9 @@ export async function buildServantHub(
 
     // Noble Phantasm
     const np = t.noblePhantasm || {
-      name: t.noblePhantasm?.name || 'Noble Phantasm',
+      name: getNoblePhantasmName(targetServant),
       cardType: t.noblePhantasm?.cardType || 'Buster',
-      chant: getNoblePhantasmChant(t),
+      chant: getNoblePhantasmChant(targetServant),
       target: t.noblePhantasm?.target || 'single',
       multiplier: t.noblePhantasm?.multiplier || 600,
       description: t.noblePhantasm?.description || 'Deals massive damage.'
@@ -600,13 +600,14 @@ export async function buildServantHub(
     embeds = [embed];
 
   } else if (category === 'np') {
-    const gifUrl = getNoblePhantasmGif(t);
-    const chant = targetServant.customQuotes?.noblePhantasm || getNoblePhantasmChant(t) || t.noblePhantasm?.chant || 'True Name Unleashed!';
-    const np = t.noblePhantasm || { name: t.name || 'Noble Phantasm', cardType: 'Buster', target: 'all', multiplier: 300, description: 'Noble Phantasm' };
+    const gifUrl = getNoblePhantasmGif(targetServant);
+    const chant = targetServant.customQuotes?.noblePhantasm || getNoblePhantasmChant(targetServant) || t.noblePhantasm?.chant || 'True Name Unleashed!';
+    const npName = getNoblePhantasmName(targetServant);
+    const np = t.noblePhantasm || { name: npName, cardType: 'Buster', target: 'all', multiplier: 300, description: 'Noble Phantasm' };
     const color = np.cardType === 'Buster' ? 0xef4444 : np.cardType === 'Arts' ? 0x3b82f6 : 0x10b981;
 
     const npEmbed = new EmbedBuilder()
-      .setTitle(`💥 NOBLE PHANTASM: ${np.name}`)
+      .setTitle(`💥 NOBLE PHANTASM: ${npName}`)
       .setDescription(
         `> *"${chant || np.chant || 'True Name Unleashed!'}"*\n\n` +
         `• **Heroic Spirit:** **${t.name || sName}** — *${t.title || 'Heroic Spirit'}* [\`${t.servantClass || 'Saber'}\`]\n` +

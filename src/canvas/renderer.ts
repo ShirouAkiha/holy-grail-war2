@@ -11,6 +11,7 @@ import { SERVANT_DATABASE, getServantAvatarAndCardArt, getServantSprite } from '
 import { resolveAscensionArtwork, resolveAscensionSprite } from '../data/servantAscensions';
 import { getRandomBackgroundUrl, findBackgroundPreset } from '../data/backgrounds';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
+import { getNoblePhantasmName, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
 import { getStatusIconUrl, STATUS_ICON_URLS } from '../data/statusIcons';
@@ -2931,14 +2932,15 @@ export async function renderServantProfileCard(
   ctx.stroke();
 
   const np = t.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', chant: '...', description: '' };
+  const npName = getNoblePhantasmName(servant);
   const npCardEmoji = np.cardType === 'Arts' ? '🔵' : np.cardType === 'Quick' ? '🟢' : np.cardType === 'Buster' ? '🔴' : '❓';
   ctx.fillStyle = '#fbbf24';
   ctx.font = 'bold 18px sans-serif';
-  ctx.fillText(`Noble Phantasm: ${np.name} [${npCardEmoji} ${np.cardType}]`, 46, 678);
+  ctx.fillText(`Noble Phantasm: ${npName} [${npCardEmoji} ${np.cardType}]`, 46, 678);
 
   ctx.fillStyle = '#fde047';
   ctx.font = 'italic 15px sans-serif';
-  const chant = servant.customQuotes?.noblePhantasm || np.chant || '...';
+  const chant = servant.customQuotes?.noblePhantasm || getNoblePhantasmChant(servant) || np.chant || '...';
   drawWrappedText(ctx, `"${chant}"`, 46, 704, 708, 20, 2);
 
   ctx.fillStyle = '#cbd5e1';

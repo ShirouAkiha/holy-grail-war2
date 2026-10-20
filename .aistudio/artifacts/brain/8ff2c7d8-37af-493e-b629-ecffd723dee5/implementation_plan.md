@@ -1,72 +1,103 @@
-# Raid Battle Auto-Relay to Bottom of Channel
+# Mysterious Executor C.I.E.L — Servant Integration Plan
 
-Re-enable the auto-relay behavior in raid battles so that at the start of each new turn/round, the previous battle embed is deleted and a fresh battle message is sent at the bottom of the channel (matching `/duel`), while keeping in-place edits for card selection and mid-turn strike previews.
+Add the 5★ MoonCancer Servant **Mysterious Executor C.I.E.L** to the Holy Grail War RPG with all 4 Ascension stages, 2 Spiritron Dress costumes, authentic Atlas Academy assets, full skill and passive kits, 2 stage-dependent Noble Phantasms (Code: Original Sin and Calvaria Galgalim) with custom animations, and her signature Bond CE Moon Bow.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The user confirmed the exact desired flow:
-> - **New Round/Turn Auto-Relay**: On new turns/rounds, auto-delete the previous raid battle embed and send a fresh embed at the bottom of the channel (matching `/duel`).
-> - **Mid-Turn In-Place Edits**: During card selection and the 2.5s player strike animation, edit the message in-place so buttons and attack previews update instantly without chat spam.
+> Key design choices confirmed with user:
+> - **Skill 3 (Idea Blood)**: Randomly converts all cards in the active hand to either 100% Buster, 100% Arts, or 100% Quick for 1 turn upon activation.
+> - **Dual Noble Phantasms**: Dynamically switches NP name, chant, and animation GIF based on equipped stage:
+>   - **Stages 1 & 2**: *Code: Original Sin (Seventh Holy Scripture - Final Judgment)*
+>   - **Stages 3 & 4 (and Costumes)**: *Calvaria Galgalim (Idea Blood: Hemonomic Principle - Guillotine)*
+> - **Bond Interlude**: Intentionally omitted for now; user will provide a script later.
 
 ## 1. Overview & Core Concept
 
-When a raid battle advances to a new turn or round (after player actions and boss turn resolution), the bot will send a fresh battle message with the updated canvas image, status, and interactive buttons at the bottom of the text channel, then delete the preceding battle message.
+- **Servant Identity**: Mysterious Executor C.I.E.L (MoonCancer class, 5★ SSR).
+- **Core Role**: Hybrid crit/burst offensive juggernaut with exceptional survivability (high HP pool, EX endurance, HP regeneration, buff removal resistance, 100% DEF burst, and defensive healing).
+- **Key Mechanics**:
+  - Arts on-attack Guts removal, healing down, and NP drain.
+  - Buster on-attack NP charge.
+  - Dynamic HP-conditional Critical Damage buffs (+50% at ≥50% HP, +50% at 100% HP).
+  - Class advantage vs Sabers (1.5x damage multiplier via Executor passive).
+  - Stage-adaptive NP visuals and chants with anti-Demonic scaling and Instant-Kill potential.
 
-This ensures the raid control UI is always at the very bottom of Discord chat, making it easily accessible even if players send text messages during combat.
-
-## 2. User Experience & Visual Design
-
-- **Card Selection**: Clicking card buttons (`#1`, `#2`, `#3`) updates the current battle message in-place with selected card indicators.
-- **Player Strike Phase**: When 3 cards are submitted, the battle message edits in-place to show the player's strike damage HUD and updated boss HP bar for 2.5 seconds.
-- **New Turn Auto-Relay**: Once the boss executes its turn and a new round begins, the bot sends a fresh battle embed at the bottom of the channel, registers the new message ID in `raidMessageIds`, and deletes the previous battle message.
-
-## 3. Key Product Decisions & Trade-Offs
+## 2. Technical Architecture & Component Mapping
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                 Raid Turn Lifecycle                         │
+│                 Servant Data & Assets                       │
+├─────────────────────────────────────────────────────────────┤
+│ • Template Definition (src/data/servants.ts)                │
+│ • Atlas Academy Stages 1-4 & Costumes 1-2 (servantAscensions)│
+│ • Dual NP Chants & Gifs (noblePhantasmGifs.ts)              │
+│ • Bond 10 CE "Moon Bow" (craftEssences.ts)                 │
 └──────────────────────────────┬──────────────────────────────┘
                                │
-            Card Selection / Skill Activation
-                               │ (In-Place Edit)
-                               ▼
-            3 Cards Submitted: Execute Strike
-                               │ (In-Place Edit)
-                               ▼
-            2.5s Pause -> Boss Turn Resolution
+            Combat Resolution Systems
                                │
-                               ▼
-            New Turn / Round Reached
-                               │
-                               ▼
-       ┌───────────────────────────────────────────┐
-       │ 1. send({ fresh battle embed }) at bottom │
-       │ 2. battleMsg = newBattleMsg               │
-       │ 3. raidMessageIds.add(newBattleMsg.id)    │
-       │ 4. prevMsg.delete()                       │
-       └───────────────────────────────────────────┘
+            ┌──────────────────┴──────────────────┐
+            ▼                                     ▼
+┌──────────────────────────────┐    ┌──────────────────────────────┐
+│ Duel Engine                  │    │ Raid Engine                  │
+│ (src/commands/duel.ts &      │    │ (src/commands/raid.ts)       │
+│  lib/engine/battle.ts)       │    │                              │
+├──────────────────────────────┤    ├──────────────────────────────┤
+│ • Skill 1: 10% NP/T, 5% HP/T │    │ • Skill 1: 10% NP/T, 5% HP/T │
+│ • Skill 2: Arts/Buster Up,   │    │ • Skill 2: Raid Guts-strip,  │
+│   Guts strip, HP-cond crit   │    │   1-diamond drain, crit      │
+│ • Skill 3: Hand card convert,│    │ • Skill 3: 50% NP, 3T 100%   │
+│   20% NP, 1T 100% DEF        │    │   DEF, 10% heal on hit       │
+│ • Passive: 1.5x vs Saber     │    │ • NP: 40% IK, Demonic bonus  │
+└──────────────────────────────┘    └──────────────────────────────┘
 ```
 
-- **In-Place Edits during Combat Actions**: Prevents rate-limits and message deletion race conditions during rapid button clicking (card picking/clearing).
-- **Auto-Relay on New Round**: Guarantees the battle board stays visible at the bottom of the channel after every round.
+## 3. Implementation Steps
 
-## 4. Technical Implementation Plan
+### Step 1: Servant Template & Base Data (`src/data/servants.ts`)
+- Add `ciel_executor` with:
+  - Class: `MoonCancer`, Rarity: 5.
+  - Base Stats: STR C+ (12), END EX (25), AGI B+ (14), MANA A+ (16), LUCK C+ (12).
+  - Deck: `Quick, Arts, Arts, Buster, Buster`.
+  - Max HP: 14,742, Max ATK: 11,658.
+  - Traits: `costume_owning`, `defender`, `hominidae_servant`, `humanoid`, `living_human`, `loved_one`, `servant`, `spaceflight_able`, `summer_mode`, `weak_to_enuma_elish`.
+  - Summon line, bio, and personality verbatim from brief.
+  - Full definitions for Skill 1, Skill 2, Skill 3, and Passives 1 & 2.
 
-1. **`renderAndPostTurn(isMidTurnStrike = false)` in `src/commands/raid.ts`**:
-   - Add an optional `isMidTurnStrike` parameter to differentiate between in-turn strike previews and new round transitions.
-   - If `isMidTurnStrike` is `true`: edit `battleMsg` in-place (`await battleMsg.edit(...)`).
-   - If `isMidTurnStrike` is `false` (default):
-     - Attempt `channelToSend.send(...)` to post the fresh turn embed at the bottom of the channel.
-     - Add `newBattleMsg.id` to `raidMessageIds`.
-     - Update `battleMsg = newBattleMsg`.
-     - Delete `prevMsg` (`await prevMsg.delete().catch(() => {})`).
-     - Fall back to in-place edit if `channelToSend.send` fails.
+### Step 2: Atlas Academy Visuals & Costumes (`src/data/servantAscensions.ts`)
+- Add canonical entry for `ciel_executor` using official Atlas Academy assets:
+  - Stages 1-4 character graphs and sprite sheets.
+  - Costume 1: *Open Summer (Swimsuit Mode)* (`2300930`).
+  - Costume 2: *Glasses Off Mode* (`2300940`).
 
-2. **Attack Sequence Execution**:
-   - Call `renderAndPostTurn(true)` when displaying the player strike damage preview.
-   - Execute `executeBossTurn(battleState)`.
-   - Call `renderAndPostTurn(false)` at the start of the new round to post the fresh embed at the bottom and delete the old one.
+### Step 3: Dual Noble Phantasm Routing & GIFs (`src/data/noblePhantasmGifs.ts`)
+- Implement stage-aware resolution for C.I.E.L:
+  - If stage is 1 or 2: *Code: Original Sin (Seventh Holy Scripture - Final Judgment)* with GIF `https://ella.janitorai.com/media-approved/2FK82Z4D2WXmDXZ9cL4lB.gif`.
+  - If stage is 3, 4, or costume: *Calvaria Galgalim (Idea Blood: Hemonomic Principle - Guillotine)* with GIF `https://ella.janitorai.com/media-approved/mLP_-8WbJfVio7dzHLF3n.gif`.
 
-3. **Validation & Typecheck**:
-   - Run `lint_applet` to verify zero TypeScript or ESLint errors.
+### Step 4: Bond CE "Moon Bow" (`src/data/craftEssences.ts` & `craftEssenceHelper.ts`)
+- Add CE `ce_bond_ciel`:
+  - Name: *Moon Bow*, 4★ Bond Relic.
+  - Art: `https://static.atlasacademy.io/JP/CharaGraph/9308300/9308300a.png`.
+  - Passives: +30% NP Damage, +5% NP/turn, +3% HP/turn.
+
+### Step 5: Combat Skills & Passive Handlers (`duel.ts`, `raid.ts`, `battle.ts`)
+- **Skill 1**: Buff removal resistance, debuff resistance, 10% NP/T & 5% HP/T.
+- **Skill 2**:
+  - Arts attacks: 20% Healing Received Down (3T), Guts removal on target, 30% chance for 20% NP drain (duel) / 1 diamond drain (raid).
+  - Buster attacks: +10% NP gauge refund.
+  - Dynamic HP Crit Buffs: evaluates current HP in damage pipeline (+50% if HP ≥ 50%, additional +50% if HP = 100%).
+- **Skill 3**:
+  - Random hand card conversion to all-Buster, all-Arts, or all-Quick.
+  - NP charge: 20% in duel, 50% in raid.
+  - 100% DEF Up (1T in duel, 3T in raid).
+  - Buff-on-Defense: +10% HP heal when damaged (3 hits / 3T).
+- **Passives**:
+  - `Self Preservation Magecraft A`: 2% HP/T.
+  - `Executor (Archer) A`: 1.5x damage against Saber class enemies.
+- **NP Damage**:
+  - Ignores Evasion & Defense, 150% extra vs Demonic enemies, 10% IK (duel) / 40% IK (raid), 20% NP refund, +60% NP Damage Up Overcharge.
+
+### Step 6: Verification & Compilation
+- Run `lint_applet` to confirm zero lint or TypeScript errors across all files.
