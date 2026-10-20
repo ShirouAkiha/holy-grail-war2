@@ -18,6 +18,7 @@ import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
 import { addServantBattleExp, createExpEmberCraftEssence } from '../engine/customization';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
 import { calculateServantMaxHp, getParameterRankMultiplier, getEnduranceDamageReductionPercent } from '../engine/statSystem';
+import { getUnlockedPassives } from '../data/servants';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
 import {
@@ -1316,52 +1317,61 @@ async function runRaidBattle(
     }
 
     const channelToSend = interaction.channel || battleMsg?.channel;
-    let newBattleMsg: any = null;
-    if (channelToSend && typeof channelToSend.send === 'function') {
+    let updatedMessage = false;
+
+    // Prefer editing existing battle message in-place for seamless turns without message deletion race conditions
+    if (battleMsg && typeof battleMsg.edit === 'function') {
       try {
-        newBattleMsg = await channelToSend.send({
+        await battleMsg.edit({
           content: buildTurnContent(active, pendingCards),
           embeds: embedsToSend,
           files: filesToSend,
           components
         });
-      } catch (sendErr: any) {
-        console.warn('[raid] channel.send fresh turn failed, falling back to followUp/edit:', sendErr?.message || sendErr);
+        updatedMessage = true;
+      } catch (editErr: any) {
+        console.warn('[raid] battleMsg.edit in-place update warning, falling back to fresh send:', editErr?.message || editErr);
       }
     }
 
-    if (!newBattleMsg && interaction && typeof interaction.followUp === 'function') {
-      try {
-        newBattleMsg = await interaction.followUp({
-          content: buildTurnContent(active, pendingCards),
-          embeds: embedsToSend,
-          files: filesToSend,
-          components
-        });
-      } catch (followErr) {
-        console.warn('[raid] interaction.followUp fallback failed:', followErr);
+    if (!updatedMessage) {
+      let newBattleMsg: any = null;
+      if (channelToSend && typeof channelToSend.send === 'function') {
+        try {
+          newBattleMsg = await channelToSend.send({
+            content: buildTurnContent(active, pendingCards),
+            embeds: embedsToSend,
+            files: filesToSend,
+            components
+          });
+        } catch (sendErr: any) {
+          console.warn('[raid] channel.send fresh turn failed, falling back to followUp:', sendErr?.message || sendErr);
+        }
       }
-    }
 
-    if (newBattleMsg) {
-      if (newBattleMsg.id) {
-        raidMessageIds.add(newBattleMsg.id);
+      if (!newBattleMsg && interaction && typeof interaction.followUp === 'function') {
+        try {
+          newBattleMsg = await interaction.followUp({
+            content: buildTurnContent(active, pendingCards),
+            embeds: embedsToSend,
+            files: filesToSend,
+            components
+          });
+        } catch (followErr) {
+          console.warn('[raid] interaction.followUp fallback failed:', followErr);
+        }
       }
-      const prevMsg = battleMsg;
-      battleMsg = newBattleMsg;
-      if (prevMsg && typeof prevMsg.delete === 'function') {
-        await prevMsg.delete().catch(() => {});
+
+      if (newBattleMsg) {
+        if (newBattleMsg.id) {
+          raidMessageIds.add(newBattleMsg.id);
+        }
+        const prevMsg = battleMsg;
+        battleMsg = newBattleMsg;
+        if (prevMsg && prevMsg.id !== newBattleMsg.id && typeof prevMsg.delete === 'function') {
+          await prevMsg.delete().catch(() => {});
+        }
       }
-      if (interaction && typeof interaction.deleteReply === 'function') {
-        await interaction.deleteReply().catch(() => {});
-      }
-    } else if (battleMsg && typeof battleMsg.edit === 'function') {
-      await battleMsg.edit({
-        content: buildTurnContent(active, pendingCards),
-        embeds: embedsToSend,
-        files: filesToSend,
-        components
-      }).catch(() => {});
     }
 
     if (hasCutIn) {
@@ -1449,13 +1459,13 @@ async function runRaidBattle(
       const baseAtk = Math.round((tAtk.baseAtk || 10000) + totalStr * 80 + ceAtk);
       const isCastleActive = Boolean(battleState.fieldStatus && battleState.fieldStatus.remainingTurns > 0);
       const activePassives = getUnlockedPassives(active.servant.template?.passives || active.servant.template?.servantClass, active.bondLevel || 1);
-      const hasUltimateOne = isCastleActive && activePassives.some(p => p.type === 'ultimate_one');
+      const hasUltimateOne = isCastleActive && activePassives.some((p: any) => p.type === 'ultimate_one');
       const ultimateOneBonus = hasUltimateOne ? 30 : 0;
-      const highElfBonus = activePassives.some(p => p.type === 'high_elf_biology' || (p.name && p.name.includes('High Elf Biology'))) ? 8 : 0;
-      const madnessBonus = activePassives.filter(p => p.type === 'madness_enhancement').reduce((acc, p) => acc + p.value, 0) + highElfBonus;
-      const territoryBonus = activePassives.filter(p => p.type === 'territory_creation').reduce((acc, p) => acc + p.value, 0) + highElfBonus;
-      const ridingBonus = activePassives.filter(p => p.type === 'riding').reduce((acc, p) => acc + p.value, 0);
-      const critPassiveBonus = activePassives.filter(p => p.type === 'independent_action' || p.type === 'oblivion_correction').reduce((acc, p) => acc + p.value, 0);
+      const highElfBonus = activePassives.some((p: any) => p.type === 'high_elf_biology' || (p.name && p.name.includes('High Elf Biology'))) ? 8 : 0;
+      const madnessBonus = activePassives.filter((p: any) => p.type === 'madness_enhancement').reduce((acc: number, p: any) => acc + (p.value || 0), 0) + highElfBonus;
+      const territoryBonus = activePassives.filter((p: any) => p.type === 'territory_creation').reduce((acc: number, p: any) => acc + (p.value || 0), 0) + highElfBonus;
+      const ridingBonus = activePassives.filter((p: any) => p.type === 'riding').reduce((acc: number, p: any) => acc + (p.value || 0), 0);
+      const critPassiveBonus = activePassives.filter((p: any) => p.type === 'independent_action' || p.type === 'oblivion_correction').reduce((acc: number, p: any) => acc + (p.value || 0), 0);
 
       // Check Moon Margaret equipped on any party member while Millennium Castle is active
       const hasPartyMoonMargaret = isCastleActive && battleState.participants.some(p => {
@@ -2292,16 +2302,16 @@ async function runRaidBattle(
             processCeTurnStartEffects(p);
             // Process Servant Passives turn start effects
             const pPassives = getUnlockedPassives(p.servant.template?.passives || p.servant.template?.servantClass, p.bondLevel || 1);
-            if (pPassives.some(ps => ps.type === 'high_elf_biology' || (ps.name && ps.name.includes('High Elf Biology')))) {
+            if (pPassives.some((ps: any) => ps.type === 'high_elf_biology' || (ps.name && ps.name.includes('High Elf Biology')))) {
               p.critStars = Math.min(50, (p.critStars || 0) + 4);
             }
-            if (pPassives.some(ps => ps.type === 'fifth_succession' || (ps.name && ps.name.includes('Fifth Succession')))) {
+            if (pPassives.some((ps: any) => ps.type === 'fifth_succession' || (ps.name && ps.name.includes('Fifth Succession')))) {
               p.npGauge = Math.min(300, (p.npGauge || 0) + 4);
             }
-            if (pPassives.some(ps => ps.type === 'absolute_permanence' || (ps.name && ps.name.includes('Absolute Permanence')))) {
+            if (pPassives.some((ps: any) => ps.type === 'absolute_permanence' || (ps.name && ps.name.includes('Absolute Permanence')))) {
               p.npGauge = Math.min(300, (p.npGauge || 0) + 3);
             }
-            if (pPassives.some(ps => ps.type === 'progenitor_dragon' || (ps.name && ps.name.includes('Progenitor Dragon')))) {
+            if (pPassives.some((ps: any) => ps.type === 'progenitor_dragon' || (ps.name && ps.name.includes('Progenitor Dragon')))) {
               p.npGauge = Math.min(300, (p.npGauge || 0) + 5);
             }
           }

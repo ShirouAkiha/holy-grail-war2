@@ -683,10 +683,11 @@ export function processCeTurnStartEffects(combatant: any): string[] {
   const sName = servant.nickname || servant.template?.name || servant.name || 'Servant';
 
   // 1. HP Regen
-  if (ceStats.hpRegenPerTurn > 0 && combatant.currentHp < combatant.maxHp) {
-    const healAmount = Math.min(combatant.maxHp - combatant.currentHp, ceStats.hpRegenPerTurn);
+  const maxHp = combatant.maxHp || combatant.servant?.maxHp || 10000;
+  if (ceStats.hpRegenPerTurn > 0 && combatant.currentHp < maxHp) {
+    const healAmount = Math.min(maxHp - combatant.currentHp, ceStats.hpRegenPerTurn);
     combatant.currentHp += healAmount;
-    logs.push(`💖 **${sName}** recovers **+${healAmount.toLocaleString()} HP** via *${ce.name}*! (${combatant.currentHp.toLocaleString()}/${combatant.maxHp.toLocaleString()} HP)`);
+    logs.push(`💖 **${sName}** recovers **+${healAmount.toLocaleString()} HP** via *${ce.name}*! (${combatant.currentHp.toLocaleString()}/${maxHp.toLocaleString()} HP)`);
   }
 
   // 2. NP per turn

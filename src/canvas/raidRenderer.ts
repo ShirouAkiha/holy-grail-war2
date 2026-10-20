@@ -1548,12 +1548,12 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 export async function renderRaidBattlefield(state: RaidBattleState, _animated = false): Promise<{ buffer: Buffer; fileName: string }> {
   const bossClassIconUrl = getClassIconUrl(state.boss.servantClass);
   const participantClassIconUrls = state.participants.map(p =>
-    getClassIconUrl(p.servant.template?.servantClass || 'Saber')
+    getClassIconUrl(p.servant?.template?.servantClass || 'Saber')
   );
 
   // Collect active buff/debuff types and skill icons for preloading
   const skillTypes = state.participants.flatMap(p => {
-    const skills = p.servant.template?.skills || (p.servant as any).skills || [];
+    const skills = p.servant?.template?.skills || (p.servant as any)?.skills || [];
     return [0, 1, 2].map(sIdx => {
       const sk = skills[sIdx];
       return sk?.effectType || sk?.name || (sIdx === 0 ? 'buff_atk' : sIdx === 1 ? 'arts' : 'crit_stars');
@@ -1580,9 +1580,10 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     loadImageCached(state.boss.avatarUrl),
     loadImageCached(bossClassIconUrl),
     ...state.participants.map(p => {
-      const activeStage = (p.servant as any).selectedAscensionStage ?? p.servant.template?.selectedAscensionStage;
+      if (!p.servant) return Promise.resolve(null);
+      const activeStage = (p.servant as any)?.selectedAscensionStage ?? p.servant?.template?.selectedAscensionStage;
       const stageSprite = resolveAscensionSprite(p.servant, activeStage);
-      const art = (p.servant as any).customArtworkUrl || stageSprite || p.servant.spriteUrl || p.servant.template?.spriteUrl || p.servant.avatarUrl || p.servant.template?.avatarUrl;
+      const art = (p.servant as any)?.customArtworkUrl || stageSprite || p.servant?.spriteUrl || p.servant?.template?.spriteUrl || p.servant?.avatarUrl || p.servant?.template?.avatarUrl;
       return art ? loadImageCached(art) : Promise.resolve(null);
     }),
     ...participantClassIconUrls.map(url => loadImageCached(url)),
