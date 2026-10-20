@@ -3069,6 +3069,206 @@ Upon revival, she was bewildered by her newfound shock and anger. Over time, as 
         tag: "TRUE ANCESTOR QUEEN VS FREELINE ARCUEID"
       }
     }
+  },
+  {
+    id: 'ciel_executor',
+    name: 'Mysterious Executor C.I.E.L',
+    servantClass: 'MoonCancer',
+    rarity: 5,
+    origin: 'CANON',
+    gender: 'Female',
+    alignment: 'Lawful Good',
+    title: 'Executor Ordained with Exterminating Planetary Bloodsuckers • Cosmic Idol of the Sapphire Galaxy',
+    stats: {
+      hp: 31800,
+      atk: 11900,
+      strength: 'C+',
+      endurance: 'EX',
+      agility: 'B+',
+      mana: 'A+',
+      luck: 'C+',
+      noblePhantasmRank: 'EX'
+    },
+    commandCards: ['Quick', 'Arts', 'Arts', 'Buster', 'Buster'],
+    noblePhantasm: {
+      name: 'Seventh Holy Scripture - Final Judgment',
+      type: 'Buster',
+      target: 'Single Target',
+      rank: 'EX',
+      description: 'Unleashes the Seventh Holy Scripture or Calvaria Galgalim. Deals massive single-target damage to an enemy with +150% Super Effective Holy Damage against Demonic targets. Ignores Defense, applies +20% Buster Up (activates first), applies 10% Instant Death (40% Raid), and refunds +20% NP Gauge.',
+      chant: 'Seventh Scripture, activate! Break through all sin and guilt... Seventh Holy Scripture - Final Judgment!'
+    },
+    skills: [
+      {
+        name: 'Human Mana Factory A',
+        type: 'Active',
+        cooldown: 6,
+        description: 'Recovers 3,000 HP for self, charges NP Gauge by +50%, gains 20 Critical Stars, and applies HP-dependent Crit Damage Up (+50% above 50% HP, +50% at 100% HP) for 3 turns.'
+      },
+      {
+        name: 'Phasing Fluid Blade B+',
+        type: 'Active',
+        cooldown: 6,
+        description: 'Increases Arts Performance by +30% for 3 turns. Arts attacks apply Healing Received -20% (3T) to boss, strip boss Guts, and have a 30% chance to drain 1 Charge Diamond.'
+      },
+      {
+        name: 'Idea Blood: Hemonomic Principle B',
+        type: 'Active',
+        cooldown: 7,
+        description: 'Increases Buster Performance by +30% for 3 turns. Buster attacks charge NP Gauge by +10%. Replaces Command Deck with 5 Buster Cards for 1 turn.'
+      }
+    ],
+    passives: [
+      {
+        name: 'Class Skills (MoonCancer)',
+        description: 'Magic Resistance A, Territory Creation B, Independent Action EX'
+      },
+      {
+        name: 'Idea Blood Principle',
+        description: 'Increases Crit Damage by +20% and Damage against Demonic enemies by +30%.'
+      }
+    ],
+    lore: `An Executor from the Holy Church who transcended spacetime to become the Sapphire Galaxy's premier Cosmic Idol. Wielding the conceptual weapon Seventh Holy Scripture equipped with hovering Bit Crown anchors and Star-Buster pile bunkers, Mysterious Executor C.I.E.L protects human order across galaxies while maintaining her cover as a diligent high school senior and curry connoisseur.`,
+    summonQuote: '"Hello. Thank you for summoning me. I\'m Cie... I mean, I\'m a high school senior kind of Servant and possible nun here to hunt down space vampires and spread the Lord\'s teachings. Yes, that\'s right. I\'m Mysterious Executor C.I.E.L! Just call me Ciel. Thank you for having me!"',
+    battleStartQuote: '"Seventh Scripture, online! High school senior, Mysterious Executor C.I.E.L, taking the field!"',
+    victoryQuote: '"Target exterminated! Another peaceful day secured by Mysterious Executor C.I.E.L! Now then, who\'s up for a piping hot bowl of curry?"',
+    defeatQuote: '"Light frame collapsing... Emergency retreat to the Sapphire Galaxy... Forgive me, Master... My curry... got cold..."',
+    avatarUrl: 'https://static.atlasacademy.io/JP/Faces/f_11022000.png',
+    cardArtUrl: 'https://static.atlasacademy.io/JP/CharaGraph/1102200/1102200a@1.png',
+    spriteUrl: 'https://static.atlasacademy.io/JP/CharaFigure/11022000/11022000_merged.png',
+    isCustomOrMeme: false,
+    matchupDialogues: {
+      artoria_pendragon: {
+        intro: "A king blessed by holy light and high moral standing. As an upright class rep, I respect that! Though, how is Camelot's cafeteria curry selection?",
+        retort: "A righteous spirit, yet your focus wanders to spices mid-battle. Very well, Executor—show me the conviction behind that holy scripture!",
+        tag: "HOLY LIGHT VS COSMIC CURRY"
+      },
+      artoria_pendragon_alter: {
+        intro: "Dressed in pitch-black armor with a terrible junk-food diet... I smell unrepentant delinquency. Time for some strict after-school disciplinary action!",
+        retort: "Loud-mouthed nun. Wave that oversized pile bunker elsewhere before I turn your cosmic toys into scrap metal.",
+        tag: "CLASS REP DISCIPLINE VS JUNK-FOOD DELINQUENT"
+      },
+      artoria_caster: {
+        intro: "Exhausted from cramming duties and saving the world on an empty stomach? Here, take this curry bun—it's supercharged with cosmic calories!",
+        retort: "Wait, it's glowing blue?! Is this safe to eat?! You look like a kind senpai, but your gear looks entirely sci-fi terrifying!",
+        tag: "COSMIC CURRY BUN VS PILGRIM CASTER"
+      },
+      jeanne_alter: {
+        intro: "A rogue witch burning scriptures out of spite? Blasphemy is one thing, but running a sloppy pyrotechnic show without a permit is unacceptable.",
+        retort: "A galactic fake nun lecturing me on proper scripture?! I'll roast that goofy halo right off your head, you pompous class rep!",
+        tag: "SAFETY PERMIT VS DRAGON WITCH"
+      },
+      gilgamesh_archer: {
+        intro: "Babylon's vault holds countless treasures, yet I notice a distinct lack of Seventh Holy Scripture space retrofits. Care to update your inventory?",
+        retort: "Impudent girl! A high schooler wielding celestial scrap dares critique the King’s treasury? I shall pin you to the earth for that insolence!",
+        tag: "TREASURY RETROFIT VS KING OF HEROES"
+      },
+      emiya_archer: {
+        intro: "I recognize that posture anywhere—the tragic, underpaid vanguard doing everyone else's dirty work. Tell me, do you take freelance kitchen shifts?",
+        retort: "An immortal Church agent turned space idol... As if my deployment list wasn't chaotic enough. And no, I am not cooking for your fan club.",
+        tag: "UNPAID VANGUARD VS FREELANCE KITCHEN"
+      },
+      cu_chulainn_lancer: {
+        intro: "High agility, crimson spear, beast-like reflexes... Reminds me of a certain annoying spear user, but you seem far more agreeable.",
+        retort: "Flattery won't stop this spear, sister! Though bringing a bunker-buster to a duel makes you my kind of crazy!",
+        tag: "ANNOYING SPEAR REMINISCENCE VS BUNKER BUSTER"
+      },
+      scathach_lancer: {
+        intro: "Immortality cursed by the boundary of the world? Believe me, I understand the headache. But stepping down isn't in my schedule.",
+        retort: "An immortal vessel of paradoxical flesh... Fascinating. Let us see if that cosmic armory of yours can pierce a curse of eternity.",
+        tag: "BOUNDARIES OF IMMORTALITY"
+      },
+      heracles_berserker: {
+        intro: "Target classified: Colossal brute with Twelve Labors. Perfect test data for the Seventh Holy Scripture’s super-heavy kinetic ordnance!",
+        retort: "■■■■■■■■■—!! (The demigod roars, his stony skin unaffected by the hum of hovering space-age bits.)",
+        tag: "HEAVY KINETIC ORDNANCE VS TWELVE LABORS"
+      },
+      van_gogh: {
+        intro: "Anomalous extraterrestrial entity confirmed. However, student counseling takes priority—wipe those tears, take a deep breath, and stand straight.",
+        retort: "Ah, ehehe... a holy, shining light... but wait, why are you aiming that giant metal stake right at my forehead...?! S-Scary!",
+        tag: "STUDENT COUNSELING VS EXTRATERRESTRIAL ENTITY"
+      },
+      tamamo_no_mae: {
+        intro: "A wicked fox spirit trying to play the docile, devoted wife? That sweet facade doesn't fool an Executor's sensory net for a second.",
+        retort: "Hmph! Look who's talking, Miss 'High School Senior Nun Space-Idol'! Your backstory has so many cover jobs it makes my tails spin!",
+        tag: "SENSORY NET VS COVER JOB OVERLOAD"
+      },
+      altera: {
+        intro: "A wandering star engine calibrated for destruction. As the Sapphire Galaxy's top protector, I cannot permit any unapproved planetary deconstruction.",
+        retort: "The light around you... It is alien, yet anchored to human order. If you obstruct my path, I must harvest you.",
+        tag: "SAPPHIRE PROTECTOR VS STAR ENGINE HARVEST"
+      },
+      hassan_i_sabbah_azrael: {
+        intro: "The founder of the Assassins... That aura of strict dogma is familiar. Still, my paradox isn't something an evening bell can sever so easily.",
+        retort: "A wanderer entangled in the knot of unliving fate. The toll matters not to the flesh, but to the sin thy vessel harbors. Stand forth.",
+        tag: "STRICT DOGMA VS UNLIVING PARADOX"
+      },
+      jeanne_darc_ruler: {
+        intro: "The Holy Maiden herself! A pleasure to meet an authentic saint. Rest assured, all of my weapons are fully certified by the... cosmic clergy.",
+        retort: "Pleased to meet you, Ciel-san! Though, um... I'm quite certain the Holy See never approved rocket-propelled sacramental pile bunkers...",
+        tag: "AUTHENTIC SAINT VS COSMIC CLERGY"
+      },
+      mhx_alter: {
+        intro: "A Dark Rounds operative loitering around convenience stores! Surrender your contraband sweets, or face emergency detention!",
+        retort: "C.I.E.L... Cosmic Infidel Eliminating Lunches. You will never take my premium bean paste paste-rations alive, space nun.",
+        tag: "CONTRABAND SWEETS VS EMERGENCY DETENTION"
+      },
+      nero_claudius_saber: {
+        intro: "So you're the notorious fifth emperor... Excessive theater budgets, terrible discipline, and no modesty whatsoever. Detention for a month!",
+        retort: "Detention?! Absurd! The world itself is my auditorium! If you claim to be a cosmic idol, let our performance settle the score!",
+        tag: "CLASS REP DETENTION VS GOLDEN THEATER"
+      },
+      karna_lancer: {
+        intro: "The Hero of Charity. Your piercing insight is troublesome, but the Seventh Scripture’s output won't falter against solar radiance.",
+        retort: "Your eyes carry the sorrow of thousands of deaths, yet your stance remains immaculate. An admirable warrior. I shall answer in full.",
+        tag: "SOLAR RADIANCE VS SEVENTH SCRIPTURE"
+      },
+      aoko_aozaki: {
+        intro: "Aozaki-san! How many times must I warn you about improper timeline discharge?! Leaving cosmic bills unpaid is a galactic offense!",
+        retort: "Gah, spare me the hall monitor routine, Ciel! And what is with that ridiculously high-tech getup?! Did you raid an alien warehouse?!",
+        tag: "TIMELINE DISCHARGE VS HALL MONITOR ROUTINE"
+      },
+      typhon_ephemeros: {
+        intro: "Planetary-class dragon spawn identified. Locking kinetic anchors... Time to show you the standard disciplinary procedure of the Sapphire Galaxy!",
+        retort: "Annoying insect with bright floating toys! No matter how dense your light frame is, my storm will grind you down into scrap!",
+        tag: "SAPPHIRE DISCIPLINE VS DRAGON STORM"
+      },
+      okita_souji: {
+        intro: "Your lung condition triggers multiple medical hazard protocols! You should be resting in the infirmary, not brandishing a katana!",
+        retort: "Haha, an infirmary pass? The Shinsengumi pushes through any ailment! Prepare yourself, Mysterious Executor-san! *Gah-cough!*",
+        tag: "MEDICAL HAZARD PROTOCOL VS SHINSENGUMI SPIRIT"
+      },
+      archetype_earth: {
+        intro: "Well, well. If it isn't the haughty shut-in sitting on her moonlit throne. Fancy armaments or not, exterminating true ancestors is my favorite hobby.",
+        retort: "Still running about like a frantic bird, French heretic. No matter how much cosmic scrap you strap to your back, dust remains dust.",
+        tag: "TRUE ANCESTOR EXTERMINATION VS MOONLIT THRONE"
+      },
+      luvria_greenharte: {
+        intro: "Nullifying concepts? That sounds dangerously close to True Magic violations. As an upright enforcer, I can't overlook such reckless hacking!",
+        retort: "Hark, a nun bearing cosmic steel! Speak not of violations, maiden, for when I negate the concept of distance, thy artillery mattereth not!",
+        tag: "CONCEPT NULLIFICATION VS UPRIGHT ENFORCER"
+      },
+      lucia_lyozes: {
+        intro: "A vanguard leader with five-second precognition. Impressive, but the firing velocity of this pile bunker exceeds conventional reaction thresholds.",
+        retort: "I saw your shot land five seconds ago. Your weapons carry terrifying force, Executor, but precision wins where brute power fails.",
+        tag: "PRECOGNITION VS PILE BUNKER VELOCITY"
+      },
+      adiosa_dragon_envoy: {
+        intro: "Cataclysm-tier dragon entity radiating lethal gravitational pressure... Switching to Seventh Holy Scripture: Star-Buster Mode. Let's make this clean.",
+        retort: "Krav'nok zul grol drazk'hlor aeth'ra. Voth zul ruk'thar xal rhun. (Dust speaks pathetic power. I shall annihilate its weapon.)",
+        tag: "STAR-BUSTER MODE VS GRAVITATIONAL PRESSURE"
+      },
+      amamiya_no_chihaya_tenkohime: {
+        intro: "A shrine maiden who neglects her shrine for naps and snacks? Unacceptable behavior! Come along, proper etiquette lessons begin right now!",
+        retort: "Eeeek! Stay away ja nee! Washi doesn't want etiquette lessons from a crazy nun wielding a rocket drill! Shoo! Shoo!",
+        tag: "ETIQUETTE LESSONS VS SHRINE MAIDEN NAPS"
+      },
+      ciel_executor: {
+        intro: "An imposter sporting the exact same pseudo-light frame?! Identity theft in the Servant Universe carries a fifty-year prison sentence, you know!",
+        retort: "Please! You're clearly the low-budget bootleg copy trying to ride my popularity coattails! Let's see whose curry recipe reigns supreme!",
+        tag: "COSMIC IDOL VS STRICT CLASS REP"
+      }
+    }
   }
 ];
 
