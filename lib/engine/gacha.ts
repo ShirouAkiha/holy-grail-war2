@@ -75,15 +75,35 @@ export function executeGachaRoll({ banner, count, master }: RollGachaOptions): G
     }
 
     if (targetType === 'servant') {
+      const SPECIAL_LOW_RATE_IDS = new Set([
+        'ciel_executor', 'ciel', 'mysterious_executor_ciel', 'space_ciel',
+        'archetype_earth', 'archetype', 'arcueid', 'arcueid_brunestud', 'earth',
+        'aoko_aozaki', 'aoko'
+      ]);
+      const isLowRate = (id: string) => {
+        if (!id) return false;
+        const clean = id.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        return SPECIAL_LOW_RATE_IDS.has(clean) || clean.includes('ciel') || clean.includes('archetype') || clean.includes('arcueid') || clean.includes('aoko');
+      };
+
       // In the balanced model, all Heroic Spirits are equalized and drawn from the complete SERVANT_DATABASE
       const pool = SERVANT_DATABASE;
       const featuredInPool = pool.filter(s => banner.featuredServantIds?.includes(s.id));
       let chosenServant = pool[Math.floor(Math.random() * pool.length)];
       let isRateUp = false;
 
-      if (featuredInPool.length > 0 && Math.random() < 0.7) {
+      const rateUpThreshold = (featuredInPool.length > 0 && featuredInPool.some(s => isLowRate(s.id))) ? 0.10 : 0.70;
+
+      if (featuredInPool.length > 0 && Math.random() < rateUpThreshold) {
         chosenServant = featuredInPool[Math.floor(Math.random() * featuredInPool.length)];
         isRateUp = true;
+      }
+
+      if (isLowRate(chosenServant.id) && Math.random() > 0.10) {
+        const nonLowRatePool = pool.filter(s => !isLowRate(s.id));
+        if (nonLowRatePool.length > 0) {
+          chosenServant = nonLowRatePool[Math.floor(Math.random() * nonLowRatePool.length)];
+        }
       }
 
       const alreadyOwns = updatedMaster.servants.some(s => s.templateId === chosenServant.id);

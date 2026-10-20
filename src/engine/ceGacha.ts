@@ -98,6 +98,18 @@ export function executeUnifiedGachaRoll({
   let cesPulled = 0;
   const pulledServantsInThisRoll = new Set<string>();
 
+const SPECIAL_LOW_RATE_IDS = new Set([
+  'ciel_executor', 'ciel', 'mysterious_executor_ciel', 'space_ciel',
+  'archetype_earth', 'archetype', 'arcueid', 'arcueid_brunestud', 'earth',
+  'aoko_aozaki', 'aoko'
+]);
+
+function isLowRateServant(id: string): boolean {
+  if (!id) return false;
+  const clean = id.toLowerCase().replace(/[^a-z0-9_]/g, '');
+  return SPECIAL_LOW_RATE_IDS.has(clean) || clean.includes('ciel') || clean.includes('archetype') || clean.includes('arcueid') || clean.includes('aoko');
+}
+
   const pullServant = (): UnifiedGachaResultItem => {
     servantsPulled++;
     
@@ -105,20 +117,34 @@ export function executeUnifiedGachaRoll({
     const featuredIds = banner.featuredServantIds || [];
     const featuredInPool = allServants.filter(s => featuredIds.includes(s.id));
     
+    const rateUpThreshold = (featuredInPool.length > 0 && featuredInPool.some(s => isLowRateServant(s.id))) ? 0.10 : 0.70;
+
     let randomTemplate: ServantTemplate;
-    if (featuredInPool.length > 0 && Math.random() < 0.70) {
-      // 70% Rate-Up chance for featured 5★ Heroic Spirit (e.g. Archetype: Earth)
+    if (featuredInPool.length > 0 && Math.random() < rateUpThreshold) {
       randomTemplate = featuredInPool[Math.floor(Math.random() * featuredInPool.length)];
     } else {
       randomTemplate = allServants[Math.floor(Math.random() * allServants.length)];
     }
 
+    if (isLowRateServant(randomTemplate.id) && Math.random() > 0.10) {
+      const nonLowRatePool = allServants.filter(s => !isLowRateServant(s.id));
+      if (nonLowRatePool.length > 0) {
+        randomTemplate = nonLowRatePool[Math.floor(Math.random() * nonLowRatePool.length)];
+      }
+    }
+
     let attempts = 0;
     while (pulledServantsInThisRoll.has(randomTemplate.id) && attempts < 10) {
-      if (featuredInPool.length > 0 && Math.random() < 0.70) {
+      if (featuredInPool.length > 0 && Math.random() < rateUpThreshold) {
         randomTemplate = featuredInPool[Math.floor(Math.random() * featuredInPool.length)];
       } else {
         randomTemplate = allServants[Math.floor(Math.random() * allServants.length)];
+      }
+      if (isLowRateServant(randomTemplate.id) && Math.random() > 0.10) {
+        const nonLowRatePool = allServants.filter(s => !isLowRateServant(s.id));
+        if (nonLowRatePool.length > 0) {
+          randomTemplate = nonLowRatePool[Math.floor(Math.random() * nonLowRatePool.length)];
+        }
       }
       attempts++;
     }
