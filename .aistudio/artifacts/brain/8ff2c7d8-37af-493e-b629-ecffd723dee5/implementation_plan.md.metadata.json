@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan to fix raid turn stalling when Servants in positions 1, 2, or 3 fall in battle, ensuring instant turn transitions to living allies with zero delay.",
-  "updatedAt": "2026-10-19T07:40:22.765710296Z",
+  "summary": "Implementation plan for auto-relaying raid battle embeds to the bottom of the channel on new turns/rounds (matching /duel behavior) while keeping in-place edits for card selection and mid-turn strike animations.",
+  "updatedAt": "2026-10-20T06:24:14.644027888Z",
   "requestFeedback": true,
   "userFacing": true
 }

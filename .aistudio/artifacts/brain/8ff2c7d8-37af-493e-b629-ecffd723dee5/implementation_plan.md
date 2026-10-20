@@ -1,113 +1,72 @@
-# Raid Instant Turn Transition for Fallen Servants
+# Raid Battle Auto-Relay to Bottom of Channel
 
-Fix the raid battle management engine so that when a Servant in positions 1, 2, or 3 falls in combat (during the Boss phase, Noble Phantasm strikes, or affliction DoT ticks), the active turn immediately and seamlessly transitions to the next living ally with zero delay, eliminating the 2-minute auto-play freeze.
-
----
+Re-enable the auto-relay behavior in raid battles so that at the start of each new turn/round, the previous battle embed is deleted and a fresh battle message is sent at the bottom of the channel (matching `/duel`), while keeping in-place edits for card selection and mid-turn strike previews.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The following user preferences were confirmed during Phase 1 clarification:
-> - **Instant Turn Transition:** When a Servant falls, their turn is bypassed immediately with zero delay, handing initiative to the next living ally.
-> - **Canvas Integrity:** Fallen Servants remain visually visible on the battlefield canvas in their `FALLEN` state while combat controls and turn prompts shift to living allies.
+> The user confirmed the exact desired flow:
+> - **New Round/Turn Auto-Relay**: On new turns/rounds, auto-delete the previous raid battle embed and send a fresh embed at the bottom of the channel (matching `/duel`).
+> - **Mid-Turn In-Place Edits**: During card selection and the 2.5s player strike animation, edit the message in-place so buttons and attack previews update instantly without chat spam.
 
----
+## 1. Overview & Core Concept
 
-## 1. Root Cause & Technical Diagnosis
+When a raid battle advances to a new turn or round (after player actions and boss turn resolution), the bot will send a fresh battle message with the updated canvas image, status, and interactive buttons at the bottom of the text channel, then delete the preceding battle message.
 
-In `src/commands/raid.ts`:
-1. **Unchecked Active Index Post-Boss Phase:**
-   When all players finish their card actions in a round, `advanceToNextPlayer()` resets `battleState.activeMasterIndex` to `0` (or whichever participant was living before the Boss phase).
-2. **Death During Boss Action / Curse Ticks:**
-   `executeBossTurn(battleState)` executes boss single-target attacks, AoE Noble Phantasms, and end-of-round Curse burn damage. When the boss defeats the servant at `battleState.activeMasterIndex` (e.g., Archetype: Earth in position 1):
-   - The servant's status is set to `isDead = true` and `currentHp = 0`.
-   - The engine increments `battleState.round++`.
-   - The engine immediately calls `renderAndPostTurn()`.
-3. **Stuck Turn Timer & Paralyzed Controls:**
-   Because `battleState.activeMasterIndex` and `currentActiveParticipant` were not updated to the next living servant:
-   - `buildTurnContent` outputs `<@User>'s Turn! (Fallen Servant)`.
-   - `buildBattleButtons` disables all card buttons, skill buttons, and `Auto/Pass` because `active.isDead === true`.
-   - `renderAndPostTurn` starts a 120,000ms (2-minute) timer via `resetTurnTimer()`.
-   - Living allies cannot click any buttons because the engine checks `i.user.id !== active.userId`.
-   - The entire raid remains completely frozen until the 2-minute auto-play timer expires, which was the only place calling `ensureActiveParticipantIsAlive()`.
-4. **Index Reset Flaw in `ensureActiveParticipantIsAlive`:**
-   The existing helper uses `participants.findIndex(p => !p.isDead)`. When a servant in position 2 or 3 died mid-round, this searched from index 0 instead of advancing forward in cyclic turn order.
+This ensures the raid control UI is always at the very bottom of Discord chat, making it easily accessible even if players send text messages during combat.
 
----
+## 2. User Experience & Visual Design
 
-## 2. Architecture & Data Flow
+- **Card Selection**: Clicking card buttons (`#1`, `#2`, `#3`) updates the current battle message in-place with selected card indicators.
+- **Player Strike Phase**: When 3 cards are submitted, the battle message edits in-place to show the player's strike damage HUD and updated boss HP bar for 2.5 seconds.
+- **New Turn Auto-Relay**: Once the boss executes its turn and a new round begins, the bot sends a fresh battle embed at the bottom of the channel, registers the new message ID in `raidMessageIds`, and deletes the previous battle message.
+
+## 3. Key Product Decisions & Trade-Offs
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    Raid Turn Cycle Flow                      │
-└──────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                 Raid Turn Lifecycle                         │
+└──────────────────────────────┬──────────────────────────────┘
                                │
-               ┌───────────────┴───────────────┐
-               ▼                               ▼
-     [ Player Turn Ends ]             [ Boss Phase Ends ]
-               │                               │
-               ▼                               ▼
-    Advance to Next Player            Check Living Servants
-               │                               │
-       Is Next Unit Dead?             Was Active Unit Slain?
-      ┌────────┴────────┐             ┌────────┴────────┐
-     Yes                No           Yes                No
-      │                 │             │                 │
-      ▼                 ▼             ▼                 ▼
-Advance forward     Assign Turn   Find First Living  Assign Turn
-to Living Ally                    Starting at Idx 0
-      │                 │             │                 │
-      └────────┬────────┘             └────────┬────────┘
-               │                               │
-               └───────────────┬───────────────┘
+            Card Selection / Skill Activation
+                               │ (In-Place Edit)
                                ▼
-                 [ ensureActiveParticipantAlive ]
+            3 Cards Submitted: Execute Strike
+                               │ (In-Place Edit)
+                               ▼
+            2.5s Pause -> Boss Turn Resolution
                                │
                                ▼
-                    [ renderAndPostTurn ]
-          • Validates active servant is ALIVE
-          • Renders Fallen banner on dead units
-          • Generates cards/skills for living ally
-          • Resets 2-min timer for active ally
+            New Turn / Round Reached
+                               │
+                               ▼
+       ┌───────────────────────────────────────────┐
+       │ 1. send({ fresh battle embed }) at bottom │
+       │ 2. battleMsg = newBattleMsg               │
+       │ 3. raidMessageIds.add(newBattleMsg.id)    │
+       │ 4. prevMsg.delete()                       │
+       └───────────────────────────────────────────┘
 ```
 
----
+- **In-Place Edits during Combat Actions**: Prevents rate-limits and message deletion race conditions during rapid button clicking (card picking/clearing).
+- **Auto-Relay on New Round**: Guarantees the battle board stays visible at the bottom of the channel after every round.
 
-## 3. Implementation Steps
+## 4. Technical Implementation Plan
 
-### Step 1: Upgrade `ensureActiveParticipantIsAlive` Algorithm
-- In `src/commands/raid.ts`, update `ensureActiveParticipantIsAlive` to inspect `curr.isDead || (curr.currentHp || 0) <= 0`.
-- If the current participant is dead, scan forward cyclically: `nextIdx = (battleState.activeMasterIndex + 1) % participants.length` until finding an ally where `!p.isDead && (p.currentHp || 0) > 0`.
-- Update both `battleState.activeMasterIndex` and `currentActiveParticipant` atomically.
+1. **`renderAndPostTurn(isMidTurnStrike = false)` in `src/commands/raid.ts`**:
+   - Add an optional `isMidTurnStrike` parameter to differentiate between in-turn strike previews and new round transitions.
+   - If `isMidTurnStrike` is `true`: edit `battleMsg` in-place (`await battleMsg.edit(...)`).
+   - If `isMidTurnStrike` is `false` (default):
+     - Attempt `channelToSend.send(...)` to post the fresh turn embed at the bottom of the channel.
+     - Add `newBattleMsg.id` to `raidMessageIds`.
+     - Update `battleMsg = newBattleMsg`.
+     - Delete `prevMsg` (`await prevMsg.delete().catch(() => {})`).
+     - Fall back to in-place edit if `channelToSend.send` fails.
 
-### Step 2: Immediate Sanitization in `renderAndPostTurn`
-- Call `ensureActiveParticipantIsAlive()` at the very beginning of `renderAndPostTurn()`.
-- If `currentActiveParticipant.isDead`, it will automatically and instantaneously advance to the next living ally before constructing any Discord buttons, message contents, or starting the turn timer.
+2. **Attack Sequence Execution**:
+   - Call `renderAndPostTurn(true)` when displaying the player strike damage preview.
+   - Execute `executeBossTurn(battleState)`.
+   - Call `renderAndPostTurn(false)` at the start of the new round to post the fresh embed at the bottom and delete the old one.
 
-### Step 3: Round-Start Reset After `executeBossTurn`
-- In `executeAttackSequence()` (lines ~2170–2215):
-  - After `executeBossTurn(battleState)` completes, check `if (!anyAlive)` for defeat.
-  - For the new round (`battleState.round++`), find the first living participant starting from index 0:
-    ```ts
-    const firstLivingIdx = battleState.participants.findIndex(p => !p.isDead && (p.currentHp || 0) > 0);
-    if (firstLivingIdx !== -1) {
-      battleState.activeMasterIndex = firstLivingIdx;
-      currentActiveParticipant = battleState.participants[firstLivingIdx];
-    }
-    ```
-  - This ensures that if the Servant in position 1 (or position 2) was killed by the Boss, the new round immediately starts on the turn of the first living Servant (e.g. Van Gogh in position 2, or Lucernalia in position 3).
-
-### Step 4: Mid-Round Death & `advanceToNextPlayer` Robustness
-- Verify `advanceToNextPlayer()` properly handles cases where multiple Servants have died, ensuring it advances only through living units and correctly flags round completion.
-- Ensure `raid_pass_turn` (`Auto/Pass`) and `raid_flee` cannot deadlock if triggered by living allies.
-
----
-
-## 4. Verification Plan
-
-1. **Static Analysis & Typecheck:**
-   - Run `npx tsc --noEmit` to ensure type safety.
-2. **Boss Turn Kill Simulation:**
-   - Verify that when the Boss slays the Servant at position 1 (or 2 or 3), `battleState.activeMasterIndex` immediately jumps to the next living ally.
-   - Verify that `renderAndPostTurn()` outputs the living ally's name, enables their action cards, and starts their timer.
-   - Confirm fallen Servants remain visibly marked as `FALLEN` on the rendered battlefield canvas.
+3. **Validation & Typecheck**:
+   - Run `lint_applet` to verify zero TypeScript or ESLint errors.

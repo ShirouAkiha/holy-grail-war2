@@ -1292,7 +1292,7 @@ async function runRaidBattle(
     return `⚔️ **<@${active.userId}>'s Turn!** (**${activeServName}**) • ⏳ **Turn Timer: 2 Min** *(Auto-play on timeout)*${afflictionStr}${cardChainStr}`;
   };
 
-  const renderAndPostTurn = async () => {
+  const renderAndPostTurn = async (isMidTurnStrike = false) => {
     // Ensure active participant is always a living Servant before rendering or resetting turn timers
     ensureActiveParticipantIsAlive();
 
@@ -1319,8 +1319,8 @@ async function runRaidBattle(
     const channelToSend = interaction.channel || battleMsg?.channel;
     let updatedMessage = false;
 
-    // Prefer editing existing battle message in-place for seamless turns without message deletion race conditions
-    if (battleMsg && typeof battleMsg.edit === 'function') {
+    // Mid-turn strike animation preview: edit existing battle message in-place for seamless 2.5s preview
+    if (isMidTurnStrike && battleMsg && typeof battleMsg.edit === 'function') {
       try {
         await battleMsg.edit({
           content: buildTurnContent(active, pendingCards),
@@ -1330,10 +1330,11 @@ async function runRaidBattle(
         });
         updatedMessage = true;
       } catch (editErr: any) {
-        console.warn('[raid] battleMsg.edit in-place update warning, falling back to fresh send:', editErr?.message || editErr);
+        console.warn('[raid] Mid-turn strike edit in-place warning, falling back to fresh send:', editErr?.message || editErr);
       }
     }
 
+    // New round / turn transition (or fallback): auto-relay fresh message to bottom of channel and delete old embed
     if (!updatedMessage) {
       let newBattleMsg: any = null;
       if (channelToSend && typeof channelToSend.send === 'function') {
@@ -1345,7 +1346,7 @@ async function runRaidBattle(
             components
           });
         } catch (sendErr: any) {
-          console.warn('[raid] channel.send fresh turn failed, falling back to followUp:', sendErr?.message || sendErr);
+          console.warn('[raid] Auto-relay send fresh turn to channel failed, falling back to edit:', sendErr?.message || sendErr);
         }
       }
 
@@ -1371,6 +1372,13 @@ async function runRaidBattle(
         if (prevMsg && prevMsg.id !== newBattleMsg.id && typeof prevMsg.delete === 'function') {
           await prevMsg.delete().catch(() => {});
         }
+      } else if (battleMsg && typeof battleMsg.edit === 'function') {
+        await battleMsg.edit({
+          content: buildTurnContent(active, pendingCards),
+          embeds: embedsToSend,
+          files: filesToSend,
+          components
+        }).catch(() => {});
       }
     }
 
@@ -2259,8 +2267,8 @@ async function runRaidBattle(
 
       let bossUsedNp = false;
       if (!hasMorePlayersInRound) {
-        // 1. Render and post the Player Strike Canvas so players see their strike damage & updated boss HP!
-        await renderAndPostTurn();
+        // 1. Render and post the Player Strike Canvas (edited in-place) so players see their strike damage & updated boss HP!
+        await renderAndPostTurn(true);
 
         // 2. Dispatch player Noble Phantasm Visuals if unleashed
         if (pendingNpToDispatch) {
@@ -2334,16 +2342,16 @@ async function runRaidBattle(
         }
 
         // Keep Boss turn HUD action active so players see the Boss's damage & action on the new turn
-        // 5. Render and post the new round turn canvas (with active buttons & boss damage HUD)
-        await renderAndPostTurn();
+        // 5. Render and post the new round turn canvas (auto-relayed fresh at bottom of channel)
+        await renderAndPostTurn(false);
 
         // 6. Dispatch Boss NP GIF if used
         if (bossUsedNp) {
           await dispatchBossNpGif();
         }
       } else {
-        // Multi-player: Advance to next player in the current round
-        await renderAndPostTurn();
+        // Multi-player: Advance to next player in the current round (auto-relayed fresh at bottom)
+        await renderAndPostTurn(false);
 
         if (pendingNpToDispatch) {
           await dispatchRaidNpGif(pendingNpToDispatch.servant, pendingNpToDispatch.userId);
