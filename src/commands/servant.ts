@@ -954,18 +954,26 @@ export async function buildServantHub(
         new ButtonBuilder().setCustomId('servant_act_unlock_all_ces').setLabel('Unlock All').setEmoji('🔓').setStyle(ButtonStyle.Secondary)
       );
 
-      // Quick Feed Buttons Row
+      // Ember Feeding Buttons Row (1x, 10x, 100x, All Embers)
+      const emberFeedRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('servant_act_feed_embers_1').setLabel('1x Ember').setEmoji('✨').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_feed_embers_10').setLabel('10x Embers').setEmoji('✨').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_feed_embers_100').setLabel('100x Embers').setEmoji('✨').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_act_feed_embers_all').setLabel('All Embers').setEmoji('✨').setStyle(ButtonStyle.Success)
+      );
+
+      // CE Quick Feed & Management Row
       const quickFeedRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId('servant_act_feed_embers').setLabel('Feed Embers').setEmoji('✨').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('servant_sub_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('servant_act_feed_3star').setLabel('Feed 1-3★').setEmoji('⚡').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Feed Dupes').setEmoji('🔥').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All').setEmoji('☣️').setStyle(ButtonStyle.Danger)
+        new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All CEs').setEmoji('☣️').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('Reclaim EXP').setEmoji('⚗️').setStyle(ButtonStyle.Secondary)
       );
 
       // Compact row for high roster size (>20 Servants, where pageNavRow takes a row)
       const compactFeedRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId('servant_sub_equip_ce').setLabel('Equip CE').setEmoji('👔').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('servant_act_feed_embers').setLabel('Embers').setEmoji('✨').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('servant_act_feed_3star').setLabel('1-3★').setEmoji('⚡').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Dupes').setEmoji('🔥').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All').setEmoji('☣️').setStyle(ButtonStyle.Danger)
@@ -973,9 +981,11 @@ export async function buildServantHub(
 
       // Check available rows:
       if (components.length <= 2) {
-        components.push(ceSubTabRow, quickFeedRow);
+        components.push(emberFeedRow, quickFeedRow);
+      } else if (components.length <= 3) {
+        components.push(emberFeedRow, compactFeedRow);
       } else {
-        components.push(compactFeedRow);
+        components.push(emberFeedRow);
       }
 
       const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => ({
@@ -1442,22 +1452,39 @@ export async function handleGlobalServantInteraction(i: any) {
         return;
       }
       // QUICK FEED BUTTONS
-      else if (i.customId === 'servant_act_feed_embers') {
+      else if (
+        i.customId === 'servant_act_feed_embers' ||
+        i.customId === 'servant_act_feed_embers_1' ||
+        i.customId === 'servant_act_feed_embers_10' ||
+        i.customId === 'servant_act_feed_embers_100' ||
+        i.customId === 'servant_act_feed_embers_all'
+      ) {
+        const countLimit =
+          i.customId === 'servant_act_feed_embers_1' ? 1 :
+          i.customId === 'servant_act_feed_embers_10' ? 10 :
+          i.customId === 'servant_act_feed_embers_100' ? 100 : Infinity;
+
         const owned = (master.craftEssences || []).filter(Boolean);
-        const emberIndexes = owned
-          .map((c: any, idx: number) => (c.isEmber || (c.expValue && c.expValue > 0 && !c.atkBonus) ? String(idx) : null))
-          .filter((v: any) => v !== null) as string[];
-        if (emberIndexes.length === 0) {
+        const emberEntries = owned
+          .map((c: any, idx: number) => ({ c, idx: String(idx) }))
+          .filter((item: any) => item.c.isEmber || (item.c.expValue && item.c.expValue > 0 && !item.c.atkBonus));
+
+        if (emberEntries.length === 0) {
           actionOutcomeMsg = `⚠️ No Universal EXP Embers found in your inventory. De-level a Servant or earn Embers to get them!`;
         } else {
-          const result = feedCraftEssences(targetServant, emberIndexes, owned);
+          // Sort highest EXP value first so user synthesizes best embers first
+          emberEntries.sort((a: any, b: any) => (b.c.expValue || 0) - (a.c.expValue || 0));
+          const selectedIndexes = emberEntries.slice(0, countLimit).map((item: any) => item.idx);
+
+          const result = feedCraftEssences(targetServant, selectedIndexes, owned);
           master.craftEssences = result.remainingCraftEssences;
           const sIdx = findServantIndexInRoster(master.servants, targetServant);
           if (sIdx !== -1) master.servants[sIdx] = result.updatedServant;
           await saveMaster(master);
           targetServant = result.updatedServant;
           const levelDiff = result.newLevel - result.oldLevel;
-          actionOutcomeMsg = `✨ Synthesized ${result.fedEssences.length} Universal EXP Embers!\n` +
+          const labelTag = countLimit === Infinity ? `${result.fedEssences.length}` : `${result.fedEssences.length}`;
+          actionOutcomeMsg = `✨ Synthesized ${labelTag} Universal EXP Ember${result.fedEssences.length > 1 ? 's' : ''}!\n` +
             `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
             (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
           if (levelDiff > 0) checkLevelLimit();
