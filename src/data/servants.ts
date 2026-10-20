@@ -3098,7 +3098,7 @@ Upon revival, she was bewildered by her newfound shock and anger. Over time, as 
     commandCards: ['Quick', 'Arts', 'Arts', 'Buster', 'Buster'],
     noblePhantasm: {
       name: 'Seventh Holy Scripture - Final Judgment',
-      type: 'Buster',
+      cardType: 'Buster',
       target: 'Single Target',
       rank: 'EX',
       description: 'Unleashes the Seventh Holy Scripture or Calvaria Galgalim. Deals massive single-target damage to an enemy with +150% Super Effective Holy Damage against Demonic targets. Ignores Defense, applies +20% Buster Up (activates first), applies 10% Instant Death (40% Raid), and refunds +20% NP Gauge.',

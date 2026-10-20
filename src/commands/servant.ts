@@ -2088,19 +2088,23 @@ export async function handleGlobalServantInteraction(i: any) {
 
         let description = '';
         if (isActivelyInWar) {
+          const npCardType = (template.noblePhantasm?.cardType || (template.noblePhantasm as any)?.type || 'Buster').toUpperCase();
+          const npName = template.noblePhantasm?.name || 'Noble Phantasm';
           description =
             `Master **${master.username}** has openly unveiled their contracted Heroic Spirit to all Masters in Fuyuki City!\n\n` +
             `⚔️ **True Name:** **${template.name}**\n` +
             `🗡️ **Class:** \`${template.servantClass}\` [Balanced Parity] | **Title:** *${template.title}*\n` +
-            `💥 **Noble Phantasm:** *${template.noblePhantasm.name}* [${template.noblePhantasm.cardType.toUpperCase()}]\n` +
+            `💥 **Noble Phantasm:** *${npName}* [${npCardType}]\n` +
             `🗣️ *" ${targetServant.customQuotes?.summon || template.summonQuote || template.battleStartQuote} "*\n\n` +
             `⚠️ *By boasting openly, Master **${master.username}** is now permanently **EXPOSED** on the Holy Grail War board (\`/grailwar\`)!*`;
         } else {
+          const npCardType = (template.noblePhantasm?.cardType || (template.noblePhantasm as any)?.type || 'Buster').toUpperCase();
+          const npName = template.noblePhantasm?.name || 'Noble Phantasm';
           description =
             `Master **${master.username}** proudly displays their contracted Heroic Spirit to the server!\n\n` +
             `⚔️ **True Name:** **${template.name}**\n` +
             `🗡️ **Class:** \`${template.servantClass}\` | **Title:** *${template.title}*\n` +
-            `💥 **Noble Phantasm:** *${template.noblePhantasm.name}* [${template.noblePhantasm.cardType.toUpperCase()}]\n` +
+            `💥 **Noble Phantasm:** *${npName}* [${npCardType}]\n` +
             `⭐ **Bond Level:** ${'⭐'.repeat(Math.min(5, targetServant.bondLevel || 1))} (Bond ${targetServant.bondLevel || 1})\n\n` +
             `🗣️ *" ${targetServant.customQuotes?.summon || template.summonQuote || template.battleStartQuote} "*`;
         }
