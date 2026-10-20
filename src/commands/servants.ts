@@ -398,7 +398,10 @@ export function buildServantsListUI(
       const globalIdx = startIndex + idx + 1;
       const originTag = s.isCustomOrMeme ? '🛠️ [CUSTOM]' : '🏛️ [CANON]';
       const emoji = getClassEmoji(s.servantClass);
-      return `${globalIdx}. ${emoji} **${s.name}** — *${s.title}* [\`${s.servantClass}\`] ${originTag}\n   └ *NP:* **${s.noblePhantasm.name}** | HP: \`${s.baseHp.toLocaleString()}\` | ATK: \`${s.baseAtk.toLocaleString()}\``;
+      const hp = (s.baseHp ?? (s as any).stats?.hp ?? 28000).toLocaleString();
+      const atk = (s.baseAtk ?? (s as any).stats?.atk ?? 11000).toLocaleString();
+      const npName = s.noblePhantasm?.name || 'Unknown NP';
+      return `${globalIdx}. ${emoji} **${s.name}** — *${s.title}* [\`${s.servantClass}\`] ${originTag}\n   └ *NP:* **${npName}** | HP: \`${hp}\` | ATK: \`${atk}\``;
     }).join('\n');
   }
 
