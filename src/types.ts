@@ -93,6 +93,7 @@ export type PassiveSkillType =
   | 'curse_of_sunflower'
   | 'insanity'
   | 'self_replenishment'
+  | 'high_elf_biology'
   | (string & {});
 
 export interface PassiveSkill {

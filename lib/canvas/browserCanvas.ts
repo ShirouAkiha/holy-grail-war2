@@ -4726,13 +4726,13 @@ function extractSkillActualEffects(
 
     // Specific skill ID matches
     if (sId.includes('prescient_foresight') || sName.includes('prescient foresight')) {
-      return '1-Time Evade | +30% Crit DMG (3T) | +15 Critical Stars';
+      return 'Evade (1T) | +50% Star Gather & +30% Crit DMG (3T)';
     }
     if (sId.includes('strengthening_adaptation') || sName.includes('strengthening adaptation')) {
-      return '+30% Buster & Arts (3T) | 1,000 Damage Cut & Debuff Immunity (1T)';
+      return '+30% Buster & Arts (3T) | +20 Stars & Debuff Immunity (1T)';
     }
     if (sId.includes('calamity_breaker_edict') || sName.includes('calamity-breaker') || sName.includes('calamity breaker')) {
-      return '+20% Party ATK (3T) | +30% Anti-Calamity & Threat Special ATK (3T)';
+      return '+20% Party ATK (3T) | +30% Anti-Calamity & Extra Special ATK (3T)';
     }
     if (sId.includes('concept_nullification') || sName.includes('concept nullification')) {
       return 'Invincible Barrier (1T) | Ignore Invincible (1T)';

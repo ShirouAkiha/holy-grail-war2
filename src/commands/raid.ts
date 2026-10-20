@@ -1448,9 +1448,14 @@ async function runRaidBattle(
       const ceAtk = sAtk.equippedCe?.atkBonus || 0;
       const baseAtk = Math.round((tAtk.baseAtk || 10000) + totalStr * 80 + ceAtk);
       const isCastleActive = Boolean(battleState.fieldStatus && battleState.fieldStatus.remainingTurns > 0);
-      const activePassives = active.servant.template?.passives || [];
+      const activePassives = getUnlockedPassives(active.servant.template?.passives || active.servant.template?.servantClass, active.bondLevel || 1);
       const hasUltimateOne = isCastleActive && activePassives.some(p => p.type === 'ultimate_one');
       const ultimateOneBonus = hasUltimateOne ? 30 : 0;
+      const highElfBonus = activePassives.some(p => p.type === 'high_elf_biology' || (p.name && p.name.includes('High Elf Biology'))) ? 8 : 0;
+      const madnessBonus = activePassives.filter(p => p.type === 'madness_enhancement').reduce((acc, p) => acc + p.value, 0) + highElfBonus;
+      const territoryBonus = activePassives.filter(p => p.type === 'territory_creation').reduce((acc, p) => acc + p.value, 0) + highElfBonus;
+      const ridingBonus = activePassives.filter(p => p.type === 'riding').reduce((acc, p) => acc + p.value, 0);
+      const critPassiveBonus = activePassives.filter(p => p.type === 'independent_action' || p.type === 'oblivion_correction').reduce((acc, p) => acc + p.value, 0);
 
       // Check Moon Margaret equipped on any party member while Millennium Castle is active
       const hasPartyMoonMargaret = isCastleActive && battleState.participants.some(p => {
@@ -1460,10 +1465,10 @@ async function runRaidBattle(
       const moonMargaretNpDmgBonus = hasPartyMoonMargaret ? 25 : 0;
 
       const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up' || b.type === 'buff_atk').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const busterBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'buster_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus) / 100);
-      const artsBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'arts_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus) / 100);
-      const quickBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'quick_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus) / 100);
-      const critDmgBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'crit_dmg' || b.type === 'crit_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
+      const busterBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'buster_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus + madnessBonus) / 100);
+      const artsBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'arts_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus + territoryBonus) / 100);
+      const quickBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'quick_up').reduce((acc, b) => acc + b.value, 0) || 0) + ultimateOneBonus + ridingBonus) / 100);
+      const critDmgBuffMult = 1 + (((active.activeBuffs?.filter(b => b.type === 'crit_dmg' || b.type === 'crit_up').reduce((acc, b) => acc + b.value, 0) || 0) + critPassiveBonus) / 100);
 
       const isBossThreat = (boss.traits || []).some(t => ['threat_to_humanity', 'beast', 'demonic'].includes(t.toLowerCase()));
       const antiThreatBuff = (active.activeBuffs?.filter(b => b.type === 'anti_threat').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
@@ -1961,13 +1966,93 @@ async function runRaidBattle(
               }
             }
 
-            const effectiveBossDef = isIgnoreDef ? Math.max(0.2, 1 + bossDefDown) : bossDefFactor;
+            let apocryphaRaidScale = 1.0;
+            const isApocryphaTerminus = active.servant.templateId === 'lucia_lyozes' || active.servant.template?.id === 'lucia_lyozes' || /apocrypha terminus/i.test(npName);
+            if (isApocryphaTerminus) {
+              active.activeBuffs = active.activeBuffs || [];
+              if (!active.activeBuffs.some(b => b.type === 'ignore_invincible')) {
+                active.activeBuffs.push({
+                  name: `${npName} (Ignore Invincible)`,
+                  type: 'ignore_invincible',
+                  value: 100,
+                  remainingTurns: 1
+                });
+              }
+              if (!active.activeBuffs.some(b => b.type === 'ignore_defense')) {
+                active.activeBuffs.push({
+                  name: `${npName} (Ignore Defense)`,
+                  type: 'ignore_defense',
+                  value: 100,
+                  remainingTurns: 1
+                });
+              }
+              if (battleState.bossBuffs && battleState.bossBuffs.length > 0) {
+                const preCount = battleState.bossBuffs.length;
+                battleState.bossBuffs = battleState.bossBuffs.filter(b => 
+                  b.type !== 'def_up' && 
+                  b.type !== 'invincible' && 
+                  b.type !== 'evade' && 
+                  b.type !== 'damage_cut' && 
+                  b.type !== 'shield' &&
+                  !/defense|def|invincible|evade|cut|shield/i.test(b.name)
+                );
+                const removedDef = preCount - battleState.bossBuffs.length;
+                if (removedDef > 0) {
+                  npEffectsLog.push(`⚡ [Anti-Cheat: Stripped ${removedDef} Defensive Buffs!]`);
+                }
+              }
+              npEffectsLog.push('⚡ [Anti-Cheat Protocol: Ignore Invincibility & Ignore Defense Active!]');
+              npEffectsHud.push('Anti-Cheat: Stripped Def');
+
+              const bossTraits = (boss.traits || []).map((t: string) => t.toLowerCase());
+              const bossClass = ((boss as any).servantClass || (boss as any).class || '').toLowerCase();
+              const isTargetThreatOrExtra = bossTraits.some((t: string) => /threat|foreigner|beast|divine|otherworlder|extra/i.test(t)) ||
+                ['foreigner', 'beast', 'ruler', 'avenger', 'mooncancer', 'alterego', 'pretender'].includes(bossClass) ||
+                isBossThreat;
+              if (isTargetThreatOrExtra) {
+                apocryphaRaidScale += 0.50;
+                npEffectsLog.push('💥 [Target Scaling: +50% Special DMG vs Calamity / Threat / Extra!]');
+              }
+
+              const bossBuffCount = (battleState.bossBuffs || []).length;
+              if (bossBuffCount > 0) {
+                const ocRate = overchargeLevel >= 3 ? 2.0 : overchargeLevel >= 2 ? 1.5 : 1.0;
+                const ocBuffBonus = Math.min(5.0, bossBuffCount * ocRate);
+                apocryphaRaidScale += ocBuffBonus;
+                npEffectsLog.push(`🌌 [Overcharge Buff Scaling: +${Math.round(ocBuffBonus * 100)}% DMG from ${bossBuffCount} Boss Buffs!]`);
+              }
+
+              battleState.bossBuffs = battleState.bossBuffs || [];
+              battleState.bossBuffs.push({
+                name: 'Apocrypha (Buff Block)',
+                type: 'buff_block',
+                value: 1,
+                remainingTurns: 3
+              });
+              battleState.bossBuffs.push({
+                name: 'Apocrypha (Skill Seal)',
+                type: 'skill_seal',
+                value: 1,
+                remainingTurns: 2
+              });
+              battleState.bossBuffs.push({
+                name: 'Apocrypha (NP Seal)',
+                type: 'np_seal',
+                value: 1,
+                remainingTurns: 2
+              });
+              battleState.bossCharge = Math.max(0, (battleState.bossCharge || 0) - 1);
+              npEffectsLog.push('🔒 [Inflicted Buff Block (3T), Skill Seal (2T), and NP Seal (2T)!]');
+              npEffectsHud.push('Buff/Skill/NP Seal');
+            }
+
+            const effectiveBossDef = (isIgnoreDef || isApocryphaTerminus) ? Math.max(0.2, 1 + bossDefDown) : bossDefFactor;
             const npOverrideBuff = active.activeBuffs?.find(b => b.type === 'np_card_override');
             const effectiveNpCardType = (npOverrideBuff as any)?.cardType || (active.servant.template?.noblePhantasm?.cardType === '???' ? 'Buster' : (active.servant.template?.noblePhantasm?.cardType || 'Buster'));
             const cardPerfMult = effectiveNpCardType === 'Arts' ? artsBuffMult : effectiveNpCardType === 'Quick' ? quickBuffMult : busterBuffMult;
             const npCeDmgMult = 1.0 + (moonMargaretNpDmgBonus / 100);
 
-            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * cardPerfMult * typhonRaidDebuffScale * archetypeChaoticRaidScale * atkBuffMult * specialAtkMult * effectiveBossDef * npSpecialMult * npCeDmgMult * (0.95 + Math.random() * 0.1));
+            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * cardPerfMult * typhonRaidDebuffScale * archetypeChaoticRaidScale * apocryphaRaidScale * atkBuffMult * specialAtkMult * effectiveBossDef * npSpecialMult * npCeDmgMult * (0.95 + Math.random() * 0.1));
             if (effectiveNpCardType === 'Arts') {
               npGained += Math.round(25 * (1.0 + (artsBuffMult - 1.0)));
               starsGenerated += 5;
@@ -2205,6 +2290,20 @@ async function runRaidBattle(
           }
           if (!p.isDead && (p.currentHp || 0) > 0) {
             processCeTurnStartEffects(p);
+            // Process Servant Passives turn start effects
+            const pPassives = getUnlockedPassives(p.servant.template?.passives || p.servant.template?.servantClass, p.bondLevel || 1);
+            if (pPassives.some(ps => ps.type === 'high_elf_biology' || (ps.name && ps.name.includes('High Elf Biology')))) {
+              p.critStars = Math.min(50, (p.critStars || 0) + 4);
+            }
+            if (pPassives.some(ps => ps.type === 'fifth_succession' || (ps.name && ps.name.includes('Fifth Succession')))) {
+              p.npGauge = Math.min(300, (p.npGauge || 0) + 4);
+            }
+            if (pPassives.some(ps => ps.type === 'absolute_permanence' || (ps.name && ps.name.includes('Absolute Permanence')))) {
+              p.npGauge = Math.min(300, (p.npGauge || 0) + 3);
+            }
+            if (pPassives.some(ps => ps.type === 'progenitor_dragon' || (ps.name && ps.name.includes('Progenitor Dragon')))) {
+              p.npGauge = Math.min(300, (p.npGauge || 0) + 5);
+            }
           }
         });
 
@@ -2799,6 +2898,72 @@ async function runRaidBattle(
             active.npGauge = Math.min(300, (active.npGauge || 0) + 30);
             active.critStars = (active.critStars || 0) + 20;
             buffLog = `(✨ +30% NP Gauge Charge, ★ +20 Critical Stars!)`;
+          } else if (skillObj?.id === 'prescient_foresight_ex' || /prescient foresight/i.test(sName)) {
+            // Lucia Lyozes S1: Prescient Foresight EX
+            active.activeBuffs = active.activeBuffs || [];
+            active.isEvading = true;
+            active.activeBuffs.push({
+              name: `${sName} (Evade 1T)`,
+              type: 'evade',
+              value: 100,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Star Gather Up)`,
+              type: 'star_gather_up',
+              value: 50,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Crit DMG Up)`,
+              type: 'crit_dmg',
+              value: 30,
+              remainingTurns: 3
+            });
+            buffLog = `(⚡ Evade [1T], +50% Star Gather Rate [3T], +30% Crit DMG [3T]!)`;
+          } else if (skillObj?.id === 'strengthening_adaptation_a_plus' || /strengthening adaptation/i.test(sName)) {
+            // Lucia Lyozes S2: Strengthening Adaptation A+
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (Buster Up)`,
+              type: 'buster_up',
+              value: 30,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Arts Up)`,
+              type: 'arts_up',
+              value: 30,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Debuff Immunity)`,
+              type: 'debuff_immunity',
+              value: 100,
+              remainingTurns: 1
+            });
+            active.critStars = Math.min(50, (active.critStars || 0) + 20);
+            buffLog = `(🛡️ +30% Buster & Arts Performance [3T], ★ +20 Critical Stars, Debuff Immunity [1T]!)`;
+          } else if (skillObj?.id === 'calamity_breaker_edict_ex' || /calamity-breaker edict|calamity breaker edict/i.test(sName)) {
+            // Lucia Lyozes S3: Calamity-Breaker Edict EX
+            battleState.participants.forEach(p => {
+              if (p && !p.isDead) {
+                p.activeBuffs = p.activeBuffs || [];
+                p.activeBuffs.push({
+                  name: `${sName} (Party ATK Up)`,
+                  type: 'atk_up',
+                  value: 20,
+                  remainingTurns: 3
+                });
+                p.activeBuffs.push({
+                  name: `${sName} (Anti-Calamity Special ATK)`,
+                  type: 'anti_threat',
+                  value: 30,
+                  remainingTurns: 3
+                });
+              }
+            });
+            buffLog = `(👑 Party: +20% ATK [3T], +30% Special Damage vs Threat to Humanity, Foreigners, Beasts, Otherworlders & Extra Classes [3T]!)`;
           } else if (skillObj?.id === 'angels_body_a' || /angel['’]?s body|body of the angel|angel.*body/i.test(sName + ' ' + sDesc) || ((active.servant.templateId === 'hassan_i_sabbah_azrael' || /azrael/i.test(active.servant.template?.name || '')) && sIdx === 0)) {
             // Azrael S1: Angel's Body A (Raid Mode: +50% NP)
             active.activeBuffs = active.activeBuffs || [];
@@ -3983,7 +4148,11 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   }
 
   // 2. Action 1: Tactical Skill
-  if (isTiamat) {
+  const isBossSkillSealed = state.bossBuffs.some(b => b.type === 'skill_seal');
+  if (isBossSkillSealed) {
+    state.recentLogs.push(`🔒 **[SKILL SEALED!] ${state.boss.name}'s tactical skill was sealed!**`);
+    enemyPhase.specialEvents.push(`🔒 **[SKILL SEALED!]** ${state.boss.name}'s skill was sealed!`);
+  } else if (isTiamat) {
     const tiamatSkillRoll = Math.random();
     if (tiamatSkillRoll < 0.17) {
       // Skill 1: Wailing Voice (1T Skill Seal on highest NP Servant)

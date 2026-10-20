@@ -1757,7 +1757,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'prescient_foresight_ex',
         name: 'Prescient Foresight EX',
         cooldown: 6,
-        description: 'Grants self Evade (1 time), increases Critical Star Gather Rate by +50%, and increases own Critical Damage by +30% for 3 turns.',
+        description: 'Grants self Evade (1 turn), increases Critical Star Gather Rate by +50%, and increases own Critical Damage by +30% for 3 turns.',
         effectType: 'evade',
         duration: 3,
         value: 100,
@@ -1772,7 +1772,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'strengthening_adaptation_a_plus',
         name: 'Strengthening Adaptation A+',
         cooldown: 5,
-        description: 'Increases self Buster & Arts Card effectiveness by +30% for 3 turns. Grants self Damage Cut (1,000) and Debuff Immunity for 1 turn.',
+        description: 'Increases self Buster & Arts Card effectiveness by +30% for 3 turns. Grants 20 crit stars and Debuff Immunity for 1 turn.',
         effectType: 'buff_atk',
         duration: 3,
         value: 30,
@@ -1801,18 +1801,18 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     ],
     passives: [
       {
+        name: 'High Elf Biology EX',
+        type: 'high_elf_biology',
+        value: 8,
+        rank: 'EX',
+        description: 'Ancient elven constitution granting superior biological durability and sensory acuity. Increases Arts & Buster card performance by 8% and generates 4 Critical Stars per turn.'
+      },
+      {
         name: 'Magic Resistance A',
         type: 'magic_resistance',
         value: 20,
         rank: 'A',
         description: 'Increases debuff resistance by 20%.'
-      },
-      {
-        name: 'High Elf Biology EX',
-        type: 'independent_action',
-        value: 10,
-        rank: 'EX',
-        description: 'Ancient elven constitution granting superior biological durability and sensory acuity. Increases Arts & Buster card performance by 8% and generates 4 Critical Stars per turn.'
       }
     ],
     noblePhantasm: {

@@ -205,6 +205,9 @@ export function calculateCombatantBuffSummary(
       atkBoost += Math.round(bstVal * 0.5);
     } else if (p.type === 'territory_creation') {
       artsBoost += p.value || 8;
+    } else if (p.type === 'high_elf_biology' || (p.name && p.name.includes('High Elf Biology'))) {
+      artsBoost += 8;
+      busterBoost += 8;
     } else if (p.type === 'independent_action') {
       critBoost += p.value || 8;
     } else if (p.type === 'avenger' && combatant.currentHp && combatant.maxHp) {

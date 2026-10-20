@@ -1622,47 +1622,90 @@ function activateCombatantSkill(
     });
     combatant.activeBuffs = combatant.activeBuffs.filter(b => !b.type.startsWith('debuff') && b.type !== 'stun');
     logText = `⛰️ **${sName}** activated **${skill.name}**! (+30% Buster (3T), 2,000 Damage Cut (1T), Debuff Immunity (1T))${quoteLine}`;
-  } else if (skill.id === 'strengthening_adaptation_a' || skill.name.toLowerCase().includes('strengthening adaptation')) {
+  } else if (skill.id === 'prescient_foresight_ex' || /prescient foresight/i.test(skill.name)) {
+    // Lucia Lyozes S1: Prescient Foresight EX
+    // Grants self Evade (1 turn), increases Critical Star Gather Rate by +50%, and increases own Critical Damage by +30% for 3 turns.
+    combatant.isEvading = true;
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Evade 1T)`,
+      type: 'evade',
+      value: 100,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Star Gather Up)`,
+      type: 'star_gather_up',
+      value: 50,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Crit DMG Up)`,
+      type: 'crit_dmg',
+      value: 30,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    logText = `⚡ **${sName}** activated **${skill.name}**! (Evade [1T], +50% Star Gather Rate [3T], +30% Crit DMG [3T])${quoteLine}`;
+  } else if (skill.id === 'strengthening_adaptation_a_plus' || /strengthening adaptation/i.test(skill.name)) {
+    // Lucia Lyozes S2: Strengthening Adaptation A+
+    // Increases self Buster & Arts Card effectiveness by +30% for 3 turns. Grants 20 crit stars and Debuff Immunity for 1 turn.
+    combatant.activeBuffs = combatant.activeBuffs || [];
     combatant.activeBuffs.push({
       name: `${skill.name} (Buster Up)`,
       type: 'buster_up',
       value: 30,
-      remainingTurns: 3
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
     });
     combatant.activeBuffs.push({
       name: `${skill.name} (Arts Up)`,
       type: 'arts_up',
       value: 30,
-      remainingTurns: 3
-    });
-    combatant.activeBuffs.push({
-      name: `${skill.name} (Damage Cut)`,
-      type: 'damage_cut',
-      value: 1000,
-      remainingTurns: 1
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
     });
     combatant.activeBuffs.push({
       name: `${skill.name} (Debuff Immunity)`,
       type: 'debuff_immunity',
       value: 100,
-      remainingTurns: 1
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
     });
-    combatant.activeBuffs = combatant.activeBuffs.filter(b => !b.type.startsWith('debuff') && b.type !== 'stun');
-    logText = `🛡️ **${sName}** activated **${skill.name}**! (+30% Buster & Arts (3T), 1,000 Damage Cut (1T), Debuff Immunity (1T))${quoteLine}`;
-  } else if (skill.id === 'calamity_breaker_edict_ex' || skill.name.toLowerCase().includes('calamity-breaker') || skill.name.toLowerCase().includes('calamity breaker')) {
-    combatant.activeBuffs.push({
-      name: `${skill.name} (ATK Up)`,
-      type: 'buff_atk',
-      value: 20,
-      remainingTurns: 3
+    combatant.critStars = Math.min(50, (combatant.critStars || 0) + 20);
+    logText = `🛡️ **${sName}** activated **${skill.name}**! (+30% Buster & Arts Performance [3T], +20 Critical Stars, Debuff Immunity [1T])${quoteLine}`;
+  } else if (skill.id === 'calamity_breaker_edict_ex' || /calamity-breaker edict|calamity breaker edict/i.test(skill.name)) {
+    // Lucia Lyozes S3: Calamity-Breaker Edict EX
+    // Increases Attack of all allies by +20% for 3 turns. Grants all allies [Special Attack against Threat to Humanity / Foreigner / Beast / Otherworlder, all extra classes] (+30% DMG) for 3 turns.
+    const allies = livingAllies && livingAllies.length > 0 ? livingAllies.filter(a => a.currentHp > 0) : [combatant];
+    allies.forEach(ally => {
+      ally.activeBuffs = ally.activeBuffs || [];
+      ally.activeBuffs.push({
+        name: `${skill.name} (Party ATK Up)`,
+        type: 'buff_atk',
+        value: 20,
+        remainingTurns: 3,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+      ally.activeBuffs.push({
+        name: `${skill.name} (Anti-Calamity Extra Class Special ATK)`,
+        type: 'special_damage_up',
+        value: 30,
+        remainingTurns: 3,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
     });
-    combatant.activeBuffs.push({
-      name: `${skill.name} (Anti-Calamity Special Attack)`,
-      type: 'special_damage_up' as any,
-      value: 30,
-      remainingTurns: 3
-    });
-    logText = `👑 **${sName}** activated **${skill.name}**! (+20% Party ATK (3T), +30% Special ATK vs Threat/Foreigner/Beast/Calamity (3T))${quoteLine}`;
+    logText = `👑 **${sName}** activated **${skill.name}**! (+20% ATK & +30% Special Damage vs Threat to Humanity, Foreigners, Beasts, Otherworlders & Extra Classes to all allies for 3T!)${quoteLine}`;
   } else if (skill.id === 'blaze_of_etna' || /blaze of etna|armor of ashen/i.test(skill.name)) {
     // S1: Blaze of Etna - Dragon Prison Manifestation: Armor of Ashen Flames C
     combatant.activeBuffs.push({
@@ -1981,9 +2024,10 @@ function activateCombatantSkill(
     // Tamamo no Mae S1: Mantra: Boundless Sunlight A
     // Reduces enemy's NP gauge by 30% in duels. Increases party's and self NP damage by 30% for 3 turns.
     if (opponent) {
+      const hasDebuffImmunity = opponent.activeBuffs?.some(b => b.type === 'debuff_immunity' && (b.remainingTurns || 1) > 0);
       const oppPassives = opponent.passives || getUnlockedPassives(opponent.servant.template?.passives?.length ? opponent.servant.template.passives : opponent.servant.template?.servantClass, opponent.servant.bondLevel || 1);
       const debuffResist = oppPassives.filter(p => p.type === 'magic_resistance' || p.type === 'fifth_succession').reduce((s, p) => s + p.value, 0);
-      const didResist = Math.random() * 100 < debuffResist;
+      const didResist = hasDebuffImmunity || (Math.random() * 100 < debuffResist);
       if (!didResist) {
         opponent.npGauge = Math.max(0, opponent.npGauge - 30);
       }
@@ -2444,7 +2488,6 @@ function activateCombatantSkill(
     });
     combatant.npGauge = Math.min(300, combatant.npGauge + 50);
     combatant.currentHp = Math.max(1, combatant.currentHp - 1000);
-    logText = `🦋 **${sName}** activated **${skill.name}**! (+50% Buster [1T], Invincible [1T], +50% NP Gauge, -1,000 HP Demerit)${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
@@ -2488,7 +2531,7 @@ function activateCombatantSkill(
     const bType: 'evade' | 'invincible' = skill.effectType === 'invincible' ? 'invincible' : 'evade';
     const descLower = (skill.description || '').toLowerCase();
     const idLower = (skill.id || '').toLowerCase();
-    const isSingleHit = descLower.includes('1 time') || descLower.includes('1 evade') || descLower.includes('1 hit') || idLower.includes('prescient_foresight');
+    const isSingleHit = descLower.includes('1 time') || descLower.includes('1 evade') || descLower.includes('1 hit');
     const isHitBased = skill.name.toLowerCase().includes('protection from arrows') || descLower.includes('attacks') || descLower.includes('hits') || isSingleHit;
     const hitCount = isSingleHit ? 1 : 3;
     const invDuration = descLower.includes('2 turns') || descLower.includes('2t')
@@ -2503,7 +2546,7 @@ function activateCombatantSkill(
       remainingHits: isHitBased ? hitCount : undefined,
       isHitCount: isHitBased
     });
-    if (skill.id === 'wisdom_dun_scaith' || idLower.includes('prescient_foresight')) {
+    if (skill.id === 'wisdom_dun_scaith') {
       combatant.critStars = Math.min(50, combatant.critStars + 15);
     }
     if (idLower.startsWith('ephemeral_dream') || (descLower.includes('attack') && !descLower.includes('attacks'))) {
@@ -2514,7 +2557,7 @@ function activateCombatantSkill(
         remainingTurns: skill.duration || 1
       });
     }
-    if (idLower.includes('prescient_foresight') || descLower.includes('critical damage') || descLower.includes('crit damage')) {
+    if (descLower.includes('critical damage') || descLower.includes('crit damage')) {
       combatant.activeBuffs.push({
         name: `${skill.name} (Crit DMG Up)`,
         type: 'crit_dmg',
@@ -2536,7 +2579,6 @@ function activateCombatantSkill(
     const bonusLabels: string[] = [];
     if (idLower.startsWith('ephemeral_dream') || (descLower.includes('attack') && !descLower.includes('attacks'))) bonusLabels.push(`+${skill.value || 40}% ATK`);
     if (idLower === 'kekkai_creation' || descLower.includes('defense') || descLower.includes('increases def')) bonusLabels.push(`+${skill.value || 30}% DEF`);
-    if (idLower.includes('prescient_foresight')) bonusLabels.push('1-Time Evade', '+30% Crit DMG');
     if (idLower === 'kekkai_creation' || descLower.includes('cleanse') || descLower.includes('debuff')) bonusLabels.push('Debuffs Cleansed');
     const bonusSummary = bonusLabels.length > 0 ? ` & ${bonusLabels.join(', ')}` : '';
 
@@ -2701,14 +2743,15 @@ function activateCombatantSkill(
     logText = `🌟 **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment') || skill.id === 'restoration_radiant_light' || skill.id === 'divine_judgement_a') {
     if (opponent) {
-      // Check Debuff Resistance (Magic Resistance, Fifth Succession, etc.)
+      const oppServantName = opponent.servant.nickname || opponent.servant.template?.name || 'Opponent';
+      const hasDebuffImmunity = opponent.activeBuffs?.some(b => b.type === 'debuff_immunity' && (b.remainingTurns || 1) > 0);
       const oppPassives = opponent.passives || getUnlockedPassives(opponent.servant.template?.passives?.length ? opponent.servant.template.passives : opponent.servant.template?.servantClass, opponent.servant.bondLevel || 1);
       const debuffResist = oppPassives.filter(p => p.type === 'magic_resistance' || p.type === 'fifth_succession').reduce((s, p) => s + p.value, 0);
-      const didResist = Math.random() * 100 < debuffResist;
-      const oppServantName = opponent.servant.nickname || opponent.servant.template?.name || 'Opponent';
+      const didResist = hasDebuffImmunity || (Math.random() * 100 < debuffResist);
 
       if (didResist) {
-        logText = `🛡️ **${sName}** activated **${skill.name}**, but **${oppServantName}** nullified the debuff with **Debuff Resistance (${debuffResist}%)**!${quoteLine}`;
+        const reasonTag = hasDebuffImmunity ? 'Debuff Immunity' : `Debuff Resistance (${debuffResist}%)`;
+        logText = `🛡️ **${sName}** activated **${skill.name}**, but **${oppServantName}** nullified the debuff with **${reasonTag}**!${quoteLine}`;
       } else if (skill.id === 'restoration_radiant_light' || skill.name.includes('Radiant Holy Light') || skill.name.includes('Restoration')) {
         opponent.npGauge = Math.max(0, opponent.npGauge - 20);
         opponent.activeBuffs.push({
@@ -2949,6 +2992,13 @@ function resolveStrike(
     attacker.npGauge = Math.min(300, attacker.npGauge + permanenceBonus);
   }
 
+  // High Elf Biology EX (Lucia Lyozes) grants +4 Critical Stars every turn
+  const highElfStarBonus = attackerPassives.some(p => p.type === 'high_elf_biology' || (p.name && p.name.includes('High Elf Biology'))) ? 4 : 0;
+  if (highElfStarBonus > 0) {
+    attacker.critStars = Math.min(50, (attacker.critStars || 0) + highElfStarBonus);
+    chainTags.push('✨ High Elf Biology (+4 Stars)');
+  }
+
   // The Weight of Heaven (Adiosa) gravitational field
   const weightOfHeaven = attackerPassives.find(p => p.type === 'the_weight_of_heaven');
   if (weightOfHeaven) {
@@ -3023,9 +3073,10 @@ function resolveStrike(
   const isMillenniumCastleField = attacker.activeBuffs.some(b => b.type === 'millennium_castle_field' || b.name.includes('Millennium Castle'));
   const ultimateOneBonus = (isMillenniumCastleField && attackerPassives.some(p => p.type === 'ultimate_one')) ? 30 : 0;
   const magicGunnerBonus = attackerPassives.filter(p => p.type === 'magic_gunner').reduce((s, p) => s + p.value, 0);
-  const madnessBonus = attackerPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0) + magicGunnerBonus + ultimateOneBonus;
+  const highElfBonus = attackerPassives.filter(p => p.type === 'high_elf_biology' || (p.name && p.name.includes('High Elf Biology'))).length > 0 ? 8 : 0;
+  const madnessBonus = attackerPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0) + magicGunnerBonus + ultimateOneBonus + highElfBonus;
   const ridingBonus = attackerPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0) + ultimateOneBonus;
-  const territoryBonus = attackerPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0) + magicGunnerBonus + ultimateOneBonus;
+  const territoryBonus = attackerPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0) + magicGunnerBonus + ultimateOneBonus + highElfBonus;
   const critPassiveBonus = attackerPassives.filter(p => p.type === 'independent_action' || p.type === 'oblivion_correction').reduce((s, p) => s + p.value, 0);
   const divinityBonus = attackerPassives.filter(p => p.type === 'divinity').reduce((s, p) => s + p.value, 0);
   const presenceConcealBonus = attackerPassives.filter(p => p.type === 'presence_concealment').reduce((s, p) => s + p.value, 0) + (magicGunnerBonus > 0 ? 5 : 0);
@@ -3532,13 +3583,25 @@ function resolveStrike(
         const npDesc = npTemplate.description || '';
         const npOcDesc = npTemplate.overchargeEffect || '';
         const isTyphonNP = attacker.servant.templateId === 'typhon_ephemeros' || /dragon grail that reverses/i.test(npTemplate.name || '');
-        const hasNpIgnoreInvincible = isTyphonNP || /ignore invincib|pierce invincib|anti-invulnerab/i.test(npDesc + ' ' + npOcDesc);
+        const isApocryphaTerminus = /apocrypha terminus/i.test(npTemplate.name || '');
+        const hasNpIgnoreInvincible = isTyphonNP || isApocryphaTerminus || /ignore invincib|pierce invincib|anti-invulnerab/i.test(npDesc + ' ' + npOcDesc);
 
         if (hasNpIgnoreInvincible) {
           if (!attacker.activeBuffs.some(b => b.type === 'ignore_invincible' || b.type === 'anti_invulnerable' || b.type === 'pierce_invincible')) {
             attacker.activeBuffs.push({
               name: `${npTemplate.name || 'Noble Phantasm'} (Ignore Invincible)`,
               type: 'ignore_invincible',
+              value: 100,
+              remainingTurns: 1
+            });
+          }
+        }
+
+        if (isApocryphaTerminus) {
+          if (!attacker.activeBuffs.some(b => b.type === 'ignore_defense')) {
+            attacker.activeBuffs.push({
+              name: 'Anti-Cheat: Ignore Defense',
+              type: 'ignore_defense',
               value: 100,
               remainingTurns: 1
             });
@@ -3615,6 +3678,26 @@ function resolveStrike(
           ? ((livingOpponents && livingOpponents.length > 0) ? livingOpponents.filter(o => o.currentHp > 0) : [defender])
           : [defender];
 
+        if (isApocryphaTerminus) {
+          targetEnemies.forEach(opp => {
+            if (opp.activeBuffs) {
+              opp.activeBuffs = opp.activeBuffs.filter(b =>
+                b.type !== 'invincible' &&
+                b.type !== 'evade' &&
+                b.type !== 'buff_def' &&
+                b.type !== 'damage_cut' &&
+                b.type !== 'anti_purge_defense' &&
+                b.type !== 'anti_purge' &&
+                !/invincible|evade|defense|damage cut|protection/i.test(b.name)
+              );
+            }
+            opp.isInvincible = false;
+            opp.isEvading = false;
+            opp.isAntiPurgeDefense = false;
+          });
+          chainTags.push('⚡ [Anti-Cheat Protocol: Stripped all Enemy Defensive Buffs!]');
+        }
+
         const damageDetails: string[] = [];
         const damageLines: string[] = [];
         totalNpDmgVal = 0;
@@ -3625,7 +3708,8 @@ function resolveStrike(
             targetOpp.servant.template.servantClass
           );
 
-          const isIgnoreDef = attacker.activeBuffs.some(b => b.type === 'ignore_defense') ||
+          const isIgnoreDef = isApocryphaTerminus ||
+            attacker.activeBuffs.some(b => b.type === 'ignore_defense') ||
             attacker.servant.templateId === 'emiya_archer' ||
             attacker.servant.template?.id === 'emiya_archer' ||
             attacker.servant.templateId === 'okita_souji' ||
@@ -3678,7 +3762,23 @@ function resolveStrike(
             }
           }
 
-          const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * typhonDebuffScale * azraelSpecialScale * archetypeChaoticScale * targetClassMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
+          let apocryphaSpecialScale = 1.0;
+          if (isApocryphaTerminus) {
+            const isExtraOrCalamity =
+              ['Foreigner', 'Beast', 'Ruler', 'Avenger', 'MoonCancer', 'AlterEgo', 'Pretender', 'Shitposter'].includes(targetOpp.servant.template.servantClass) ||
+              (targetOpp.servant.template.traits && targetOpp.servant.template.traits.some((t: string) => /foreigner|beast|divine|otherworlder|extra|threat/i.test(t)));
+            if (isExtraOrCalamity) {
+              apocryphaSpecialScale = 1.50; // +50% Special Damage vs Calamity / Extra / Threat / Beast / Divine
+            }
+            const oppBuffCount = (targetOpp.activeBuffs || []).length;
+            if (oppBuffCount > 0) {
+              const ocMult = overchargeLevel >= 3 ? 2.0 : overchargeLevel >= 2 ? 1.5 : 1.0;
+              const buffBonus = Math.min(5.0, oppBuffCount * ocMult);
+              apocryphaSpecialScale += buffBonus;
+            }
+          }
+
+          const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * typhonDebuffScale * azraelSpecialScale * archetypeChaoticScale * apocryphaSpecialScale * targetClassMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
           const oppEndMitigation = 1.0 - ((targetOpp.enduranceDamageReduction || 0) / 100);
           let oppDmg = Math.round(Math.max(600, rawNpDmg * oppEndMitigation) * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
@@ -3797,6 +3897,39 @@ function resolveStrike(
               value: 30,
               remainingTurns: 3
             });
+          }
+
+          if (isApocryphaTerminus) {
+            targetOpp.activeBuffs = targetOpp.activeBuffs || [];
+            targetOpp.activeBuffs.push({
+              name: 'Apocrypha: Buff Block',
+              type: 'buff_block' as any,
+              value: 100,
+              remainingTurns: 3,
+              appliedRound: attacker.activeBuffs[0]?.appliedRound,
+              appliedTurnUserId: attacker.userId
+            });
+            targetOpp.activeBuffs.push({
+              name: 'Apocrypha: Skill Seal',
+              type: 'skill_seal' as any,
+              value: 100,
+              remainingTurns: 2,
+              appliedRound: attacker.activeBuffs[0]?.appliedRound,
+              appliedTurnUserId: attacker.userId
+            });
+            const isExtraTarget = ['Foreigner', 'Beast', 'Ruler', 'Avenger', 'MoonCancer', 'AlterEgo', 'Pretender', 'Shitposter'].includes(targetOpp.servant.template.servantClass) ||
+              (targetOpp.servant.template.traits && targetOpp.servant.template.traits.some((t: string) => /foreigner|beast|extra|otherworlder/i.test(t)));
+            if (isExtraTarget) {
+              targetOpp.activeBuffs.push({
+                name: 'Apocrypha: NP Seal',
+                type: 'np_seal' as any,
+                value: 100,
+                remainingTurns: 2,
+                appliedRound: attacker.activeBuffs[0]?.appliedRound,
+                appliedTurnUserId: attacker.userId
+              });
+            }
+            chainTags.push('🚫 [Apocrypha Terminus: Inflicted Buff Block (3T) & Skill Seal (2T)!]');
           }
 
           if (targetOpp === defender) {

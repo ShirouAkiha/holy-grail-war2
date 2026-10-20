@@ -337,12 +337,10 @@ export function applyCombatantSkill(
   if (skill.id.includes('prescient_foresight')) {
     actor.isEvading = true;
     actor.activeBuffs.push({
-      name: 'Prescient Foresight (Evade 1 Time)',
+      name: 'Prescient Foresight (Evade 1 Turn)',
       type: 'evade',
       value: 100,
-      remainingTurns: 3,
-      remainingHits: 1,
-      isHitCount: true
+      remainingTurns: 1
     });
     actor.activeBuffs.push({
       name: 'Prescient Foresight (Crit Star Gather)',
@@ -359,7 +357,7 @@ export function applyCombatantSkill(
     actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
     return {
       success: true,
-      log: `⚡ **${actor.name}** activated **${skill.name}**! Granted self Evade (1 time), +50% Star Gather, and +30% Crit Damage!${quoteLine}`,
+      log: `⚡ **${actor.name}** activated **${skill.name}**! Granted self Evade (1 turn), +50% Star Gather, and +30% Crit Damage!${quoteLine}`,
       quote: skillQuote,
       skillName: skill.name
     };
@@ -378,12 +376,7 @@ export function applyCombatantSkill(
       value: 30,
       remainingTurns: 3
     });
-    actor.activeBuffs.push({
-      name: 'Strengthening Adaptation (Damage Cut)',
-      type: 'damage_cut',
-      value: 1000,
-      remainingTurns: 1
-    });
+    actor.critStars = Math.min(50, (actor.critStars || 0) + 20);
     actor.activeBuffs.push({
       name: 'Strengthening Adaptation (Debuff Immunity)',
       type: 'debuff_immunity',
@@ -392,7 +385,7 @@ export function applyCombatantSkill(
     });
     return {
       success: true,
-      log: `🛡️ **${actor.name}** activated **${skill.name}**! Granted +30% Buster & Arts (3T), 1,000 Damage Cut (1T), and Debuff Immunity!${quoteLine}`,
+      log: `🛡️ **${actor.name}** activated **${skill.name}**! Granted +30% Buster & Arts (3T), +20 Critical Stars, and Debuff Immunity (1T)!${quoteLine}`,
       quote: skillQuote,
       skillName: skill.name
     };
@@ -1298,6 +1291,7 @@ export function executeNoblePhantasmLogic(
   const actorTerritory = actorPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0);
   const actorRiding = actorPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0);
   const actorDivinity = actorPassives.filter(p => p.type === 'divinity').reduce((s, p) => s + p.value, 0);
+  const actorHighElf = actorPassives.filter(p => p.type === 'high_elf_biology' || (p.name && p.name.includes('High Elf Biology'))).length > 0 ? 8 : 0;
   const flatDivinity = Math.round(actorDivinity * PVP_DAMAGE_MODIFIER);
 
   // Card Performance Buffs (Card Type strictly dictates which card buffs interact!)
@@ -1305,13 +1299,15 @@ export function executeNoblePhantasmLogic(
     .filter(b => b.type === 'buster_up' || /mana burst|buster/i.test(b.name))
     .reduce((s, b) => s + b.value, 0) +
     (actor.equippedCe?.passiveType === 'buster_up' && actor.equippedCe.id !== 'ce_black_grail' ? (actor.equippedCe.passiveValue || 0) : 0) +
-    actorMadness;
+    actorMadness +
+    actorHighElf;
 
   const artsBuff = actor.activeBuffs
     .filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name))
     .reduce((s, b) => s + b.value, 0) +
     (actor.equippedCe?.passiveType === 'arts_up' ? (actor.equippedCe.passiveValue || 0) : 0) +
-    actorTerritory;
+    actorTerritory +
+    actorHighElf;
 
   const quickBuff = actor.activeBuffs
     .filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name))
@@ -2212,6 +2208,20 @@ export function executeBattleTurn(
       }
     }
 
+    // Turn-Start Servant Passives (High Elf Biology EX, Fifth Succession, etc.)
+    if (actorPassives.some(p => p.type === 'high_elf_biology' || (p.name && p.name.includes('High Elf Biology')))) {
+      actor.critStars = Math.min(50, (actor.critStars || 0) + 4);
+    }
+    if (actorPassives.some(p => p.type === 'fifth_succession' || (p.name && p.name.includes('Fifth Succession')))) {
+      actor.npGauge = Math.min(300, actor.npGauge + 4);
+    }
+    if (actorPassives.some(p => p.type === 'absolute_permanence' || (p.name && p.name.includes('Absolute Permanence')))) {
+      actor.npGauge = Math.min(300, actor.npGauge + 3);
+    }
+    if (actorPassives.some(p => p.type === 'progenitor_dragon' || (p.name && p.name.includes('Progenitor Dragon')))) {
+      actor.npGauge = Math.min(300, actor.npGauge + 5);
+    }
+
     // Turn-Start Skill Buffs (e.g. stars_per_turn & hp_regen)
     const starBuffs = actor.activeBuffs.filter(b => b.type === 'stars_per_turn');
     const starsFromTurnBuffs = starBuffs.reduce((s, b) => s + b.value, 0);
@@ -2394,6 +2404,60 @@ export function executeBattleTurn(
               remainingTurns: 1
             });
           }
+        } else if (skill.id.includes('prescient_foresight')) {
+          actor.isEvading = true;
+          actor.activeBuffs.push({
+            name: 'Prescient Foresight (Evade 1 Turn)',
+            type: 'evade',
+            value: 100,
+            remainingTurns: 1
+          });
+          actor.activeBuffs.push({
+            name: 'Prescient Foresight (Crit Star Gather)',
+            type: 'star_gather_up',
+            value: 50,
+            remainingTurns: 3
+          });
+          actor.activeBuffs.push({
+            name: 'Prescient Foresight (Crit DMG Up)',
+            type: 'crit_dmg',
+            value: 30,
+            remainingTurns: 3
+          });
+          actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+        } else if (skill.id.includes('strengthening_adaptation')) {
+          actor.activeBuffs.push({
+            name: 'Strengthening Adaptation (Buster Up)',
+            type: 'buster_up',
+            value: 30,
+            remainingTurns: 3
+          });
+          actor.activeBuffs.push({
+            name: 'Strengthening Adaptation (Arts Up)',
+            type: 'arts_up',
+            value: 30,
+            remainingTurns: 3
+          });
+          actor.critStars = Math.min(50, (actor.critStars || 0) + 20);
+          actor.activeBuffs.push({
+            name: 'Strengthening Adaptation (Debuff Immunity)',
+            type: 'debuff_immunity',
+            value: 100,
+            remainingTurns: 1
+          });
+        } else if (skill.id.includes('calamity_breaker_edict')) {
+          actor.activeBuffs.push({
+            name: 'Calamity-Breaker Edict (ATK Up)',
+            type: 'buff_atk',
+            value: 20,
+            remainingTurns: 3
+          });
+          actor.activeBuffs.push({
+            name: 'Calamity-Breaker Edict (Anti-Calamity Special Attack)',
+            type: 'special_damage_up',
+            value: 30,
+            remainingTurns: 3
+          });
         } else {
           switch (skill.effectType) {
           case 'buff_atk': {
@@ -2802,6 +2866,7 @@ export function executeBattleTurn(
     const divinityBonus = actorPassives.filter(p => p.type === 'divinity').reduce((s, p) => s + p.value, 0);
     const presenceConcealBonus = actorPassives.filter(p => p.type === 'presence_concealment').reduce((s, p) => s + p.value, 0);
     const magicGunnerBonus = actorPassives.filter(p => p.type === 'magic_gunner' || (p.name && p.name.includes('Magic Gunner'))).reduce((s, p) => s + p.value, 0);
+    const highElfBonus = actorPassives.filter(p => p.type === 'high_elf_biology' || (p.name && p.name.includes('High Elf Biology'))).length > 0 ? 8 : 0;
     const flatDivinity = Math.round(divinityBonus * PVP_DAMAGE_MODIFIER);
     const avengerBonus = targetPassives.filter(p => p.type === 'avenger').reduce((s, p) => s + p.value, 0);
 
@@ -2823,14 +2888,16 @@ export function executeBattleTurn(
       .reduce((sum, b) => sum + b.value, 0) +
       (actor.equippedCe?.passiveType === 'buster_up' && actor.equippedCe.id !== 'ce_black_grail' ? (actor.equippedCe.passiveValue || 0) : 0) +
       madnessBonus +
-      magicGunnerBonus;
+      magicGunnerBonus +
+      highElfBonus;
 
     const artsBuff = actor.activeBuffs
       .filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name))
       .reduce((sum, b) => sum + b.value, 0) +
       (actor.equippedCe?.passiveType === 'arts_up' ? (actor.equippedCe.passiveValue || 0) : 0) +
       territoryBonus +
-      magicGunnerBonus;
+      magicGunnerBonus +
+      highElfBonus;
 
     const quickBuff = actor.activeBuffs
       .filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name))
@@ -3307,6 +3374,12 @@ export function executeBattleTurn(
       const avengerRefund = Math.round(12 * (1.0 + avengerBonus / 100));
       target.npGauge = Math.min(300, target.npGauge + avengerRefund);
       actionText += `\n🖤 **[Avenger]** ${target.name} gained +${avengerRefund}% NP from suffering damage!`;
+    }
+
+    // High Elf Biology EX passive (+4 stars per turn)
+    const highElfPassive = actorPassives.find(p => p.type === 'high_elf_biology' || (p.name && p.name.includes('High Elf Biology')));
+    if (highElfPassive) {
+      actionText += `\n✨ **[High Elf Biology EX]** Ancient elven constitution generated +4 Critical Stars!`;
     }
 
     // Fifth Succession A passive (+4% NP gauge per turn)
