@@ -2212,3 +2212,12 @@ export async function startBot() {
     isBotStarting = false;
   }
 }
+
+// Auto-start when executed directly via CLI (bun src/index.ts, tsx src/index.ts, node src/index.ts)
+if (typeof process !== 'undefined') {
+  const entry = (process.argv[1] || '').replace(/\\/g, '/');
+  const isNextServer = entry.includes('next');
+  if (!isNextServer && (process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN)) {
+    startBot();
+  }
+}
