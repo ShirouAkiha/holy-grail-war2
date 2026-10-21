@@ -3082,55 +3082,59 @@ Upon revival, she was bewildered by her newfound shock and anger. Over time, as 
     paramRanks: { strength: 'C+', endurance: 'EX', agility: 'B+', mana: 'A+', luck: 'C+' },
     commandDeck: ['Quick', 'Arts', 'Arts', 'Buster', 'Buster'],
     traits: ['Costume-Owning', 'Defender', 'Humanoid', 'Female', 'Servant', 'Living Human'],
-    origin: 'CANON',
-    gender: 'Female',
-    alignment: 'Lawful Good',
-    stats: {
-      hp: 31800,
-      atk: 11900,
-      strength: 'C+',
-      endurance: 'EX',
-      agility: 'B+',
-      mana: 'A+',
-      luck: 'C+',
-      noblePhantasmRank: 'EX'
-    },
-    commandCards: ['Quick', 'Arts', 'Arts', 'Buster', 'Buster'],
     noblePhantasm: {
       name: 'Seventh Holy Scripture - Final Judgment',
       cardType: 'Buster',
-      target: 'Single Target',
+      target: 'single',
       rank: 'EX',
+      multiplier: 1200,
+      overchargeEffect: 'Buster Up +20% & NP Refund +20%',
       description: 'Unleashes the Seventh Holy Scripture or Calvaria Galgalim. Deals massive single-target damage to an enemy with +150% Super Effective Holy Damage against Demonic targets. Ignores Defense, applies +20% Buster Up (activates first), applies 10% Instant Death (40% Raid), and refunds +20% NP Gauge.',
       chant: 'Seventh Scripture, activate! Break through all sin and guilt... Seventh Holy Scripture - Final Judgment!'
     },
     skills: [
       {
+        id: 'ciel_skill_1',
         name: 'Human Mana Factory A',
-        type: 'Active',
         cooldown: 6,
-        description: 'Recovers 3,000 HP for self, charges NP Gauge by +50%, gains 20 Critical Stars, and applies HP-dependent Crit Damage Up (+50% above 50% HP, +50% at 100% HP) for 3 turns.'
+        description: 'Recovers 3,000 HP for self, charges NP Gauge by +50%, gains 20 Critical Stars, and applies HP-dependent Crit Damage Up (+50% above 50% HP, +50% at 100% HP) for 3 turns.',
+        effectType: 'np_charge',
+        value: 50,
+        duration: 3,
+        icon: '⚡'
       },
       {
+        id: 'ciel_skill_2',
         name: 'Phasing Fluid Blade B+',
-        type: 'Active',
         cooldown: 6,
-        description: 'Increases Arts Performance by +30% for 3 turns. Arts attacks apply Healing Received -20% (3T) to boss, strip boss Guts, and have a 30% chance to drain 1 Charge Diamond.'
+        description: 'Increases Arts Performance by +30% for 3 turns. Arts attacks apply Healing Received -20% (3T) to boss, strip boss Guts, and have a 30% chance to drain 1 Charge Diamond.',
+        effectType: 'arts_up',
+        value: 30,
+        duration: 3,
+        icon: '🗡️'
       },
       {
+        id: 'ciel_skill_3',
         name: 'Idea Blood: Hemonomic Principle B',
-        type: 'Active',
         cooldown: 7,
-        description: 'Increases Buster Performance by +30% for 3 turns. Buster attacks charge NP Gauge by +10%. Replaces Command Deck with 5 Buster Cards for 1 turn.'
+        description: 'Increases Buster Performance by +30% for 3 turns. Buster attacks charge NP Gauge by +10%. Replaces Command Deck with 5 Buster Cards for 1 turn.',
+        effectType: 'buster_up',
+        value: 30,
+        duration: 3,
+        icon: '💥'
       }
     ],
     passives: [
       {
         name: 'Class Skills (MoonCancer)',
+        type: 'magic_resistance',
+        value: 20,
         description: 'Magic Resistance A, Territory Creation B, Independent Action EX'
       },
       {
         name: 'Idea Blood Principle',
+        type: 'independent_action',
+        value: 20,
         description: 'Increases Crit Damage by +20% and Damage against Demonic enemies by +30%.'
       }
     ],

@@ -2180,15 +2180,26 @@ client.on(Events.MessageCreate, async message => {
   }
 });
 
+client.on(Events.Error, err => {
+  console.warn('⚠️ Discord Client Error:', err?.message || err);
+});
+
 // ==========================================
 // 7. BOT STARTUP WRAPPER
 // ==========================================
+let isBotStarting = false;
+
 export async function startBot() {
+  if (isBotStarting) {
+    console.log('🤖 Discord Bot is already initializing or connected.');
+    return;
+  }
   const token = (process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN || '').trim().replace(/^["']|["']$/g, '');
   if (!token) {
     console.warn('⚠️ DISCORD_BOT_TOKEN not provided. Bot cannot connect to Discord Gateway.');
     return;
   }
+  isBotStarting = true;
   try {
     await registerSlashCommands();
   } catch (regErr: any) {
@@ -2198,10 +2209,6 @@ export async function startBot() {
     await client.login(token);
   } catch (loginErr: any) {
     console.error('❌ Failed to connect to Discord Gateway:', loginErr?.message || loginErr);
+    isBotStarting = false;
   }
-}
-
-// Auto-start if running in Node environment with DISCORD_BOT_TOKEN defined
-if (process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN) {
-  startBot();
 }

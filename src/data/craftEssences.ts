@@ -847,6 +847,24 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     isBondCe: true,
     bondServantId: 'archetype_earth',
     bondServantName: 'Archetype: Earth'
+  },
+  ciel_executor: {
+    id: 'ce_moon_bow',
+    name: 'Moon Bow (Seventh Scripture Anchor)',
+    rarity: 4,
+    description: 'When equipped on Mysterious Executor C.I.E.L: Increases Buster Performance by 15% and Crit Damage against Demonic enemies by 30% for all allies while she is on the battlefield.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped on Mysterious Executor C.I.E.L: Increases Buster Performance by 15% and Crit Damage against Demonic enemies by 30% for all allies.',
+    passiveType: 'buster_up',
+    passiveValue: 15,
+    artworkUrl: 'https://static.atlasacademy.io/JP/CharaGraph/9308100/9308100a.png',
+    isBondCe: true,
+    bondServantId: 'ciel_executor',
+    bondServantName: 'Mysterious Executor C.I.E.L'
   }
 };
 
@@ -929,7 +947,11 @@ const CANONICAL_SERVANT_TO_BOND_KEY: Record<string, string> = {
   archetype_earth_mooncancer: 'archetype_earth',
   arcueid: 'archetype_earth',
   arcueid_brunestud: 'archetype_earth',
-  earth: 'archetype_earth'
+  earth: 'archetype_earth',
+  ciel: 'ciel_executor',
+  ciel_executor: 'ciel_executor',
+  mysterious_executor_ciel: 'ciel_executor',
+  space_ciel: 'ciel_executor'
 };
 
 /**
