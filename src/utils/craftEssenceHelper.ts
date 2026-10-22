@@ -696,8 +696,9 @@ export function processCeTurnStartEffects(combatant: any): string[] {
   }
 
   // 2. NP per turn
-  if (ceStats.npPerTurn > 0 && combatant.npGauge < 100) {
-    const npGain = Math.min(100 - combatant.npGauge, ceStats.npPerTurn);
+  const maxNp = combatant.maxNpGauge || 300;
+  if (ceStats.npPerTurn > 0 && combatant.npGauge < maxNp) {
+    const npGain = Math.min(maxNp - combatant.npGauge, ceStats.npPerTurn);
     combatant.npGauge += npGain;
     logs.push(`✨ **${sName}** gains **+${npGain}% NP Gauge** via *${ce.name}*! (${combatant.npGauge}% NP)`);
   }

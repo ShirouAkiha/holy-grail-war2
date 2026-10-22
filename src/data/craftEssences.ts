@@ -1061,9 +1061,19 @@ export function checkAndGrantBond10Ce(
   }
 
   // Check if Master already has this Bond CE in inventory or marked on servant
-  const alreadyInInventory = master.craftEssences.some(
-    (c: any) => c && (c.id === bondCe.id || (c.isBondCe && (c.bondServantId === servantId || c.name === bondCe.name)))
+  const existingCeIdx = master.craftEssences.findIndex(
+    (c: any) => c && (c.id === bondCe.id || (c.isBondCe && (c.bondServantId === servantId || c.name === bondCe.name || c.id === 'ce_ciel_bond' || c.id === 'ce_bond_ciel_executor')))
   );
+  const alreadyInInventory = existingCeIdx >= 0;
+
+  if (alreadyInInventory) {
+    // Synchronize existing entry with canonical definition
+    master.craftEssences[existingCeIdx] = {
+      ...master.craftEssences[existingCeIdx],
+      ...bondCe,
+      id: bondCe.id
+    };
+  }
 
   if (alreadyInInventory && servant.bondCeGranted) {
     return null;

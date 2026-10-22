@@ -1,6 +1,6 @@
 import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate, GachaBanner, MasterRankingEntry, MasterRankingResult } from '../types';
 import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
-import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences';
+import { CRAFT_ESSENCE_DATABASE, BOND_CRAFT_ESSENCES, CE_GACHA_BANNERS } from '../data/craftEssences';
 import { addBondExpToServant, getBondLevelFromExp } from '../../lib/engine/bondEvents';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { downloadMediaToLocal } from '../utils/localMedia';
@@ -304,44 +304,14 @@ function loadFromDisk() {
     );
     if (Array.isArray(savedMasters) && savedMasters.length > 0) {
       for (const m of savedMasters) {
-        // Synchronize Craft Essences with canonical stats, ensure unique instanceId, and auto-lock 5★ / Bond CEs (excluding EXP Embers)
-        if (m.craftEssences && Array.isArray(m.craftEssences)) {
-          m.craftEssences = m.craftEssences
-            .filter(Boolean)
-            .map((ce, idx) => {
-              const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ce.id);
-              const base = canonCe ? { ...canonCe, ...ce } : { ...ce };
-              const isEmberCard = Boolean(
-                base.isEmber ||
-                base.isExpCard ||
-                base.isExp ||
-                (base.id && String(base.id).toLowerCase().includes('ember')) ||
-                (base.name && (base.name.includes('Wisdom') || base.name.includes('Blaze') || base.name.includes('Spark') || base.name.includes('Ember') || base.name.includes('Hellfire')))
-              );
-              const isFiveStarOrBond = !isEmberCard && (base.rarity === 5 || base.isBondCe);
-              return {
-                ...base,
-                instanceId: base.instanceId || `ce_inst_${base.id}_${idx}_${Date.now()}`,
-                locked: isEmberCard ? false : (base.locked !== undefined ? base.locked : isFiveStarOrBond)
-              };
-            });
-        } else {
-          m.craftEssences = [];
-        }
+        // Synchronize Craft Essences with canonical stats, ensure unique instanceId, and auto-lock 5★ / Bond CEs
+        sanitizeMasterCraftEssences(m);
 
-        // Synchronize master servant instances with canonical stats & equipped Craft Essences
+        // Synchronize master servant instances with canonical stats
         if (m.servants && Array.isArray(m.servants)) {
           for (const inst of m.servants) {
             inst.bondExp = typeof inst.bondExp === 'number' ? inst.bondExp : 0;
             inst.bondLevel = getBondLevelFromExp(inst.bondExp);
-            const ceId = inst.equippedCeId || inst.equippedCe?.id;
-            if (ceId) {
-              const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId) || (inst.equippedCe ? { ...inst.equippedCe } : undefined);
-              if (canonCe) {
-                inst.equippedCeId = ceId;
-                inst.equippedCe = { ...canonCe };
-              }
-            }
 
             const templateId = inst.templateId || inst.template?.id || inst.id;
             const instAny = inst as any;
@@ -1520,14 +1490,132 @@ export async function getOrCreateMaster(
 }
 
 /**
+ * Sanitizes and synchronizes a Master's owned Craft Essences and equipped CEs
+ * with the latest canonical database definitions (including migration of old Ciel Bond CE IDs).
+ */
+export function sanitizeMasterCraftEssences(master: MasterProfile): boolean {
+  if (!master) return false;
+  let changed = false;
+
+  if (!master.craftEssences || !Array.isArray(master.craftEssences)) {
+    master.craftEssences = [];
+  }
+
+  // 1. Synchronize master.craftEssences
+  master.craftEssences = master.craftEssences.filter(Boolean).map((ce, idx) => {
+    let effectiveId = ce.id || '';
+
+    // Legacy migration for Ciel's Bond CE
+    if (
+      effectiveId === 'ce_ciel_bond' ||
+      effectiveId === 'ce_bond_ciel_executor' ||
+      effectiveId === 'ce_ciel' ||
+      (ce.isBondCe && (ce.bondServantId === 'ciel_executor' || String(ce.bondServantName || '').toLowerCase().includes('ciel'))) ||
+      String(ce.name || '').toLowerCase().includes('seventh scripture')
+    ) {
+      if (effectiveId !== 'ce_moon_bow' || ce.name !== 'Moon Bow') {
+        changed = true;
+      }
+      effectiveId = 'ce_moon_bow';
+    }
+
+    const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === effectiveId) ||
+                    CRAFT_ESSENCE_DATABASE.find(c => c.id === ce.id) ||
+                    (effectiveId === 'ce_moon_bow' ? BOND_CRAFT_ESSENCES['ciel_executor'] : undefined);
+
+    const isEmberCard = Boolean(
+      ce.isEmber ||
+      ce.isExpCard ||
+      ce.isExp ||
+      (ce.id && String(ce.id).toLowerCase().includes('ember')) ||
+      (ce.name && (ce.name.includes('Wisdom') || ce.name.includes('Blaze') || ce.name.includes('Spark') || ce.name.includes('Ember') || ce.name.includes('Hellfire')))
+    );
+
+    if (canonCe) {
+      if (
+        ce.id !== canonCe.id ||
+        ce.name !== canonCe.name ||
+        ce.effectText !== canonCe.effectText ||
+        ce.description !== canonCe.description ||
+        ce.artworkUrl !== canonCe.artworkUrl
+      ) {
+        changed = true;
+      }
+      const isFiveStarOrBond = !isEmberCard && (canonCe.rarity === 5 || canonCe.isBondCe);
+      return {
+        ...ce,
+        ...canonCe,
+        id: canonCe.id,
+        instanceId: ce.instanceId || `ce_inst_${canonCe.id}_${idx}_${Date.now()}`,
+        locked: isEmberCard ? false : (ce.locked !== undefined ? ce.locked : isFiveStarOrBond)
+      };
+    } else {
+      const isFiveStarOrBond = !isEmberCard && (ce.rarity === 5 || ce.isBondCe);
+      return {
+        ...ce,
+        id: effectiveId,
+        instanceId: ce.instanceId || `ce_inst_${effectiveId}_${idx}_${Date.now()}`,
+        locked: isEmberCard ? false : (ce.locked !== undefined ? ce.locked : isFiveStarOrBond)
+      };
+    }
+  });
+
+  // 2. Synchronize master.servants equipped CEs
+  if (master.servants && Array.isArray(master.servants)) {
+    for (const inst of master.servants) {
+      let ceId = inst.equippedCeId || inst.equippedCe?.id || '';
+
+      if (
+        ceId === 'ce_ciel_bond' ||
+        ceId === 'ce_bond_ciel_executor' ||
+        ceId === 'ce_ciel' ||
+        (inst.equippedCe?.isBondCe && (inst.equippedCe.bondServantId === 'ciel_executor' || String(inst.equippedCe.bondServantName || '').toLowerCase().includes('ciel'))) ||
+        String(inst.equippedCe?.name || '').toLowerCase().includes('seventh scripture')
+      ) {
+        ceId = 'ce_moon_bow';
+        if (inst.equippedCeId !== 'ce_moon_bow') {
+          inst.equippedCeId = 'ce_moon_bow';
+          changed = true;
+        }
+      }
+
+      if (ceId) {
+        const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId) ||
+                        (ceId === 'ce_moon_bow' ? BOND_CRAFT_ESSENCES['ciel_executor'] : undefined);
+        if (canonCe) {
+          if (
+            !inst.equippedCe ||
+            inst.equippedCe.id !== canonCe.id ||
+            inst.equippedCe.name !== canonCe.name ||
+            inst.equippedCe.effectText !== canonCe.effectText
+          ) {
+            changed = true;
+          }
+          inst.equippedCeId = canonCe.id;
+          inst.equippedCe = { ...canonCe, instanceId: inst.equippedCe?.instanceId };
+        }
+      }
+    }
+  }
+
+  return changed;
+}
+
+/**
  * Hydrates every servant instance in a Master's roster with its full ServantTemplate definition.
  * Prevents nameless or missing-template entries when rendering menus and selection dropdowns.
  */
 export function hydrateMasterServants(master: MasterProfile): MasterProfile {
-  if (!master || !master.servants || master.servants.length === 0) return master;
+  if (!master) return master;
+  
+  const ceChanged = sanitizeMasterCraftEssences(master);
+  if (!master.servants || master.servants.length === 0) {
+    if (ceChanged) saveMastersToDisk();
+    return master;
+  }
   
   const allThrone = getAllThroneServants();
-  let changed = false;
+  let changed = ceChanged;
 
   for (const s of master.servants) {
     if (!s.template || !s.template.name) {
