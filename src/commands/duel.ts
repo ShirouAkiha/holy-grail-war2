@@ -190,8 +190,14 @@ function refreshCombatantHand(combatant: DuelCombatant): ('Buster' | 'Arts' | 'Q
 
   // Draw top 5 cards from the 15-card shoe
   const hand = combatant.drawPile.splice(0, 5);
-  if (combatant.activeBuffs && combatant.activeBuffs.some(b => b.type === 'convert_cards_buster' || b.type === 'command_cards_buster')) {
-    hand.fill('Buster');
+  if (combatant.activeBuffs) {
+    if (combatant.activeBuffs.some(b => b.type === 'convert_cards_buster' || b.type === 'command_cards_buster')) {
+      hand.fill('Buster');
+    } else if (combatant.activeBuffs.some(b => b.type === 'convert_cards_arts')) {
+      hand.fill('Arts');
+    } else if (combatant.activeBuffs.some(b => b.type === 'convert_cards_quick')) {
+      hand.fill('Quick');
+    }
   }
   combatant.currentHand = hand;
   return hand;
@@ -2488,6 +2494,104 @@ function activateCombatantSkill(
     });
     combatant.npGauge = Math.min(300, combatant.npGauge + 50);
     combatant.currentHp = Math.max(1, combatant.currentHp - 1000);
+  } else if (skill.id === 'ciel_skill_1' || skill.id === 'human_mana_factory_a' || /human mana factory/i.test(skill.name)) {
+    // Ciel S1: Human Mana Factory A
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: 'Human Mana Factory (NP Regen)',
+      type: 'np_regen',
+      value: 10,
+      remainingTurns: 5
+    });
+    combatant.activeBuffs.push({
+      name: 'Human Mana Factory (HP Regen)',
+      type: 'hp_regen',
+      value: Math.round(combatant.maxHp * 0.05),
+      remainingTurns: 5
+    });
+    combatant.activeBuffs.push({
+      name: 'Human Mana Factory (Debuff Res)',
+      type: 'debuff_res',
+      value: 50,
+      remainingTurns: 5
+    });
+    combatant.activeBuffs.push({
+      name: 'Human Mana Factory (Buff Removal Res)',
+      type: 'buff_removal_res',
+      value: 100,
+      remainingTurns: 5
+    });
+    logText = `✝️ **${sName}** activated **${skill.name}**! (+10% NP/T [5T], +5% HP/T [5T], +50% Debuff Res [5T], +100% Buff Removal Res [5T]!)${quoteLine}`;
+  } else if (skill.id === 'ciel_skill_2' || skill.id === 'phasing_fluid_blade_b_plus' || /phasing fluid blade/i.test(skill.name)) {
+    // Ciel S2: Phasing Fluid Blade B+
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: 'Phasing Fluid Blade (Arts Up)',
+      type: 'arts_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: 'Phasing Fluid Blade (Buster Up)',
+      type: 'buster_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: 'Phasing Fluid Blade (Arts On-Attack)',
+      type: 'ciel_arts_on_attack',
+      value: 20,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: 'Phasing Fluid Blade (Buster On-Attack)',
+      type: 'ciel_buster_on_attack',
+      value: 10,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: 'Phasing Fluid Blade (Crit HP ≥ 50%)',
+      type: 'ciel_crit_hp_50',
+      value: 50,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: 'Phasing Fluid Blade (Crit HP 100%)',
+      type: 'ciel_crit_hp_100',
+      value: 50,
+      remainingTurns: 3
+    });
+    logText = `🗡️ **${sName}** activated **${skill.name}**! (+30% Arts/Buster [3T], Arts On-Attack [Strip Guts, -20% Heal, 20% NP Drain], Buster On-Attack [+10% NP], HP-Conditional Crit DMG [3T]!)${quoteLine}`;
+  } else if (skill.id === 'ciel_skill_3' || skill.id === 'idea_blood_hemonomic_principle_b' || /idea blood/i.test(skill.name)) {
+    // Ciel S3: Idea Blood: Hemonomic Principle B
+    const cardTypes: ('Buster' | 'Arts' | 'Quick')[] = ['Buster', 'Arts', 'Quick'];
+    const chosenType = cardTypes[Math.floor(Math.random() * cardTypes.length)];
+    if (combatant.currentHand && combatant.currentHand.length > 0) {
+      combatant.currentHand = combatant.currentHand.map(() => chosenType);
+    }
+    combatant.npGauge = Math.min(300, (combatant.npGauge || 0) + 20); // 20% in duels!
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: 'Idea Blood (DEF Up +100%)',
+      type: 'buff_def',
+      value: 100,
+      remainingTurns: 1 // 1 turn in duels!
+    });
+    combatant.activeBuffs.push({
+      name: 'Idea Blood (Buff-On-Defense: Heal)',
+      type: 'buff_on_defense_heal',
+      value: 10,
+      remainingHits: 3,
+      remainingTurns: 3,
+      isHitCount: true
+    } as any);
+    combatant.activeBuffs.push({
+      name: `Idea Blood (Convert: ${chosenType})`,
+      type: `convert_cards_${chosenType.toLowerCase()}`,
+      value: 1,
+      remainingTurns: 1
+    });
+    logText = `🩸 **${sName}** activated **${skill.name}**! (Hand converted to All ${chosenType} [1T]!, +20% NP Gauge, +100% DEF [1T], +10% HP Heal on Hit [3 Hits/3T]!)${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
@@ -2992,6 +3096,22 @@ function resolveStrike(
     attacker.npGauge = Math.min(300, attacker.npGauge + permanenceBonus);
   }
 
+  // Turn-Start NP Regen buffs (e.g. from Human Mana Factory A)
+  const npRegenBuffs = attacker.activeBuffs.filter(b => b.type === 'np_regen' || b.type === 'np_regen_turn');
+  const totalNpRegen = npRegenBuffs.reduce((s, b) => s + b.value, 0);
+  if (totalNpRegen > 0) {
+    attacker.npGauge = Math.min(300, attacker.npGauge + totalNpRegen);
+    chainTags.push(`⚡ Human Mana Factory (+${totalNpRegen}% NP Gauge)`);
+  }
+
+  // Turn-Start Self Preservation Magecraft A (+2% HP every turn)
+  const selfPreservation = attackerPassives.find(p => p.type === 'self_preservation_magecraft' || p.type === 'self_preservation' || (p.name && p.name.includes('Self Preservation')));
+  if (selfPreservation && attacker.currentHp < attacker.maxHp) {
+    const passiveHeal = Math.max(1, Math.round(attacker.maxHp * 0.02));
+    attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + passiveHeal);
+    chainTags.push(`💖 Self Preservation Magecraft (+${passiveHeal.toLocaleString()} HP)`);
+  }
+
   // High Elf Biology EX (Lucia Lyozes) grants +4 Critical Stars every turn
   const highElfStarBonus = attackerPassives.some(p => p.type === 'high_elf_biology' || (p.name && p.name.includes('High Elf Biology'))) ? 4 : 0;
   if (highElfStarBonus > 0) {
@@ -3107,13 +3227,24 @@ function resolveStrike(
   const defTerraPassive = defenderPassives.find(p => p.type === 'terra_affinity');
   if (defTerraPassive) defBuff += (defTerraPassive.value || 8) / 100;
 
+  // Ciel S2: Phasing Fluid Blade HP-Conditional Critical Damage Up
+  const hp50CritBonus = (attacker.activeBuffs?.some(b => b.type === 'ciel_crit_hp_50') && (attacker.currentHp >= attacker.maxHp * 0.50)) ? 0.50 : 0;
+  const hp100CritBonus = (attacker.activeBuffs?.some(b => b.type === 'ciel_crit_hp_100') && (attacker.currentHp >= attacker.maxHp)) ? 0.50 : 0;
+  critDmgBonus += hp50CritBonus + hp100CritBonus;
+
   const effectiveAtk = attacker.baseAtk * (atkBuff + attackerAvengerAtk);
   const effectiveDef = defender.baseDef * defBuff;
 
-  const classMult = getClassMultiplier(
+  let classMult = getClassMultiplier(
     attacker.servant.template.servantClass,
     defender.servant.template.servantClass
   );
+
+  // Executor (Archer) A: Grants self attack advantage against Saber class (1.5x)
+  const hasSaberAdvantage = (attackerPassives || []).some((p: any) => p.type === 'class_advantage_saber' || (p.name && p.name.includes('Executor (Archer)')));
+  if (hasSaberAdvantage && defender.servant.template.servantClass === 'Saber') {
+    classMult = 1.5;
+  }
 
   let turnBlockedByAntiPurge = false;
   let turnBlockedByInvincible = false;
@@ -4049,8 +4180,9 @@ function resolveStrike(
       if (i > 0 && isArtsFirst) {
         npAmt = hitCrit ? 3 : 2;
       }
-      if (attacker.activeBuffs && attacker.activeBuffs.some(b => b.type === 'buff_on_attack_buster_np' || (b.name && b.name.includes('Knight of Utopia')))) {
+      if (attacker.activeBuffs && attacker.activeBuffs.some(b => b.type === 'buff_on_attack_buster_np' || b.type === 'ciel_buster_on_attack' || (b.name && b.name.includes('Knight of Utopia')))) {
         npAmt += 10;
+        chainTags.push('💥 Buster On-Attack (+10% NP)');
       }
       if (npAmt > 0) {
         attacker.npGauge = Math.min(300, attacker.npGauge + npAmt);
@@ -4113,6 +4245,42 @@ function resolveStrike(
       // Arts stars: 1 star (2 on crit)
       const artsStars = hitCrit ? 2 : 1;
       totalStarsGained += artsStars;
+
+      // Ciel S2: Phasing Fluid Blade B+ (Arts Debuff-On-Attack)
+      if (attacker.activeBuffs && attacker.activeBuffs.some(b => b.type === 'ciel_arts_on_attack')) {
+        // 1. Inflicts Healing Received Down by 20% for 3 turns to one enemy
+        defender.activeBuffs = defender.activeBuffs || [];
+        defender.activeBuffs.push({
+          name: 'Phasing Fluid Blade (Heal Down)',
+          type: 'healing_down',
+          value: 20,
+          remainingTurns: 3
+        });
+        chainTags.push('🩸 Arts On-Attack (-20% Healing Received [3T])');
+
+        // 2. 30% Chance to reduce their NP gauge by 20% in duels
+        if (Math.random() < 0.30) {
+          const prevNp = defender.npGauge || 0;
+          defender.npGauge = Math.max(0, prevNp - 20);
+          const drained = prevNp - defender.npGauge;
+          if (drained > 0) {
+            chainTags.push(`⚔️ Arts On-Attack (-${drained}% NP Drain)`);
+          }
+        }
+
+        // 3. Removes their Guts status (check buff removal resistance)
+        const hasBuffRemovalRes = defender.activeBuffs.some(b => b.type === 'buff_removal_res' && b.value >= 100);
+        if (!hasBuffRemovalRes) {
+          const removedGuts = defender.activeBuffs.filter(b => b.type === 'guts');
+          if (removedGuts.length > 0 || defender.gutsCount > 0) {
+            defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'guts');
+            defender.gutsCount = 0;
+            chainTags.push('✨ Arts On-Attack (Removed Guts Status!)');
+          }
+        } else {
+          chainTags.push('🛡️ Guts Strip Resisted (Buff Removal Resistance)');
+        }
+      }
 
       totalSeqDmg += hitDmg;
     } else if (card === 'Quick') {
@@ -4252,6 +4420,25 @@ function resolveStrike(
 
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
+
+  // Ciel S3: Idea Blood: Hemonomic Principle B (Recovers 10% HP when taking attack, 3 hits/3 turns)
+  if (totalSeqDmg > 0 && defender.currentHp > 0 && defender.activeBuffs) {
+    const healOnDef = defender.activeBuffs.find(b => b.type === 'buff_on_defense_heal') as any;
+    if (healOnDef && (healOnDef.remainingHits === undefined || healOnDef.remainingHits > 0)) {
+      const healingDownDebuff = defender.activeBuffs.filter(b => b.type === 'healing_down').reduce((s, b) => s + b.value, 0);
+      const healMod = Math.max(0, 1.0 - healingDownDebuff / 100);
+      const healAmt = Math.round(defender.maxHp * 0.10 * healMod);
+      defender.currentHp = Math.min(defender.maxHp, defender.currentHp + healAmt);
+      if (healOnDef.remainingHits !== undefined) {
+        healOnDef.remainingHits--;
+        if (healOnDef.remainingHits <= 0) {
+          const idx = defender.activeBuffs.indexOf(healOnDef);
+          if (idx !== -1) defender.activeBuffs.splice(idx, 1);
+        }
+      }
+      chainTags.push(`🩸 Idea Blood (+${healAmt.toLocaleString()} HP Recovered on Hit)`);
+    }
+  }
 
   // Filter out consumed hit-based Evade/Invincibility and mark defended turn
   defender.activeBuffs = defender.activeBuffs.map(b => {

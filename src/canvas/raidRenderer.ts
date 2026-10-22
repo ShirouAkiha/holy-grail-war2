@@ -1326,7 +1326,11 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
         const isCurseOrDot = b.type === 'curse' || b.type === 'burn' || b.type === 'poison';
         const isDebuff = isCurseOrDot || b.type.includes('down') || b.type.includes('debuff') || b.type === 'stun' || b.type === 'np_seal' || b.type === 'skill_seal';
 
+        const isInactive = Boolean((b as any).isInactive || (b.type === 'ciel_crit_hp_50' && (p.currentHp < p.maxHp * 0.50)) || (b.type === 'ciel_crit_hp_100' && (p.currentHp < p.maxHp)));
         ctx.save();
+        if (isInactive) {
+          ctx.globalAlpha = 0.35;
+        }
         ctx.fillStyle = isCurseOrDot ? 'rgba(88, 28, 135, 0.90)' : isDebuff ? 'rgba(153, 27, 27, 0.90)' : 'rgba(15, 23, 42, 0.90)';
         ctx.strokeStyle = isCurseOrDot ? '#c084fc' : isDebuff ? '#f87171' : '#38bdf8';
         ctx.lineWidth = 1.2;

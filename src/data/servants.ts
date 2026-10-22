@@ -3097,45 +3097,48 @@ Upon revival, she was bewildered by her newfound shock and anger. Over time, as 
         id: 'ciel_skill_1',
         name: 'Human Mana Factory A',
         cooldown: 6,
-        description: 'Recovers 3,000 HP for self, charges NP Gauge by +50%, gains 20 Critical Stars, and applies HP-dependent Crit Damage Up (+50% above 50% HP, +50% at 100% HP) for 3 turns.',
-        effectType: 'np_charge',
-        value: 50,
-        duration: 3,
-        icon: '⚡'
+        description: 'Charges own NP gauge by 10% every turn for 5 turns. Recovers own HP by 5% every turn for 5 turns. Increases own debuff resistance by 50% for 5 turns. Increases own buff removal resistance by 100% for 5 turns.',
+        effectType: 'np_regen',
+        value: 10,
+        duration: 5,
+        icon: '⚡',
+        quote: 'Have you finished your confession?'
       },
       {
         id: 'ciel_skill_2',
         name: 'Phasing Fluid Blade B+',
         cooldown: 6,
-        description: 'Increases Arts Performance by +30% for 3 turns. Arts attacks apply Healing Received -20% (3T) to boss, strip boss Guts, and have a 30% chance to drain 1 Charge Diamond.',
+        description: 'Increases own Arts performance by 30% for 3 turns. Increases own Buster performance by 30% for 3 turns. Grants self Debuff-On-Attack buff for 3 turns (When attacking with Arts Cards: Inflicts Healing Received Down by 20% for 3 turns, 30% chance to reduce NP gauge by 20% in duels and 1 gauge in raids, removes enemy Guts). Grants self Buff-On-Attack buff for 3 turns (Charges own NP gauge by 10% when attacking with Buster Cards). Grants self Critical Damage Up by 50% when HP is ≥ 50% for 3 turns, and Critical Damage Up by 50% when HP is 100% for 3 turns.',
         effectType: 'arts_up',
         value: 30,
         duration: 3,
-        icon: '🗡️'
+        icon: '🗡️',
+        quote: "By the Lord's will!"
       },
       {
         id: 'ciel_skill_3',
         name: 'Idea Blood: Hemonomic Principle B',
-        cooldown: 7,
-        description: 'Increases Buster Performance by +30% for 3 turns. Buster attacks charge NP Gauge by +10%. Replaces Command Deck with 5 Buster Cards for 1 turn.',
-        effectType: 'buster_up',
-        value: 30,
-        duration: 3,
-        icon: '💥'
+        cooldown: 6,
+        description: 'Randomly changes all attack cards in Command Deck to one of the 3 types (all Buster, all Arts, or all Quick) for 1 turn. Charges own NP gauge by 20% in duels (50% in raids). Increases own defense by 100% for 1 turn in duels (3 turns in raids). Grants self Buff-On-Defense for 3 hits/3 turns (Recovers own HP by 10% when taking an attack).',
+        effectType: 'def_up',
+        value: 100,
+        duration: 1,
+        icon: '🩸',
+        quote: 'Execute divine retribution.'
       }
     ],
     passives: [
       {
-        name: 'Class Skills (MoonCancer)',
-        type: 'magic_resistance',
-        value: 20,
-        description: 'Magic Resistance A, Territory Creation B, Independent Action EX'
+        name: 'Self Preservation Magecraft A',
+        type: 'self_preservation_magecraft',
+        value: 2,
+        description: 'Recovers own HP by 2% every turn.'
       },
       {
-        name: 'Idea Blood Principle',
-        type: 'independent_action',
-        value: 20,
-        description: 'Increases Crit Damage by +20% and Damage against Demonic enemies by +30%.'
+        name: 'Executor (Archer) A',
+        type: 'class_advantage_saber',
+        value: 150,
+        description: 'Grants self attack advantage against Saber class (Deals 1.5x damage against them).'
       }
     ],
     lore: `An Executor from the Holy Church who transcended spacetime to become the Sapphire Galaxy's premier Cosmic Idol. Wielding the conceptual weapon Seventh Holy Scripture equipped with hovering Bit Crown anchors and Star-Buster pile bunkers, Mysterious Executor C.I.E.L protects human order across galaxies while maintaining her cover as a diligent high school senior and curry connoisseur.`,
@@ -3143,7 +3146,7 @@ Upon revival, she was bewildered by her newfound shock and anger. Over time, as 
     battleStartQuote: '"Seventh Scripture, online! High school senior, Mysterious Executor C.I.E.L, taking the field!"',
     victoryQuote: '"Target exterminated! Another peaceful day secured by Mysterious Executor C.I.E.L! Now then, who\'s up for a piping hot bowl of curry?"',
     defeatQuote: '"Light frame collapsing... Emergency retreat to the Sapphire Galaxy... Forgive me, Master... My curry... got cold..."',
-    avatarUrl: 'https://static.atlasacademy.io/JP/Faces/f_11022000.png',
+    avatarUrl: 'https://static.atlasacademy.io/JP/CharaGraph/1102200/1102200a@1.png',
     cardArtUrl: 'https://static.atlasacademy.io/JP/CharaGraph/1102200/1102200a@1.png',
     spriteUrl: 'https://static.atlasacademy.io/JP/CharaFigure/11022000/11022000_merged.png',
     isCustomOrMeme: false,

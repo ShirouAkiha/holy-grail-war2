@@ -657,6 +657,12 @@ function drawCombatantBuffPillTray(
       continue;
     }
 
+    const isInactive = Boolean((b as any).isInactive);
+    ctx.save();
+    if (isInactive) {
+      ctx.globalAlpha = 0.35;
+    }
+
     const iconUrl = getStatusIconUrl(b.type || b.iconSymbol || b.id || b.label || (b as any).name);
     const iconImg = buffImageMap?.get(iconUrl);
 
@@ -765,6 +771,7 @@ function drawCombatantBuffPillTray(
         ctx.fillText(singleTag, tagX + tagW / 2, tagY + 8.5);
       }
     }
+    ctx.restore();
   }
 
   ctx.restore();

@@ -14,6 +14,7 @@ export interface CombatantBadge {
   bgColor: string;
   borderColor: string;
   textColor: string;
+  isInactive?: boolean;
 }
 
 export interface TacticalDossierField {
@@ -124,8 +125,26 @@ export function calculateCombatantBuffSummary(
         quickBoost += val;
         break;
       case 'crit_dmg':
+      case 'crit_dmg_up':
+      case 'crit_up':
         critBoost += val;
         break;
+      case 'ciel_crit_hp_50': {
+        const curHp = Number(combatant.currentHp) || 0;
+        const maxHp = Number(combatant.maxHp) || 1;
+        if (curHp >= maxHp * 0.50) {
+          critBoost += (val || 50);
+        }
+        break;
+      }
+      case 'ciel_crit_hp_100': {
+        const curHp = Number(combatant.currentHp) || 0;
+        const maxHp = Number(combatant.maxHp) || 1;
+        if (curHp >= maxHp) {
+          critBoost += (val || 50);
+        }
+        break;
+      }
       case 'np_gen':
       case 'np_gain':
         npGainBoost += val;
@@ -190,10 +209,29 @@ export function calculateCombatantBuffSummary(
       valTag = `: ${sign}${item.val}%`;
     }
 
-    const isDebuffOrDot = ['curse', 'poison', 'burn', 'spread_of_fire', 'void_curse', 'debuff_def', 'debuff_atk', 'stun', 'np_seal', 'skill_seal'].includes(item.type) || item.name.toLowerCase().includes('[demerit]');
-    const icon = isDebuffOrDot ? '🩸' : '✨';
+    const isDebuffOrDot = ['curse', 'poison', 'burn', 'spread_of_fire', 'void_curse', 'debuff_def', 'debuff_atk', 'stun', 'np_seal', 'skill_seal', 'healing_down'].includes(item.type) || item.name.toLowerCase().includes('[demerit]');
+    let icon = isDebuffOrDot ? '🩸' : '✨';
+    let extraCondition = '';
 
-    buffDescriptions.push(`• ${icon} **${item.name}**${stackTag}${valTag} (${durationLabel})`);
+    if (item.type === 'ciel_crit_hp_50') {
+      const curHp = Number(combatant.currentHp) || 0;
+      const maxHp = Number(combatant.maxHp) || 1;
+      const isMet = curHp >= maxHp * 0.50;
+      if (!isMet) {
+        icon = '⏳';
+        extraCondition = ' [Inactive: Requires HP ≥ 50%]';
+      }
+    } else if (item.type === 'ciel_crit_hp_100') {
+      const curHp = Number(combatant.currentHp) || 0;
+      const maxHp = Number(combatant.maxHp) || 1;
+      const isMet = curHp >= maxHp;
+      if (!isMet) {
+        icon = '⏳';
+        extraCondition = ' [Inactive: Requires HP 100%]';
+      }
+    }
+
+    buffDescriptions.push(`• ${icon} **${item.name}**${stackTag}${valTag}${extraCondition} (${durationLabel})`);
   }
 
   // 2. Process Passives
@@ -464,6 +502,52 @@ export function calculateCombatantBuffSummary(
       borderColor: '#eab308',
       textColor: '#fef9c3'
     });
+  }
+
+  const hp50Buff = buffs.find(b => b.type === 'ciel_crit_hp_50');
+  if (hp50Buff) {
+    const curHp = Number(combatant.currentHp) || 0;
+    const maxHp = Number(combatant.maxHp) || 1;
+    const isMet = curHp >= maxHp * 0.50;
+    const turns = hp50Buff.remainingTurns;
+    if (!isMet) {
+      badges.push({
+        id: 'ciel_crit_hp_50',
+        label: '+50% CRIT (HP≥50%) [INACTIVE]',
+        shortLabel: turns && turns < 90 ? `HP≥50% (${turns}T)` : 'HP≥50%',
+        iconSymbol: 'crit_dmg',
+        type: 'crit_dmg',
+        value: 50,
+        turns: turns,
+        isInactive: true,
+        bgColor: 'rgba(50, 40, 20, 0.4)',
+        borderColor: '#78716c',
+        textColor: '#a8a29e'
+      });
+    }
+  }
+
+  const hp100Buff = buffs.find(b => b.type === 'ciel_crit_hp_100');
+  if (hp100Buff) {
+    const curHp = Number(combatant.currentHp) || 0;
+    const maxHp = Number(combatant.maxHp) || 1;
+    const isMet = curHp >= maxHp;
+    const turns = hp100Buff.remainingTurns;
+    if (!isMet) {
+      badges.push({
+        id: 'ciel_crit_hp_100',
+        label: '+50% CRIT (HP 100%) [INACTIVE]',
+        shortLabel: turns && turns < 90 ? `HP 100% (${turns}T)` : 'HP 100%',
+        iconSymbol: 'crit_dmg',
+        type: 'crit_dmg',
+        value: 50,
+        turns: turns,
+        isInactive: true,
+        bgColor: 'rgba(50, 40, 20, 0.4)',
+        borderColor: '#78716c',
+        textColor: '#a8a29e'
+      });
+    }
   }
 
   if (npGainBoost > 0) {
