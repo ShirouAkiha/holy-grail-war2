@@ -2126,7 +2126,36 @@ async function runRaidBattle(
               npEffectsLog.push('✨ [NP Refund: +20% Gauge Recharged!]');
             }
 
-            const effectiveBossDef = (isIgnoreDef || isApocryphaTerminus || isCielNp) ? Math.max(0.2, 1 + bossDefDown) : bossDefFactor;
+            const isCuChulainnNp = active.servant.templateId === 'cu_chulainn_lancer' ||
+              active.servant.templateId === 'cu_chulainn' ||
+              active.servant.template?.id === 'cu_chulainn_lancer' ||
+              active.servant.template?.id === 'cu_chulainn' ||
+              /gáe bolg|gae bolg|barbed spear/i.test(npName);
+            if (isCuChulainnNp) {
+              // Reduces enemy DEF by 30% for 3 turns
+              battleState.bossBuffs = battleState.bossBuffs || [];
+              battleState.bossBuffs.push({
+                name: 'Gáe Bolg (DEF Down -30%)',
+                type: 'def_down',
+                value: 30,
+                remainingTurns: 3
+              });
+              npEffectsLog.push('🛡️ [Gáe Bolg: Reduced Boss Defense by 30% for 3 turns!]');
+              npEffectsHud.push('DEF Down -30%');
+
+              // 20% Chance to instant kill in raids
+              const isImmuneToInstantDeath = /immense mass|instant death immunity|absolute immunity/i.test((boss as any).passives || '') || (boss as any).isInstantDeathImmune;
+              if (!isImmuneToInstantDeath && Math.random() < 0.20) {
+                totalTurnDmg = Math.max(totalTurnDmg, battleState.bossCurrentHp);
+                npEffectsLog.push('⚡ [GÁE BOLG: INSTANT DEATH INFLICTED!]');
+                npEffectsHud.push('💀 Instant Death');
+              }
+
+              // Recharges 25 Critical Stars
+              starsGenerated += 25;
+            }
+
+            const effectiveBossDef = (isIgnoreDef || isApocryphaTerminus || isCielNp || isCuChulainnNp) ? Math.max(0.2, 1 + bossDefDown) : bossDefFactor;
             const npOverrideBuff = active.activeBuffs?.find(b => b.type === 'np_card_override');
             const effectiveNpCardType = (npOverrideBuff as any)?.cardType || (active.servant.template?.noblePhantasm?.cardType === '???' ? 'Buster' : (active.servant.template?.noblePhantasm?.cardType || 'Buster'));
             const cardPerfMult = effectiveNpCardType === 'Arts' ? artsBuffMult : effectiveNpCardType === 'Quick' ? quickBuffMult : busterBuffMult;

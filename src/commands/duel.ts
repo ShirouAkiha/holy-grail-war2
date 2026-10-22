@@ -3927,6 +3927,13 @@ function resolveStrike(
 
           // Directly apply AoE/ST NP damage to this enemy
           let azraelInstantKilled = false;
+          let gaeBolgInstantKilled = false;
+          const isGaeBolgNp = attacker.servant.templateId === 'cu_chulainn_lancer' ||
+            attacker.servant.templateId === 'cu_chulainn' ||
+            attacker.servant.template?.id === 'cu_chulainn_lancer' ||
+            attacker.servant.template?.id === 'cu_chulainn' ||
+            /gáe bolg|gae bolg|barbed spear/i.test(npTemplate.name || '');
+
           if (isAzraelNp && oppDmg > 0 && !wasProtected) {
             const oppPassives = targetOpp.passives || getUnlockedPassives(targetOpp.servant.template?.passives?.length ? targetOpp.servant.template.passives : targetOpp.servant.template?.servantClass, targetOpp.servant.bondLevel || 1);
             const isImmune = oppPassives.some((p: any) => p.type === 'instant_kill_immunity' || /instant kill immunity|instant death immunity/i.test(p.name || ''));
@@ -3950,7 +3957,25 @@ function resolveStrike(
             }
           }
 
-          if (!azraelInstantKilled) {
+          if (isGaeBolgNp && oppDmg > 0 && !wasProtected) {
+            const oppPassives = targetOpp.passives || getUnlockedPassives(targetOpp.servant.template?.passives?.length ? targetOpp.servant.template.passives : targetOpp.servant.template?.servantClass, targetOpp.servant.bondLevel || 1);
+            const isImmune = oppPassives.some((p: any) => p.type === 'instant_kill_immunity' || /instant kill immunity|instant death immunity/i.test(p.name || ''));
+            const actorDeathBuffs = (attacker.activeBuffs || []).filter(b => b.type === 'buff_death_rate').reduce((s, b) => s + b.value, 0);
+            const targetDeathDebuffs = (targetOpp.activeBuffs || []).filter(b => b.type === 'debuff_death_res').reduce((s, b) => s + b.value, 0);
+            const baseChance = 0.10; // 10% in duals
+            const deathChance = Math.min(0.50, baseChance + (actorDeathBuffs / 100) + (targetDeathDebuffs / 100));
+
+            if (!isImmune && Math.random() < deathChance) {
+              const hasGuts = (targetOpp.gutsCount && targetOpp.gutsCount > 0) || (targetOpp.activeBuffs || []).some(b => b.type === 'guts');
+              if (!hasGuts) {
+                gaeBolgInstantKilled = true;
+                oppDmg = targetOpp.currentHp;
+                targetOpp.currentHp = 0;
+              }
+            }
+          }
+
+          if (!azraelInstantKilled && !gaeBolgInstantKilled) {
             targetOpp.currentHp = Math.max(0, targetOpp.currentHp - oppDmg);
           }
 
@@ -3964,6 +3989,17 @@ function resolveStrike(
           if (hasDefSlums && targetOpp.currentHp <= 0) {
             (targetOpp as any).isSlumVeteranTriggered = true;
             targetOpp.currentHp = 3000;
+          }
+
+          // Gáe Bolg 30% DEF reduction for 3 turns
+          if (isGaeBolgNp) {
+            targetOpp.activeBuffs = targetOpp.activeBuffs || [];
+            targetOpp.activeBuffs.push({
+              name: 'Gáe Bolg (DEF Down)',
+              type: 'debuff_def',
+              value: 30,
+              remainingTurns: 3
+            });
           }
 
           // Overcharge-exclusive debuffs (only trigger when Overcharged >= 200% NP)
@@ -4078,11 +4114,12 @@ function resolveStrike(
               statuses.push('EVADED');
             }
           } else if (targetOpp.currentHp <= 0) {
-            statuses.push(azraelInstantKilled ? 'INSTANT DEATH' : 'DEFEATED');
+            statuses.push((azraelInstantKilled || gaeBolgInstantKilled) ? 'INSTANT DEATH' : 'DEFEATED');
           } else {
             if (isStunnedThisTurn) statuses.push('STUNNED');
             if (isDenyTheVictory && isOvercharged) statuses.push('OVERCHARGE: DEF DOWN', 'NP GAUGE -20%');
             if (isUbw) statuses.push('OVERCHARGE: ATK -30% (3T)');
+            if (isGaeBolgNp) statuses.push('GÁE BOLG: DEF DOWN -30% (3T)');
             if (isArchetypeNp && archetypeChaoticScale > 1.0) statuses.push('CHAOTIC PURGE (+200% DMG)');
             if ((targetOpp as any).isSlumVeteranTriggered) statuses.push('SLUMS GUTS REVIVED');
           }

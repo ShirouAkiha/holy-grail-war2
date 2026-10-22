@@ -1391,10 +1391,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       name: 'Gáe Bolg: Barbed Spear that Pierces with Death',
       cardType: 'Quick',
       chant: 'Your heart is mine! Gáe... BOLG!',
-      description: 'Reverses causality so the heart is pierced before the spear is thrust. Inflicts high single-target puncture with massive Critical Star drop.',
+      description: 'Reverses causality so the heart is pierced before the spear is thrust. Reduces enemy DEF by 30% for 3 turns, with a 10% chance to instant kill in duals and a 20% chance in raids.',
       target: 'single',
       multiplier: 1200,
-      overchargeEffect: 'Instant death chance + DEF down 20% + 25 Critical Stars'
+      overchargeEffect: 'Reduces enemy DEF by 30% for 3 turns + 10% instant kill chance in duals / 20% in raids + 25 Critical Stars'
     },
     lore: 'The tragic Celtic warrior hero of the Ulster cycle who wielded the cursed red spear Gáe Bolg.',
     summonQuote: 'Yo! Servant Lancer. Call me the Hound of Culann. Let\'s have some fun in this war!',
