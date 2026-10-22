@@ -21,6 +21,7 @@ import { calculateServantMaxHp, getParameterRankMultiplier, getEnduranceDamageRe
 import { getUnlockedPassives } from '../data/servants';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
+import { calculateInstantDeathChance } from '../utils/instantDeathHelper';
 import {
   DARK_SAKURA_ASSETS,
   checkPacifistMilestone,
@@ -2114,8 +2115,13 @@ async function runRaidBattle(
                 npEffectsHud.push('+150% Demonic Purge');
               }
 
-              // 40% Chance to instantly kill them in raids
-              if (Math.random() < 0.40) {
+              // Instant Death check using FGO Formula
+              const deathRes = calculateInstantDeathChance({
+                attacker: active,
+                target: boss,
+                isRaid: true
+              });
+              if (deathRes.succeeded && deathRes.instantKilled) {
                 totalTurnDmg = Math.max(totalTurnDmg, battleState.bossCurrentHp);
                 npEffectsLog.push('⚡ [CALVARIA GALGALIM / SEVENTH SCRIPTURE: INSTANT DEATH INFLICTED!]');
                 npEffectsHud.push('💀 Instant Death');
@@ -2143,9 +2149,13 @@ async function runRaidBattle(
               npEffectsLog.push('🛡️ [Gáe Bolg: Reduced Boss Defense by 30% for 3 turns!]');
               npEffectsHud.push('DEF Down -30%');
 
-              // 20% Chance to instant kill in raids
-              const isImmuneToInstantDeath = /immense mass|instant death immunity|absolute immunity/i.test((boss as any).passives || '') || (boss as any).isInstantDeathImmune;
-              if (!isImmuneToInstantDeath && Math.random() < 0.20) {
+              // Instant Death check using FGO Formula
+              const deathRes = calculateInstantDeathChance({
+                attacker: active,
+                target: boss,
+                isRaid: true
+              });
+              if (deathRes.succeeded && deathRes.instantKilled) {
                 totalTurnDmg = Math.max(totalTurnDmg, battleState.bossCurrentHp);
                 npEffectsLog.push('⚡ [GÁE BOLG: INSTANT DEATH INFLICTED!]');
                 npEffectsHud.push('💀 Instant Death');
@@ -2153,6 +2163,23 @@ async function runRaidBattle(
 
               // Recharges 25 Critical Stars
               starsGenerated += 25;
+            }
+
+            const isAzraelRaidNp = active.servant.templateId === 'hassan_i_sabbah_azrael' ||
+              active.servant.template?.id === 'hassan_i_sabbah_azrael' ||
+              /mal'ak al-mawt|angel of the evening bell|azrael/i.test(npName);
+            if (isAzraelRaidNp) {
+              const deathRes = calculateInstantDeathChance({
+                attacker: active,
+                target: boss,
+                isRaid: true
+              });
+              if (deathRes.succeeded && deathRes.instantKilled) {
+                totalTurnDmg = Math.max(totalTurnDmg, battleState.bossCurrentHp);
+                npEffectsLog.push("⚡ [MAL'AK AL-MAWT: INSTANT DEATH INFLICTED!]");
+                npEffectsHud.push('💀 Instant Death');
+                npGained += 20;
+              }
             }
 
             const effectiveBossDef = (isIgnoreDef || isApocryphaTerminus || isCielNp || isCuChulainnNp) ? Math.max(0.2, 1 + bossDefDown) : bossDefFactor;

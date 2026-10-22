@@ -31,6 +31,7 @@ import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/cr
 import { getRandomBackgroundUrl } from '../data/backgrounds';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 import { getParameterRankMultiplier, getEnduranceDamageReductionPercent, getServantDefaultParamRank } from '../engine/statSystem';
+import { calculateInstantDeathChance } from '../utils/instantDeathHelper';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -3928,54 +3929,45 @@ function resolveStrike(
           // Directly apply AoE/ST NP damage to this enemy
           let azraelInstantKilled = false;
           let gaeBolgInstantKilled = false;
+          let cielInstantKilled = false;
           const isGaeBolgNp = attacker.servant.templateId === 'cu_chulainn_lancer' ||
             attacker.servant.templateId === 'cu_chulainn' ||
             attacker.servant.template?.id === 'cu_chulainn_lancer' ||
             attacker.servant.template?.id === 'cu_chulainn' ||
             /gáe bolg|gae bolg|barbed spear/i.test(npTemplate.name || '');
 
-          if (isAzraelNp && oppDmg > 0 && !wasProtected) {
-            const oppPassives = targetOpp.passives || getUnlockedPassives(targetOpp.servant.template?.passives?.length ? targetOpp.servant.template.passives : targetOpp.servant.template?.servantClass, targetOpp.servant.bondLevel || 1);
-            const isImmune = oppPassives.some((p: any) => p.type === 'instant_kill_immunity' || /instant kill immunity|instant death immunity/i.test(p.name || ''));
-            const actorDeathBuffs = (attacker.activeBuffs || []).filter(b => b.type === 'buff_death_rate').reduce((s, b) => s + b.value, 0);
-            const targetDeathDebuffs = (targetOpp.activeBuffs || []).filter(b => b.type === 'debuff_death_res').reduce((s, b) => s + b.value, 0);
-            const baseChance = 0.15; // 15% in duels (Option B Nerf)
-            const attackerPassives = attacker.passives || getUnlockedPassives(attacker.servant.template?.passives?.length ? attacker.servant.template.passives : attacker.servant.template?.servantClass, attacker.servant.bondLevel || 1);
-            const hasOrganizer = attackerPassives.some((p: any) => p.type === 'organizer' || /organizer/i.test(p.name || ''));
-            const organizerBonus = hasOrganizer ? 0.05 : 0;
-            const deathChance = Math.min(0.50, baseChance + organizerBonus + (actorDeathBuffs / 100) + (targetDeathDebuffs / 100));
+          const isCielNp = attacker.servant.templateId === 'ciel_executor' ||
+            attacker.servant.template?.id === 'ciel_executor' ||
+            /code:\s*original sin|calvaria galgalim|seventh holy scripture/i.test(npTemplate.name || '');
 
-            if (!isImmune && Math.random() < deathChance) {
-              const hasGuts = (targetOpp.gutsCount && targetOpp.gutsCount > 0) || (targetOpp.activeBuffs || []).some(b => b.type === 'guts');
-              if (!hasGuts) {
-                azraelInstantKilled = true;
+          if ((isAzraelNp || isGaeBolgNp || isCielNp) && oppDmg > 0 && !wasProtected) {
+            const deathRes = calculateInstantDeathChance({
+              attacker,
+              target: targetOpp,
+              isRaid: false,
+              isMob: false
+            });
+
+            if (deathRes.succeeded) {
+              if (deathRes.triggeredGuts) {
+                chainTags.push(`🩸 [Instant Death Triggered Target Guts Revive (${deathRes.reviveHp?.toLocaleString()} HP)!]`);
+              } else {
+                if (isAzraelNp) azraelInstantKilled = true;
+                if (isGaeBolgNp) gaeBolgInstantKilled = true;
+                if (isCielNp) cielInstantKilled = true;
+
                 oppDmg = targetOpp.currentHp;
                 targetOpp.currentHp = 0;
-                attacker.npGauge = Math.min(300, (attacker.npGauge || 0) + 20); // +20% NP refund (Option B Nerf)
-                npRefund += 20;
+
+                if (isAzraelNp) {
+                  attacker.npGauge = Math.min(300, (attacker.npGauge || 0) + 20); // +20% NP refund
+                  npRefund += 20;
+                }
               }
             }
           }
 
-          if (isGaeBolgNp && oppDmg > 0 && !wasProtected) {
-            const oppPassives = targetOpp.passives || getUnlockedPassives(targetOpp.servant.template?.passives?.length ? targetOpp.servant.template.passives : targetOpp.servant.template?.servantClass, targetOpp.servant.bondLevel || 1);
-            const isImmune = oppPassives.some((p: any) => p.type === 'instant_kill_immunity' || /instant kill immunity|instant death immunity/i.test(p.name || ''));
-            const actorDeathBuffs = (attacker.activeBuffs || []).filter(b => b.type === 'buff_death_rate').reduce((s, b) => s + b.value, 0);
-            const targetDeathDebuffs = (targetOpp.activeBuffs || []).filter(b => b.type === 'debuff_death_res').reduce((s, b) => s + b.value, 0);
-            const baseChance = 0.10; // 10% in duals
-            const deathChance = Math.min(0.50, baseChance + (actorDeathBuffs / 100) + (targetDeathDebuffs / 100));
-
-            if (!isImmune && Math.random() < deathChance) {
-              const hasGuts = (targetOpp.gutsCount && targetOpp.gutsCount > 0) || (targetOpp.activeBuffs || []).some(b => b.type === 'guts');
-              if (!hasGuts) {
-                gaeBolgInstantKilled = true;
-                oppDmg = targetOpp.currentHp;
-                targetOpp.currentHp = 0;
-              }
-            }
-          }
-
-          if (!azraelInstantKilled && !gaeBolgInstantKilled) {
+          if (!azraelInstantKilled && !gaeBolgInstantKilled && !cielInstantKilled) {
             targetOpp.currentHp = Math.max(0, targetOpp.currentHp - oppDmg);
           }
 
