@@ -1,12 +1,12 @@
-node_modules/
-.next/
-coverage/
+node_modules
+.next
+/coverage
 .DS_Store
 *.log
 .env*
 !.env.example
 
-# Runtime Discord Bot & Holy Grail War Live Data (Prevents Git Pull/Stash from wiping player progress)
+# Runtime Discord Bot & Holy Grail War Live Data
 /data/*.json
 /data/backups/
 /data/media_cache/
@@ -21,3 +21,7 @@ coverage/
 *.sqlite
 /prisma/*.db
 
+# Temporary media & user attachments
+.aistudio/
+.tempmediaStorage/
+/public/assets/aistudio/

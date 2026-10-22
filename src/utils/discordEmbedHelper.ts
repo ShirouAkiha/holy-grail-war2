@@ -36,6 +36,10 @@ const EXTERNAL_TO_LOCAL_MAP: Record<string, string> = {
   'ce201.webp': 'ce_bond_altera.webp',
   'ce2116.webp': 'ce_moon_bow.webp',
   'CE2116.webp': 'ce_moon_bow.webp',
+  '9308300a.png': 'ce_moon_bow.webp',
+  '9308300a': 'ce_moon_bow.webp',
+  '9308300.png': 'ce_moon_bow.webp',
+  'ce_moon_bow.png': 'ce_moon_bow.webp',
 };
 
 /**
