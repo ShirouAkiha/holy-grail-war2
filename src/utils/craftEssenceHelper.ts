@@ -67,7 +67,8 @@ const CANONICAL_SERVANT_ALIASES: Record<string, string[]> = {
   typhon_ephemeros: ['typhon_ephemeros', 'typhon', 'progenitor dragon'],
   van_gogh: ['van_gogh', 'gogh', 'clytie van gogh'],
   tamamo_no_mae: ['tamamo_no_mae', 'tamamo', 'caster of extra', 'mikokon', 'fox wife', 'caster_tamamo'],
-  archetype_earth: ['archetype_earth', 'archetype: earth', 'archetype', 'arcueid', 'arcueid brunestud', 'true ancestor', 'funny vamp', 'earth']
+  archetype_earth: ['archetype_earth', 'archetype: earth', 'archetype', 'arcueid', 'arcueid brunestud', 'true ancestor', 'funny vamp', 'earth'],
+  ciel_executor: ['ciel_executor', 'ciel', 'mysterious_executor_ciel', 'mysterious executor c.i.e.l', 'mysterious executor ciel', 'space ciel', 'ultra ciel', 'space_ciel', 'ciel executor']
 };
 
 /**
@@ -280,6 +281,10 @@ export function getCePassiveStats(ce: any, servant?: any): CePassiveSummary {
     // Note: Party Crit DMG +15% handled via getCePartyPassiveStats
   } else if (ceId === 'ce_bond_tamamo_no_mae' || ceName.includes("tamamo's fan club") || ceName.includes('tamamo club') || ceName.includes('fan club')) {
     // Note: Party Arts +15% handled via getCePartyPassiveStats
+  } else if (ceId === 'ce_bond_ciel_executor' || ceId === 'ce_moon_bow' || ceName.includes('moon bow') || ceName.includes('ムーン・ボゥ')) {
+    summary.npDmgUp += 30;
+    summary.npPerTurn += 5;
+    summary.hpRegenPerTurn += Math.max(1, Math.floor((servant?.maxHp || servant?.hp || 10000) * 0.03));
   }
 
   // --------------------------------------------------------------------------

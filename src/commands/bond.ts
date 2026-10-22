@@ -31,7 +31,7 @@ import {
   getNextSceneIndex,
   type BondEvent
 } from '../../lib/engine/bondEvents';
-import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
+import { safeSetEmbedThumbnail, safeSetEmbedImage } from '../utils/discordEmbedHelper';
 import { renderVisualNovelCard } from '../canvas/renderer';
 import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
 import { BACKGROUND_PRESETS, findBackgroundPreset } from '../data/backgrounds';
@@ -1416,11 +1416,10 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         .setColor(0xd4af37)
         .setFooter({ text: 'Awarded upon reaching Bond Level 10' });
 
-      if (bCe.artworkUrl) {
-        artEmbed.setImage(bCe.artworkUrl);
-      }
+      const files: AttachmentBuilder[] = [];
+      safeSetEmbedImage(artEmbed, bCe.artworkUrl, files);
 
-      return interaction.reply({ embeds: [artEmbed], flags: MessageFlags.Ephemeral });
+      return interaction.reply({ embeds: [artEmbed], files, flags: MessageFlags.Ephemeral });
     }
 
     if (btnId.startsWith('vn_bg_menu')) {

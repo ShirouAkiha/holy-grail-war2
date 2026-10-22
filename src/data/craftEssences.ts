@@ -850,18 +850,20 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
   },
   ciel_executor: {
     id: 'ce_moon_bow',
-    name: 'Moon Bow (Seventh Scripture Anchor)',
+    name: 'Moon Bow',
     rarity: 4,
-    description: 'When equipped on Mysterious Executor C.I.E.L: Increases Buster Performance by 15% and Crit Damage against Demonic enemies by 30% for all allies while she is on the battlefield.',
+    description: 'When equipped on Mysterious Executor C.I.E.L: Increases own NP damage by 30%, charges own NP gauge by 5% every turn, and recovers own HP by 3% every turn.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: 'When equipped on Mysterious Executor C.I.E.L: Increases Buster Performance by 15% and Crit Damage against Demonic enemies by 30% for all allies.',
-    passiveType: 'buster_up',
-    passiveValue: 15,
-    artworkUrl: 'https://static.atlasacademy.io/JP/CharaGraph/9308100/9308100a.png',
+    effectText: 'When equipped on Mysterious Executor C.I.E.L:\nIncreases own NP damage by 30%.\nCharges own NP gauge by 5% every turn.\nRecovers own HP by 3% every turn.',
+    passiveType: 'np_damage',
+    passiveValue: 30,
+    artworkUrl: 'https://static.atlasacademy.io/JP/CharaGraph/9308300/9308300a.png',
+    imageUrl: 'https://static.atlasacademy.io/JP/CharaGraph/9308300/9308300a.png',
+    cardArtUrl: 'https://static.atlasacademy.io/JP/CharaGraph/9308300/9308300a.png',
     isBondCe: true,
     bondServantId: 'ciel_executor',
     bondServantName: 'Mysterious Executor C.I.E.L'
@@ -951,6 +953,9 @@ const CANONICAL_SERVANT_TO_BOND_KEY: Record<string, string> = {
   ciel: 'ciel_executor',
   ciel_executor: 'ciel_executor',
   mysterious_executor_ciel: 'ciel_executor',
+  mysterious_executor_c_i_e_l: 'ciel_executor',
+  'mysterious executor c.i.e.l': 'ciel_executor',
+  'mysterious executor ciel': 'ciel_executor',
   space_ciel: 'ciel_executor'
 };
 
