@@ -1081,7 +1081,8 @@ function buildDetailedCombatLogEmbed(
   p1Ally?: DuelCombatant,
   p2Ally?: DuelCombatant,
   teamSoloList: DuelCombatant[] = [],
-  requestedPage: number = -1
+  requestedPage: number = -1,
+  idPrefix: string = 'combat_log_nav'
 ): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] } {
   // Combatant Health & Gauge Overview summary
   const allLiving = [p1, p2, p1Ally, p2Ally, ...teamSoloList].filter((c): c is DuelCombatant => !!c);
@@ -1121,7 +1122,7 @@ function buildDetailedCombatLogEmbed(
       })
       .setFooter({ text: 'Holy Grail War Tactical Telemetry • Real-Time Combat Log Archive' });
 
-    return { embed: emptyEmbed, components: buildTurnTelemetryComponents(0, 1, 'combat_log_nav') };
+    return { embed: emptyEmbed, components: buildTurnTelemetryComponents(0, 1, idPrefix) };
   }
 
   const totalPages = history.length;
@@ -1136,7 +1137,7 @@ function buildDetailedCombatLogEmbed(
   // If this entry is a rich TurnTelemetryEntry, render the comprehensive full breakdown
   if ('turnNumber' in entry && 'cardStrikes' in entry) {
     const embed = buildTurnTelemetryEmbed(entry as TurnTelemetryEntry, page, totalPages, statusOverview);
-    const components = buildTurnTelemetryComponents(page, totalPages, 'combat_log_nav');
+    const components = buildTurnTelemetryComponents(page, totalPages, idPrefix);
     return { embed, components };
   }
 
@@ -1157,7 +1158,7 @@ function buildDetailedCombatLogEmbed(
     })
     .setFooter({ text: `Turn ${page + 1} of ${totalPages} • Holy Grail War Engine` });
 
-  return { embed: legacyEmbed, components: buildTurnTelemetryComponents(page, totalPages, 'combat_log_nav') };
+  return { embed: legacyEmbed, components: buildTurnTelemetryComponents(page, totalPages, idPrefix) };
 }
 
 // ==========================================
@@ -6377,8 +6378,17 @@ async function startInteractiveDuel(
     if (msgId && (battleMessageIds.has(msgId) || msgId === battleMsg?.id)) {
       return true;
     }
-    if (typeof interaction?.customId === 'string' && interaction.customId.includes(duelSessionId)) {
-      return true;
+    if (typeof interaction?.customId === 'string') {
+      if (interaction.customId.includes(duelSessionId)) {
+        return true;
+      }
+      if (
+        interaction.customId === 'card_combat_log' ||
+        interaction.customId === 'duel_combat_log' ||
+        interaction.customId.startsWith('combat_log_')
+      ) {
+        return true;
+      }
     }
     return false;
   };
@@ -6915,7 +6925,8 @@ async function startInteractiveDuel(
           p1Ally,
           p2Ally,
           teamSolo,
-          reqPage
+          reqPage,
+          `combat_log_nav_${duelSessionId}`
         );
 
         if (i.customId.startsWith('combat_log_') && i.customId !== 'card_combat_log' && i.customId !== 'duel_combat_log') {

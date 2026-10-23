@@ -651,6 +651,13 @@ async function runRaidBattle(
         return true;
       }
       if (
+        btn.customId === 'raid_combat_log' ||
+        btn.customId.startsWith('raid_log_nav') ||
+        btn.customId === 'raid_status'
+      ) {
+        return true;
+      }
+      if (
         (btn.customId.startsWith('raid_target_skill_') || btn.customId.startsWith('raid_cancel_target_skill')) &&
         btn?.user?.id === currentActiveParticipant?.userId
       ) {
@@ -2677,7 +2684,7 @@ async function runRaidBattle(
 
           const entry = history[page];
           const logEmbed = buildTurnTelemetryEmbed(entry, page, totalPages);
-          const components = buildTurnTelemetryComponents(page, totalPages, 'raid_log_nav');
+          const components = buildTurnTelemetryComponents(page, totalPages, `raid_log_nav_${raidSessionId}`);
 
           if (i.customId.startsWith('raid_log_nav_')) {
             await i.update({ embeds: [logEmbed], components }).catch(() => {});
