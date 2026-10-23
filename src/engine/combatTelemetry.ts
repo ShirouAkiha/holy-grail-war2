@@ -31,6 +31,20 @@ export interface DefensiveTriggerDetail {
   remainingChargesOrTurns?: number;
 }
 
+export interface ParticipantHpDetail {
+  name: string;
+  userId?: string;
+  servantClass?: string;
+  hpBefore: number;
+  hpAfter: number;
+  maxHp: number;
+  damageTaken?: number;
+  wasEvaded?: boolean;
+  wasBlocked?: boolean;
+  gutsRevived?: boolean;
+  wasVanquished?: boolean;
+}
+
 export interface TurnTelemetryEntry {
   turnNumber: number;
   round: number;
@@ -50,6 +64,9 @@ export interface TurnTelemetryEntry {
   targetHpBefore: number;
   targetHpAfter: number;
   targetMaxHp: number;
+
+  // Multi-target HP dynamics (for Enemy Phase / AoE)
+  partyHpDynamics?: ParticipantHpDetail[];
 
   // Pre-card actions
   skillsUsed: SkillActivationDetail[];
@@ -74,6 +91,30 @@ export interface TurnTelemetryEntry {
   wasTargetVanquished?: boolean;
 }
 
+function formatBuffList(buffs: string[]): string[] {
+  if (!buffs || buffs.length === 0) return ['  • _None_'];
+
+  // Clean up formatting on individual buff strings
+  const cleaned = buffs.map(b => {
+    return b
+      .replace(/\(\+1%\)/g, '')
+      .replace(/\(\+5000%\)/g, '(+5,000 HP)')
+      .replace(/Phasing Fluid Blade \((.*?)\) \(\+(\d+)%\)/g, '$1 +$2%')
+      .replace(/Human Mana Factory \((.*?)\) \(\+(.*?)\)/g, '$1 $2')
+      .trim();
+  });
+
+  // Pick top 5 distinct buffs
+  const topBuffs = cleaned.slice(0, 5);
+  const remainingCount = cleaned.length - topBuffs.length;
+
+  const lines = topBuffs.map(b => `  • ${b}`);
+  if (remainingCount > 0) {
+    lines.push(`  └─ *+${remainingCount} additional active effects*`);
+  }
+  return lines;
+}
+
 /**
  * Builds a comprehensive, single-turn granular embed formatted strictly within Discord's limits.
  */
@@ -85,15 +126,16 @@ export function buildTurnTelemetryEmbed(
 ): EmbedBuilder {
   const isBoss = Boolean(entry.isBossPhase);
   const color = isBoss ? 0xd946ef : 0x38bdf8;
+  const turnBadge = isBoss ? '👹 ENEMY PHASE' : `🗡️ TURN #${entry.turnNumber}`;
 
   const actorTag = entry.actorUserId ? `<@${entry.actorUserId}>` : entry.actorName;
   const targetTag = entry.targetUserId ? `<@${entry.targetUserId}>` : entry.targetName;
 
   const embed = new EmbedBuilder()
-    .setTitle(`📜 COMBAT DOSSIER — ROUND ${entry.round} • TURN #${entry.turnNumber}`)
+    .setTitle(`📜 COMBAT DOSSIER — ROUND ${entry.round} • ${turnBadge}`)
     .setColor(color)
     .setFooter({
-      text: `Holy Grail War Tactical Telemetry • Turn ${pageIndex + 1} of ${totalPages} • Real-Time Engine Log`
+      text: `Holy Grail War Tactical Telemetry • Page ${pageIndex + 1} of ${totalPages} • Real-Time Engine Log`
     });
 
   // Section 1: Overview & Actor / Target Identity
@@ -101,33 +143,58 @@ export function buildTurnTelemetryEmbed(
   const targetClassStr = entry.targetClass ? ` (${entry.targetClass})` : '';
   const quoteLine = entry.quote ? `\n> 💬 ❝ ***“${entry.quote}”*** ❞` : '';
 
-  embed.setDescription(
-    `⚔️ **Actor:** **${entry.actorName}**${actorClassStr} [${actorTag}]\n` +
-    `🎯 **Target:** **${entry.targetName}**${targetClassStr} [${targetTag}]${quoteLine}\n` +
-    `──────────────────────────────────────────────`
-  );
-
-  // Section 2: Health Dynamics
-  const targetHpDelta = entry.targetHpAfter - entry.targetHpBefore;
-  const targetPctBefore = Math.max(0, Math.min(100, Math.round((entry.targetHpBefore / entry.targetMaxHp) * 100)));
-  const targetPctAfter = Math.max(0, Math.min(100, Math.round((entry.targetHpAfter / entry.targetMaxHp) * 100)));
-
-  const actorPct = Math.max(0, Math.min(100, Math.round((entry.actorHpAfter / entry.actorMaxHp) * 100)));
-
-  let hpFieldText = 
-    `• **Target:** \`${Math.round(entry.targetHpBefore).toLocaleString()} HP\` (${targetPctBefore}%) ➔ ` +
-    `\`${Math.round(entry.targetHpAfter).toLocaleString()} HP\` (${targetPctAfter}%) ` +
-    `[**${targetHpDelta >= 0 ? `+${targetHpDelta.toLocaleString()}` : `${targetHpDelta.toLocaleString()}`} HP**]\n` +
-    `• **Actor:** \`${Math.round(entry.actorHpAfter).toLocaleString()} / ${entry.actorMaxHp.toLocaleString()} HP\` (${actorPct}%)`;
-
-  if (entry.wasTargetVanquished) {
-    hpFieldText += `\n💀 **Status:** Vanquished / Incapacitated!`;
+  if (isBoss) {
+    embed.setDescription(
+      `👹 **Enemy Aggressor:** **${entry.actorName}**${actorClassStr}\n` +
+      `🎯 **Raid Target:** **${entry.targetName}**${quoteLine}\n` +
+      `──────────────────────────────────────────────`
+    );
+  } else {
+    embed.setDescription(
+      `⚔️ **Actor:** **${entry.actorName}**${actorClassStr} [${actorTag}]\n` +
+      `🎯 **Target:** **${entry.targetName}**${targetClassStr} [${targetTag}]${quoteLine}\n` +
+      `──────────────────────────────────────────────`
+    );
   }
 
-  embed.addFields({
-    name: '❤️ Health Dynamics Before & After',
-    value: hpFieldText.slice(0, 1024)
-  });
+  // Section 2: Health Dynamics
+  if (entry.partyHpDynamics && entry.partyHpDynamics.length > 0) {
+    const partyHpLines = entry.partyHpDynamics.map(p => {
+      const pUser = p.userId ? ` (<@${p.userId}>)` : '';
+      const hpBeforeStr = Math.round(p.hpBefore).toLocaleString();
+      const hpAfterStr = Math.round(p.hpAfter).toLocaleString();
+      const delta = p.hpAfter - p.hpBefore;
+      const deltaStr = delta === 0 ? ' (No DMG)' : ` [**${delta.toLocaleString()} HP**]`;
+      const statusTag = p.wasEvaded ? ' ✨ Evaded' : p.wasBlocked ? ' 👑 Anti-Purge Blocked' : p.wasVanquished ? ' 💀 Vanquished' : '';
+      return `• **${p.name}**${pUser}: \`${hpBeforeStr}\` ➔ \`${hpAfterStr} HP\`${deltaStr}${statusTag}`;
+    });
+
+    embed.addFields({
+      name: '❤️ Party Health Dynamics (Enemy Attack)',
+      value: partyHpLines.join('\n').slice(0, 1024)
+    });
+  } else {
+    const targetHpDelta = entry.targetHpAfter - entry.targetHpBefore;
+    const targetPctBefore = Math.max(0, Math.min(100, Math.round((entry.targetHpBefore / entry.targetMaxHp) * 100)));
+    const targetPctAfter = Math.max(0, Math.min(100, Math.round((entry.targetHpAfter / entry.targetMaxHp) * 100)));
+
+    const actorPct = Math.max(0, Math.min(100, Math.round((entry.actorHpAfter / entry.actorMaxHp) * 100)));
+
+    let hpFieldText = 
+      `• **Target (${entry.targetName}):** \`${Math.round(entry.targetHpBefore).toLocaleString()} HP\` (${targetPctBefore}%) ➔ ` +
+      `\`${Math.round(entry.targetHpAfter).toLocaleString()} HP\` (${targetPctAfter}%) ` +
+      `[**${targetHpDelta >= 0 ? `+${targetHpDelta.toLocaleString()}` : `${targetHpDelta.toLocaleString()}`} HP**]\n` +
+      `• **Actor (${entry.actorName}):** \`${Math.round(entry.actorHpAfter).toLocaleString()} / ${entry.actorMaxHp.toLocaleString()} HP\` (${actorPct}%)`;
+
+    if (entry.wasTargetVanquished) {
+      hpFieldText += `\n💀 **Status:** Vanquished / Incapacitated!`;
+    }
+
+    embed.addFields({
+      name: '❤️ Health Dynamics Before & After',
+      value: hpFieldText.slice(0, 1024)
+    });
+  }
 
   // Section 3: Tactical Skills & Pre-Attack Actions
   const skillsList: string[] = [];
@@ -147,12 +214,12 @@ export function buildTurnTelemetryEmbed(
 
   if (skillsList.length > 0) {
     embed.addFields({
-      name: '✨ Tactical Skills & Master Invocations',
+      name: '✨ Tactical Skills & Actions',
       value: skillsList.join('\n').slice(0, 1024)
     });
   }
 
-  // Section 4: Card-by-Card Strike Breakdown
+  // Section 4: Card-by-Card Strike Breakdown / Attack Execution
   if (entry.cardStrikes && entry.cardStrikes.length > 0) {
     const cardEmojiMap: Record<string, string> = {
       Buster: '🔴 Buster',
@@ -207,18 +274,18 @@ export function buildTurnTelemetryEmbed(
   }
 
   // Section 6: Active Buffs Remaining at End of Turn
-  const statusLines: string[] = [];
+  const statusFieldLines: string[] = [];
   if (entry.actorBuffsSummary && entry.actorBuffsSummary.length > 0) {
-    statusLines.push(`**${entry.actorName}:** ${entry.actorBuffsSummary.join(' • ')}`);
+    statusFieldLines.push(`**${entry.actorName}:**\n${formatBuffList(entry.actorBuffsSummary).join('\n')}`);
   }
   if (entry.targetBuffsSummary && entry.targetBuffsSummary.length > 0) {
-    statusLines.push(`**${entry.targetName}:** ${entry.targetBuffsSummary.join(' • ')}`);
+    statusFieldLines.push(`**${entry.targetName}:**\n${formatBuffList(entry.targetBuffsSummary).join('\n')}`);
   }
 
-  if (statusLines.length > 0) {
+  if (statusFieldLines.length > 0) {
     embed.addFields({
       name: '🔮 Active Effects & Statuses at Turn End',
-      value: statusLines.join('\n\n').slice(0, 1024)
+      value: statusFieldLines.join('\n\n').slice(0, 1024)
     });
   }
 
@@ -254,7 +321,7 @@ export function buildTurnTelemetryComponents(
       .setDisabled(page <= 0),
     new ButtonBuilder()
       .setCustomId(`${idPrefix}_indicator`)
-      .setLabel(`Turn ${page + 1} / ${totalPages}`)
+      .setLabel(`Page ${page + 1} / ${totalPages}`)
       .setStyle(ButtonStyle.Primary)
       .setDisabled(true),
     new ButtonBuilder()

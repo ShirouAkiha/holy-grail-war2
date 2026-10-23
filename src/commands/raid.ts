@@ -4364,6 +4364,16 @@ async function runRaidBattle(
 async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: boolean }> {
   state.bossBuffs = state.bossBuffs || [];
 
+  const bossHpBefore = state.bossCurrentHp;
+  const partyHpBefore = state.participants.map(p => ({
+    name: p.servant.nickname || p.servant.template?.name || 'Servant',
+    userId: p.userId,
+    servantClass: p.servant.template?.servantClass,
+    hpBefore: Math.max(0, p.currentHp),
+    hpAfter: 0,
+    maxHp: p.maxHp
+  }));
+
   if (state.bossCurrentHp <= 0) {
     return { bossUsedNp: false };
   }
@@ -5134,6 +5144,59 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   state.bossBuffs = state.bossBuffs.filter(b => b.remainingTurns > 0);
 
   while (state.recentLogs.length > 8) state.recentLogs.shift();
+
+  state.telemetryHistory = state.telemetryHistory || [];
+  const partyHpDetails = state.participants.map((p, pIdx) => {
+    const origBefore = partyHpBefore[pIdx]?.hpBefore ?? Math.max(0, p.currentHp);
+    const hpAfter = Math.max(0, p.currentHp);
+    const wasEvaded = enemyPhase.specialEvents.some(evt => evt.includes(p.servant.nickname || p.servant.template?.name || '') && (evt.includes('EVADED') || evt.includes('Evaded')));
+    const wasBlocked = enemyPhase.specialEvents.some(evt => evt.includes(p.servant.nickname || p.servant.template?.name || '') && (evt.includes('BLOCKED') || evt.includes('Anti-Purge')));
+    return {
+      name: p.servant.nickname || p.servant.template?.name || 'Servant',
+      userId: p.userId,
+      servantClass: p.servant.template?.servantClass,
+      hpBefore: origBefore,
+      hpAfter: hpAfter,
+      maxHp: p.maxHp,
+      damageTaken: Math.max(0, origBefore - hpAfter),
+      wasEvaded,
+      wasBlocked,
+      wasVanquished: p.isDead || hpAfter <= 0
+    };
+  });
+
+  const bossTelemetry: TurnTelemetryEntry = {
+    turnNumber: state.telemetryHistory.length + 1,
+    round: state.round,
+    timestamp: new Date(),
+    isBossPhase: true,
+    actorName: state.boss.name,
+    actorClass: state.boss.servantClass,
+    targetName: enemyPhase.actionTarget || 'Raid Party',
+    actorHpBefore: bossHpBefore,
+    actorHpAfter: state.bossCurrentHp,
+    actorMaxHp: state.bossMaxHp,
+    targetHpBefore: partyHpDetails.reduce((acc, p) => acc + p.hpBefore, 0),
+    targetHpAfter: partyHpDetails.reduce((acc, p) => acc + p.hpAfter, 0),
+    targetMaxHp: partyHpDetails.reduce((acc, p) => acc + p.maxHp, 0),
+    partyHpDynamics: partyHpDetails,
+    skillsUsed: enemyPhase.skillName ? [{
+      skillName: enemyPhase.skillName,
+      description: enemyPhase.skillDesc,
+      cooldownPlaced: 0,
+      effects: enemyPhase.debuffsInflicted.concat(enemyPhase.bossBuffsGained)
+    }] : [],
+    cardsSequence: [enemyPhase.actionName || `${state.boss.name} Action Phase`],
+    cardStrikes: [],
+    totalDamage: enemyPhase.totalDamage,
+    totalNpGained: 0,
+    totalStarsGained: 0,
+    defensesTriggered: enemyPhase.specialEvents.map(evt => ({ type: 'invincible', label: evt })),
+    actorBuffsSummary: (state.bossBuffs || []).map(b => `${b.name} [${b.remainingTurns}t]`),
+    targetBuffsSummary: [],
+    wasTargetVanquished: partyHpDetails.every(p => p.hpAfter <= 0)
+  };
+  state.telemetryHistory.push(bossTelemetry);
 
   return { bossUsedNp };
 }
