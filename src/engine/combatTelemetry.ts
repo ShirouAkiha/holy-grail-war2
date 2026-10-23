@@ -99,14 +99,36 @@ function formatBuffList(buffs: string[]): string[] {
     return b
       .replace(/\(\+1%\)/g, '')
       .replace(/\(\+5000%\)/g, '(+5,000 HP)')
+      .replace(/\(\+0%\)/g, '')
       .replace(/Phasing Fluid Blade \((.*?)\) \(\+(\d+)%\)/g, '$1 +$2%')
       .replace(/Human Mana Factory \((.*?)\) \(\+(.*?)\)/g, '$1 $2')
       .trim();
-  });
+  }).filter(Boolean);
 
-  // Pick top 5 distinct buffs
-  const topBuffs = cleaned.slice(0, 5);
-  const remainingCount = cleaned.length - topBuffs.length;
+  // Group identical buff lines together to eliminate duplicate entries
+  const countsMap = new Map<string, number>();
+  for (const b of cleaned) {
+    countsMap.set(b, (countsMap.get(b) || 0) + 1);
+  }
+
+  const grouped: string[] = [];
+  for (const [buffStr, count] of countsMap.entries()) {
+    if (count > 1) {
+      if (buffStr.includes('[')) {
+        const idx = buffStr.lastIndexOf('[');
+        grouped.push(`${buffStr.slice(0, idx).trim()} x${count} ${buffStr.slice(idx)}`);
+      } else {
+        grouped.push(`${buffStr} x${count}`);
+      }
+    } else {
+      grouped.push(buffStr);
+    }
+  }
+
+  // Display up to 8 distinct grouped buff lines (fits cleanly within Discord embed 1024 char limits)
+  const MAX_DISPLAY = 8;
+  const topBuffs = grouped.slice(0, MAX_DISPLAY);
+  const remainingCount = grouped.length - topBuffs.length;
 
   const lines = topBuffs.map(b => `  • ${b}`);
   if (remainingCount > 0) {
