@@ -27,7 +27,7 @@ import { getServantMatchupDialogue } from '../data/servantMatchups';
 import { generateServantBattleReaction } from '../engine/talkService';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
 import { addServantBattleExp } from '../engine/customization';
-import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
+import { checkAndGrantBond10Ce, getBondCraftEssenceForServant, CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { getRandomBackgroundUrl } from '../data/backgrounds';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 import { getParameterRankMultiplier, getEnduranceDamageReductionPercent, getServantDefaultParamRank } from '../engine/statSystem';
@@ -47,6 +47,10 @@ export const data = new SlashCommandBuilder()
       .setRequired(false)
       .addChoices(
         { name: '🕊️ Free Battle / Sparring', value: 'free' },
+        { name: '🎲 Random Match (Auto 1v1 / 1v2 / 2v2)', value: 'random' },
+        { name: '🎲 Random 1v1 (Draft Lv.100 + 5★ CE)', value: 'random_1v1' },
+        { name: '🎲 Random 1v2 Raid (Draft Lv.100 + 5★ CE)', value: 'random_1v2' },
+        { name: '🎲 Random 2v2 Alliance (Draft Lv.100 + 5★ CE)', value: 'random_2v2' },
         { name: '⚔️ 1v1 Holy Grail Duel', value: '1v1' },
         { name: '🛡️ 2v2 Alliance Tag-Team', value: '2v2' },
         { name: '⚔️ 1v2 Raid Survival', value: '1v2' },
@@ -128,6 +132,7 @@ export interface DuelCombatant {
   masterAvatarUrl?: string;
   selectedTargetId?: string;
   isFled?: boolean;
+  isRandomDraft?: boolean;
 }
 
 export function getCombatantSpriteUrl(combatantOrServant: any): string {
@@ -247,8 +252,88 @@ function getClassMultiplier(attacker: ServantClass, defender: ServantClass): num
 }
 
 // ==========================================
-// 4. COMBATANT FACTORY
+// 4. RANDOM DRAFT GENERATOR & COMBATANT FACTORY
 // ==========================================
+
+/**
+ * Drafts an ephemeral Level 100 Servant equipped with a random 5★ Craft Essence,
+ * all skills unlocked (Lv. 10), Bond Level 10, and 100 stat points distributed
+ * weighted towards parameter ranks with slight draft variation.
+ */
+export function generateRandomDraftServant(ownerDiscordId: string): MasterServantInstance {
+  // 1. Pick a random Servant template from SERVANT_DATABASE
+  const allTemplates = SERVANT_DATABASE.filter(s => !s.isCustomOrMeme);
+  const template = allTemplates[Math.floor(Math.random() * allTemplates.length)] || SERVANT_DATABASE[0];
+
+  // 2. Distribute 100 stat points weighted towards parameter ranks
+  const params: ('strength' | 'endurance' | 'agility' | 'mana' | 'luck')[] = [
+    'strength', 'endurance', 'agility', 'mana', 'luck'
+  ];
+
+  const getRankScore = (rankStr: string): number => {
+    const r = (rankStr || 'C').toUpperCase();
+    if (r.includes('EX') || r.includes('OMNIPOTENT')) return 6;
+    if (r.startsWith('A')) return 5;
+    if (r.startsWith('B')) return 4;
+    if (r.startsWith('C')) return 3;
+    if (r.startsWith('D')) return 2;
+    return 1; // E
+  };
+
+  const rawWeights = params.map(p => {
+    const rank = getServantDefaultParamRank(template, p);
+    const score = getRankScore(rank);
+    // Add variance between -0.4 and +1.6 for dynamic builds while respecting canonical aptitude
+    return Math.max(1, score + (Math.random() * 2.0 - 0.4));
+  });
+
+  const totalWeight = rawWeights.reduce((a, b) => a + b, 0);
+  const allocated: { strength: number; endurance: number; agility: number; mana: number; luck: number } = {
+    strength: 0,
+    endurance: 0,
+    agility: 0,
+    mana: 0,
+    luck: 0
+  };
+
+  let assignedSum = 0;
+  for (let i = 0; i < params.length; i++) {
+    const pts = Math.floor((rawWeights[i] / totalWeight) * 100);
+    allocated[params[i]] = pts;
+    assignedSum += pts;
+  }
+
+  // Ensure total sum is strictly 100 points
+  let remainder = 100 - assignedSum;
+  while (remainder > 0) {
+    const randomParam = params[Math.floor(Math.random() * params.length)];
+    allocated[randomParam] += 1;
+    remainder--;
+  }
+
+  // 3. Pick a random 5★ Craft Essence from CRAFT_ESSENCE_DATABASE
+  const fiveStarCes = CRAFT_ESSENCE_DATABASE.filter(ce => ce.rarity === 5);
+  const draftedCe = fiveStarCes[Math.floor(Math.random() * fiveStarCes.length)] || CRAFT_ESSENCE_DATABASE[0];
+
+  return {
+    id: `draft_${ownerDiscordId}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    masterId: ownerDiscordId,
+    templateId: template.id,
+    template,
+    level: 100,
+    maxLevel: 100,
+    experience: 0,
+    bondLevel: 10,
+    bondExp: 100000,
+    allocatedStats: allocated,
+    availableStatPoints: 0,
+    equippedCeId: draftedCe.id,
+    equippedCe: draftedCe,
+    skillLevels: [10, 10, 10],
+    customQuotes: {}
+  };
+}
+
 // Computes baseline stats + allocated Parameter points + Craft Essence bonuses.
 function createCombatant(
   master: MasterProfile,
@@ -256,7 +341,8 @@ function createCombatant(
   isAi: boolean = false,
   overrideCurrentHp?: number,
   isFreeBattle: boolean = false,
-  overrideCommandSeals?: number
+  overrideCommandSeals?: number,
+  isRandomDraft: boolean = false
 ): DuelCombatant {
   const templateId = servant.templateId || servant.template?.id || servant.id;
   const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || servant.template;
@@ -388,7 +474,8 @@ function createCombatant(
           ? Math.max(0, overrideCommandSeals)
           : (master.commandSeals ?? 3))),
     drawPile: [],
-    masterAvatarUrl: (master.avatarUrl && !master.avatarUrl.includes('unsplash.com')) ? master.avatarUrl : undefined
+    masterAvatarUrl: (master.avatarUrl && !master.avatarUrl.includes('unsplash.com')) ? master.avatarUrl : undefined,
+    isRandomDraft
   };
 
   // Apply all Craft Essence initial passives (Guts, starting NP, stats, card buffs, damage cuts)
@@ -875,13 +962,14 @@ function buildDuelEmbed(
   const slotDisplay = `${targetSection}🎴 **Dealt Command Hand (${sClass} Deck • Turn ${cycleTurn}/3):**\n${handDisplay}\n\n🛡️ **Active Class Passives (Max 2):** ${passivesText}${lockedNote}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
 
   const combatantName = activeCombatant.servant.nickname || activeCombatant.servant.template?.name || 'Servant';
+  const isRandomMatch = allCombatants.some(c => c.isRandomDraft);
   const embed = new EmbedBuilder()
-    .setTitle(`⚔️ HOLY GRAIL WAR DUEL — ROUND ${round}`)
+    .setTitle(isRandomMatch ? `🎲 RANDOM DRAFT ARENA — ROUND ${round}` : `⚔️ HOLY GRAIL WAR DUEL — ROUND ${round}`)
     .setImage('attachment://turn_summary.png')
     .setDescription(
       `👉 **Current Turn:** ${activeCombatant.isAi ? `🤖 Shadow AI (${combatantName}) is calculating...` : `<@${activeCombatant.userId}> (**${combatantName}**), pick **3 Cards** from your dealt hand:`}\n\n${slotDisplay}`
     )
-    .setColor(isSoloRogue ? 0xf59e0b : isP1Team ? 0xef4444 : 0x38bdf8);
+    .setColor(isSoloRogue ? 0xf59e0b : isRandomMatch ? 0x8b5cf6 : isP1Team ? 0xef4444 : 0x38bdf8);
 
   const team1List = [p1, p1Ally].filter((c): c is DuelCombatant => !!c);
   const team2List = [p2, p2Ally].filter((c): c is DuelCombatant => !!c);
@@ -4664,13 +4752,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
     }
 
+    const isRandomMatch = rawMode === 'random' || rawMode === 'random_1v1' || rawMode === 'random_1v2' || rawMode === 'random_2v2';
+
     // Determine combat mode (1v1, 1v2, 2v2, forcejoin)
     let mode: '1v1' | '1v2' | '2v2' | 'forcejoin' = '1v1';
     if (rawMode === 'forcejoin') {
       mode = 'forcejoin';
-    } else if (rawMode === '1v2' || rawMode === 'free_1v2' || (opponent2User && !allyUser)) {
+    } else if (rawMode === '1v2' || rawMode === 'free_1v2' || rawMode === 'random_1v2' || (opponent2User && !allyUser)) {
       mode = '1v2';
-    } else if (rawMode === '2v2' || rawMode === 'free_2v2' || (opponent2User && allyUser)) {
+    } else if (rawMode === '2v2' || rawMode === 'free_2v2' || rawMode === 'random_2v2' || (opponent2User && allyUser)) {
       mode = '2v2';
     } else {
       mode = '1v1';
@@ -4678,7 +4768,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // Determine if this is a Free Battle (Safe Mode / Friendly Sparring)
     let isFreeBattle = false;
-    if (!preferredGuildId) {
+    if (isRandomMatch) {
+      isFreeBattle = true;
+    } else if (!preferredGuildId) {
       // Direct Messages: strictly default to Safe Mode with war duels disabled
       if (rawMode === '1v1' || rawMode === '2v2' || rawMode === '1v2') {
         await interaction.reply({
@@ -4735,15 +4827,51 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const challengerServant = (!isFreeBattle && isEnrolledAndAliveInWar && challengerParticipant?.servantId)
-      ? (challengerMaster.servants.find(s => s.id === challengerParticipant.servantId) || challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) || challengerMaster.servants[0])
-      : (challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) || challengerMaster.servants[0]);
+    const challengerServant = isRandomMatch
+      ? generateRandomDraftServant(challengerMaster.discordId)
+      : ((!isFreeBattle && isEnrolledAndAliveInWar && challengerParticipant?.servantId)
+        ? (challengerMaster.servants.find(s => s.id === challengerParticipant.servantId) || challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) || challengerMaster.servants[0])
+        : (challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) || challengerMaster.servants[0]));
 
     if (mode === 'forcejoin') {
       await interaction.reply({
         content: '⚡ **Force Join Active Duel:** To force join an ongoing Holy Grail War duel, click the **⚡ Force Join Arena** button located directly on any active battle message in the channel!',
         flags: MessageFlags.Ephemeral
       });
+      return;
+    }
+
+    // Instant Solo Random Match vs AI Random Vanguard with Lv.100 Draft!
+    if (isRandomMatch && !opponentUser && mode === '1v1') {
+      const aiDraftServant = generateRandomDraftServant('ai_random_vanguard');
+      const aiMasterMock: MasterProfile = {
+        id: 'ai_random_vanguard',
+        discordId: 'ai_random_vanguard',
+        username: 'Shadow Magus (AI Random Vanguard)',
+        avatarUrl: aiDraftServant.template.avatarUrl,
+        saintQuartz: 0,
+        summonTickets: 0,
+        commandSeals: 3,
+        actionPoints: 100,
+        maxActionPoints: 100,
+        pityCount: 0,
+        grailWarWins: 0,
+        duelsWon: 0,
+        duelsLost: 0,
+        activeServantId: aiDraftServant.id,
+        servants: [aiDraftServant],
+        craftEssences: [],
+        environmentMode: 'safe'
+      };
+
+      const p1 = createCombatant(challengerMaster, challengerServant, false, undefined, true, 3, true);
+      const p2 = createCombatant(aiMasterMock, aiDraftServant, true, undefined, true, 0, true);
+
+      await interaction.reply({
+        content: `🎲 **Entering Random Draft Arena!** Drafted **${challengerServant.template.name}** [Lv.100 • 5★ ${challengerServant.equippedCe?.name}] vs **${aiDraftServant.template.name}** [Lv.100 • 5★ ${aiDraftServant.equippedCe?.name}]!`
+      });
+
+      await startInteractiveDuel(interaction, p1, p2, challengerMaster, aiMasterMock, undefined, undefined, null, null, true);
       return;
     }
 
@@ -4832,9 +4960,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
       const oppParticipant = warSession.participants[opponentUser.id];
       const isOppInWar = !isFreeBattle && !!oppParticipant && oppParticipant.isAlive;
-      const opponentServant = (isOppInWar && oppParticipant?.servantId)
-        ? (opponentMaster.servants?.find(s => s.id === oppParticipant.servantId) || opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0])
-        : (opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0]);
+      const opponentServant = isRandomMatch
+        ? generateRandomDraftServant(opponentUser.id)
+        : ((isOppInWar && oppParticipant?.servantId)
+          ? (opponentMaster.servants?.find(s => s.id === oppParticipant.servantId) || opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0])
+          : (opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0]));
       if (!opponentServant) {
         await interaction.reply({
           content: `❌ Rival Master <@${opponentUser.id}> has not summoned a Servant yet! All participants must have an active Servant.`,
@@ -4851,9 +4981,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
       const opp2Participant = warSession.participants[opponent2User.id];
       const isOpp2InWar = !isFreeBattle && !!opp2Participant && opp2Participant.isAlive;
-      const opp2Servant = (isOpp2InWar && opp2Participant?.servantId)
-        ? (p2AllyMaster.servants?.find(s => s.id === opp2Participant.servantId) || p2AllyMaster.servants?.find(s => s.id === p2AllyMaster.activeServantId) || p2AllyMaster.servants?.[0])
-        : (p2AllyMaster.servants?.find(s => s.id === p2AllyMaster.activeServantId) || p2AllyMaster.servants?.[0]);
+      const opp2Servant = isRandomMatch
+        ? generateRandomDraftServant(opponent2User.id)
+        : ((isOpp2InWar && opp2Participant?.servantId)
+          ? (p2AllyMaster.servants?.find(s => s.id === opp2Participant.servantId) || p2AllyMaster.servants?.find(s => s.id === p2AllyMaster.activeServantId) || p2AllyMaster.servants?.[0])
+          : (p2AllyMaster.servants?.find(s => s.id === p2AllyMaster.activeServantId) || p2AllyMaster.servants?.[0]));
       if (!opp2Servant) {
         await interaction.reply({
           content: `❌ Rival Master <@${opponent2User.id}> has not summoned a Servant yet! All participants must have an active Servant.`,
@@ -4875,9 +5007,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         p1AllyMaster = allyMaster;
         const allyParticipant = warSession.participants[allyUser.id];
         const isAllyInWar = !isFreeBattle && !!allyParticipant && allyParticipant.isAlive;
-        const allyServant = (isAllyInWar && allyParticipant?.servantId)
-          ? (allyMaster.servants?.find(s => s.id === allyParticipant.servantId) || allyMaster.servants?.find(s => s.id === allyMaster.activeServantId) || allyMaster.servants?.[0])
-          : (allyMaster.servants?.find(s => s.id === allyMaster.activeServantId) || allyMaster.servants?.[0]);
+        const allyServant = isRandomMatch
+          ? generateRandomDraftServant(allyUser.id)
+          : ((isAllyInWar && allyParticipant?.servantId)
+            ? (allyMaster.servants?.find(s => s.id === allyParticipant.servantId) || allyMaster.servants?.find(s => s.id === allyMaster.activeServantId) || allyMaster.servants?.[0])
+            : (allyMaster.servants?.find(s => s.id === allyMaster.activeServantId) || allyMaster.servants?.[0]));
         if (!allyServant) {
           await interaction.reply({
             content: `❌ Allied Master <@${allyUser.id}> has not summoned a Servant yet! All participants must have an active Servant.`,
@@ -4888,23 +5022,23 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         const allyPart = warSession.participants[allyMaster.discordId];
         const allyHp = (isFreeBattle || getMasterEnvironment(allyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (allyPart ? calculateCurrentHp(allyPart) : undefined);
         const allySeals = (isFreeBattle || getMasterEnvironment(allyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (allyPart?.commandSeals ?? allyMaster.commandSeals);
-        p1Ally = createCombatant(allyMaster, allyServant, false, allyHp, isFreeBattle, allySeals);
+        p1Ally = createCombatant(allyMaster, allyServant, false, allyHp, isFreeBattle, allySeals, isRandomMatch);
       }
 
       const p1Part = warSession.participants[challengerMaster.discordId];
       const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
       const p1Seals = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part?.commandSeals ?? challengerMaster.commandSeals);
-      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals);
+      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals, isRandomMatch);
 
       const p2Part = warSession.participants[opponentMaster.discordId];
       const p2Hp = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
       const p2Seals = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part?.commandSeals ?? opponentMaster.commandSeals);
-      const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle, p2Seals);
+      const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle, p2Seals, isRandomMatch);
 
       const opp2Part = warSession.participants[p2AllyMaster.discordId];
       const opp2Hp = (isFreeBattle || getMasterEnvironment(p2AllyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (opp2Part ? calculateCurrentHp(opp2Part) : undefined);
       const opp2Seals = (isFreeBattle || getMasterEnvironment(p2AllyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (opp2Part?.commandSeals ?? p2AllyMaster.commandSeals);
-      const p2Ally = createCombatant(p2AllyMaster, opp2Servant, false, opp2Hp, isFreeBattle, opp2Seals);
+      const p2Ally = createCombatant(p2AllyMaster, opp2Servant, false, opp2Hp, isFreeBattle, opp2Seals, isRandomMatch);
 
       if (is2v2) {
         p1.critStars = 25;
@@ -4935,13 +5069,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         invitedHumans.set(allyUser.id, { user: allyUser, role: 'Allied Master (Team 1)', accepted: false });
       }
 
-      const matchHeading = isFreeBattle
-        ? (is2v2 ? '🕊️ FREE BATTLE: 2v2 ALLIANCE SPARRING' : '🕊️ FREE BATTLE: 1v2 RAID SPARRING')
-        : (is2v2 ? '⚔️ HOLY GRAIL WAR: 2v2 TAG-TEAM CLASH' : '⚔️ HOLY GRAIL WAR: 1v2 RAID SURVIVAL');
+      const matchHeading = isRandomMatch
+        ? (is2v2 ? '🎲 RANDOM MATCH: 2v2 ALLIANCE DRAFT' : '🎲 RANDOM MATCH: 1v2 RAID DRAFT')
+        : (isFreeBattle
+          ? (is2v2 ? '🕊️ FREE BATTLE: 2v2 ALLIANCE SPARRING' : '🕊️ FREE BATTLE: 1v2 RAID SPARRING')
+          : (is2v2 ? '⚔️ HOLY GRAIL WAR: 2v2 TAG-TEAM CLASH' : '⚔️ HOLY GRAIL WAR: 1v2 RAID SURVIVAL'));
 
-      const matchFormatDesc = isFreeBattle
-        ? `• **Format:** 🕊️ Free Battle / Safe Mode *(Zero elimination risk, intact Command Seals & friendly sparring rewards)*`
-        : `• **Format:** ⚔️ Holy Grail War Tournament *(Ranked stakes, Command Seal survival & full War rewards)*`;
+      const matchFormatDesc = isRandomMatch
+        ? `• **Format:** 🎲 Random Match / Safe Mode *(Random Lv.100 Servants + Random 5★ CE + 100 Stat Points, Zero elimination risk)*`
+        : (isFreeBattle
+          ? `• **Format:** 🕊️ Free Battle / Safe Mode *(Zero elimination risk, intact Command Seals & friendly sparring rewards)*`
+          : `• **Format:** ⚔️ Holy Grail War Tournament *(Ranked stakes, Command Seal survival & full War rewards)*`);
 
       // Send multi-master invitation prompt requiring confirmation from all challenged human masters
       const inviteEmbed = new EmbedBuilder()
@@ -5157,19 +5295,26 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         }
       }
 
-      const opponentServant = isOpponentCivilian
-        ? null
-        : ((!isFreeBattle && opponentParticipant && opponentParticipant.isAlive && opponentParticipant.servantId)
-          ? (opponentMaster.servants.find(s => s.id === opponentParticipant.servantId) || opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0])
-          : (opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0]));
+      const opponentServant = isRandomMatch
+        ? generateRandomDraftServant(opponentUser.id)
+        : (isOpponentCivilian
+          ? null
+          : ((!isFreeBattle && opponentParticipant && opponentParticipant.isAlive && opponentParticipant.servantId)
+            ? (opponentMaster.servants.find(s => s.id === opponentParticipant.servantId) || opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0])
+            : (opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0])));
 
       const inviteEmbed = new EmbedBuilder()
-        .setTitle('⚔️ HOLY GRAIL WAR: DUEL INVITATION')
+        .setTitle(isRandomMatch ? '🎲 RANDOM MATCH: 1v1 DRAFT CHALLENGE' : '⚔️ HOLY GRAIL WAR: DUEL INVITATION')
         .setDescription(
-          `Master <@${interaction.user.id}> has challenged ${isOpponentCivilian ? 'civilian' : 'Master'} <@${opponentUser.id}> to a battle!\n\n` +
-          `<@${opponentUser.id}>, do you accept this challenge?`
+          isRandomMatch
+            ? `Master <@${interaction.user.id}> has challenged Master <@${opponentUser.id}> to a **Random Draft Duel**!\n\n` +
+              `🎲 **Format:** Random Level 100 Servants • Random 5★ Craft Essences • 100 Allocated Stat Points\n` +
+              `🕊️ **Safe Mode:** Zero tournament elimination risk • Normal duel rewards granted to your active account Servant!\n\n` +
+              `<@${opponentUser.id}>, do you accept this challenge?`
+            : `Master <@${interaction.user.id}> has challenged ${isOpponentCivilian ? 'civilian' : 'Master'} <@${opponentUser.id}> to a battle!\n\n` +
+              `<@${opponentUser.id}>, do you accept this challenge?`
         )
-        .setColor(0xd4af37);
+        .setColor(isRandomMatch ? 0x8b5cf6 : 0xd4af37);
 
       const inviteRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -5343,13 +5488,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
               const p1Part = warSession.participants[challengerMaster.discordId];
               const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
               const p1Seals = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part?.commandSeals ?? challengerMaster.commandSeals);
-              const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals);
+              const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals, isRandomMatch);
 
               const p2Part = warSession.participants[opponentUser.id] ||
                 Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
               const p2Hp = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
               const p2Seals = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part?.commandSeals ?? opponentMaster.commandSeals);
-              const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle, p2Seals);
+              const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle, p2Seals, isRandomMatch);
               await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster, undefined, undefined, undefined, undefined, isFreeBattle);
             } catch (duelErr: any) {
               console.error('Error starting duel after accept:', duelErr);
@@ -8015,24 +8160,30 @@ async function finishDuel(
 
     const rewardReport = await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner, isFreeBattle);
 
+    const isRandomMatch = winningTeam.some(c => c.isRandomDraft) || defeatedStates.some(s => s.combatant?.isRandomDraft);
+
     const multBanner = rewardReport.enemyBeatenMultiplier > 1
       ? ` 🔥 **[${rewardReport.enemyBeatenMultiplier}x Enemy Defeat Multiplier Active!]** *(Scaled for defeating ${defeatedStates.length} enemy Servants)*\n\n`
       : '\n\n';
 
     const freeBattleEmbed = new EmbedBuilder()
-      .setTitle(`🕊️ FREE BATTLE CONCLUDED — ${rewardReport.matchFormatTitle.toUpperCase()}`)
-      .setDescription(
-        `**${winnerName}** (Master: ${primaryWinner.username}) emerged victorious in this friendly sparring match!${multBanner}` +
-        `• **Format:** 🕊️ Free Battle / Safe Mode (${winningTeam.length}v${defeatedStates.length})\n` +
-        `• **Stakes:** Zero tournament elimination — Servants, Command Seals, and Master standing remain completely intact.\n\n` +
-        `🏆 **Victorious Team Rewards:**\n` +
-        rewardReport.winnerRewardLines.join('\n') +
-        `\n\n🎗️ **Sparring Participant Rewards:**\n` +
-        rewardReport.loserRewardLines.join('\n') +
-        `\n\n💡 *Level EXP increases Servant Level & grants **+10 Unspent Stat Points** per Level Up! Allocate via \`/servant\` or \`/customise stats\`.*`
+      .setTitle(
+        isRandomMatch
+          ? `🎲 RANDOM DRAFT ARENA CONCLUDED — ${rewardReport.matchFormatTitle.toUpperCase()}`
+          : `🕊️ FREE BATTLE CONCLUDED — ${rewardReport.matchFormatTitle.toUpperCase()}`
       )
-      .setColor(0x38bdf8)
-      .setFooter({ text: `Holy Grail War • Safe Mode Free Battle • ${rewardReport.enemyBeatenMultiplier}x Multiplier Active` });
+      .setDescription(
+        `**${winnerName}** (Master: ${primaryWinner.username}) emerged victorious in this ${isRandomMatch ? 'Random Draft duel' : 'friendly sparring match'}!${multBanner}` +
+        `• **Format:** ${isRandomMatch ? '🎲 Random Draft / Safe Mode' : '🕊️ Free Battle / Safe Mode'} (${winningTeam.length}v${defeatedStates.length})\n` +
+        `• **Stakes:** Zero tournament elimination — real account Servants, Command Seals, and Master standing remain completely intact.\n\n` +
+        `🏆 **Victorious Team Rewards (Credited to Active Servant):**\n` +
+        rewardReport.winnerRewardLines.join('\n') +
+        `\n\n🎗️ **Draft Participant Rewards (Credited to Active Servant):**\n` +
+        rewardReport.loserRewardLines.join('\n') +
+        `\n\n💡 *Rewards gained from Random Draft were safely credited to each Master's real active contracted Servant!*`
+      )
+      .setColor(isRandomMatch ? 0x8b5cf6 : 0x38bdf8)
+      .setFooter({ text: `Holy Grail War • ${isRandomMatch ? 'Random Draft Arena (Lv.100)' : 'Safe Mode Free Battle'} • ${rewardReport.enemyBeatenMultiplier}x Multiplier Active` });
 
     const files = [finalAttachment];
     if (defeatCardAttachment) files.push(defeatCardAttachment);
@@ -8681,12 +8832,22 @@ async function finalizeDuelRewardsAndSync(
   const loserCount = defeatedStates.length;
   const enemyBeatenMultiplier = Math.max(1, loserCount);
 
+  const isRandomMatch = winningTeam.some(c => c.isRandomDraft) || defeatedStates.some(s => s.combatant?.isRandomDraft);
+
   let matchFormatTitle = '⚔️ 1v1 Duel';
   let isSoloClutch1v2 = false;
   let isAlliance2v2 = false;
   let isGank2v1 = false;
 
-  if (winnerCount === 1 && loserCount >= 2) {
+  if (isRandomMatch) {
+    if (winnerCount === 1 && loserCount >= 2) {
+      matchFormatTitle = '🎲 1v2 Random Raid Draft (Lv.100)';
+    } else if (winnerCount >= 2 && loserCount >= 2) {
+      matchFormatTitle = '🎲 2v2 Random Alliance Draft (Lv.100)';
+    } else {
+      matchFormatTitle = '🎲 1v1 Random Draft Arena (Lv.100)';
+    }
+  } else if (winnerCount === 1 && loserCount >= 2) {
     isSoloClutch1v2 = true;
     matchFormatTitle = isFreeBattle ? '👑 1v2 Solo Clutch Sparring' : '👑 1v2 Solo Clutch War Triumph';
   } else if (winnerCount >= 2 && loserCount >= 2) {
@@ -8754,10 +8915,12 @@ async function finalizeDuelRewardsAndSync(
       wMaster.duelsWon = (wMaster.duelsWon || 0) + 1;
       wMaster.totalBattleWins = (wMaster.duelsWon || 0) + (wMaster.servantKills || 0);
 
-      const s = wMaster.servants?.find(srv => srv.id === winner.servant.id) ||
-                wMaster.servants?.find(srv => srv.id === wMaster.activeServantId) ||
-                wMaster.servants?.find(srv => srv.template?.name === winner.servant.template?.name) ||
-                wMaster.servants?.[0];
+      const s = isRandomMatch
+        ? (wMaster.servants?.find(srv => srv.id === wMaster.activeServantId) || wMaster.servants?.[0])
+        : (wMaster.servants?.find(srv => srv.id === winner.servant.id) ||
+           wMaster.servants?.find(srv => srv.id === wMaster.activeServantId) ||
+           wMaster.servants?.find(srv => srv.template?.name === winner.servant.template?.name) ||
+           wMaster.servants?.[0]);
 
       let bondDidLvl = false;
       let bondNewLvl = 1;
@@ -8798,10 +8961,10 @@ async function finalizeDuelRewardsAndSync(
           wMaster.commandSeals = winner.commandSeals;
         }
 
-        const sIdx = wMaster.servants.findIndex(srv => srv.id === (s?.id || winner.servant.id));
+        const sIdx = wMaster.servants.findIndex(srv => srv.id === s.id);
         if (sIdx !== -1) {
           wMaster.servants[sIdx] = updatedS;
-        } else {
+        } else if (!isRandomMatch) {
           wMaster.servants[0] = updatedS;
         }
 
@@ -8832,8 +8995,9 @@ async function finalizeDuelRewardsAndSync(
           ? ' 👑 **[1v2 Solo Clutch]**'
           : (isAlliance2v2 ? ' 🏆 **[Alliance Victor]**' : ' 🏆 **[Victor]**'));
 
+      const draftTag = isRandomMatch ? ` 🎲 *[Draft: ${winner.servant.template?.name}]*` : '';
       winnerRewardLines.push(
-        `• 🏆 **Master ${winner.username}** (${sName})${roleStr}: +${winSq} SQ 💎 | +${winLevelExp.toLocaleString()} Level EXP ⚔️ | +${winBondExp} Bond EXP 💖 | +${winManaPrisms} Prisms 🔵${statStr}${battleLvlStr}${bondLvlStr}`
+        `• 🏆 **Master ${winner.username}** (${sName}${draftTag})${roleStr}: +${winSq} SQ 💎 | +${winLevelExp.toLocaleString()} Level EXP ⚔️ | +${winBondExp} Bond EXP 💖 | +${winManaPrisms} Prisms 🔵${statStr}${battleLvlStr}${bondLvlStr}`
       );
 
       if (warLevelNotice) {
@@ -8875,10 +9039,12 @@ async function finalizeDuelRewardsAndSync(
       s.master.manaPrisms = (s.master.manaPrisms || 0) + loseManaPrisms;
       s.master.duelsLost = (s.master.duelsLost || 0) + 1;
 
-      const sLoser = s.master.servants?.find((srv: any) => srv.id === s.combatant.servant.id) ||
-                     s.master.servants?.find((srv: any) => srv.id === s.master.activeServantId) ||
-                     s.master.servants?.find((srv: any) => srv.template?.name === s.combatant.servant.template?.name) ||
-                     s.master.servants?.[0];
+      const sLoser = isRandomMatch
+        ? (s.master.servants?.find((srv: any) => srv.id === s.master.activeServantId) || s.master.servants?.[0])
+        : (s.master.servants?.find((srv: any) => srv.id === s.combatant.servant.id) ||
+           s.master.servants?.find((srv: any) => srv.id === s.master.activeServantId) ||
+           s.master.servants?.find((srv: any) => srv.template?.name === s.combatant.servant.template?.name) ||
+           s.master.servants?.[0]);
 
       let loserBondLvlUp = false;
       let loserNewBondLvl = 1;
@@ -8944,10 +9110,10 @@ async function finalizeDuelRewardsAndSync(
           }
         }
 
-        const sIdx = s.master.servants.findIndex((srv: any) => srv.id === (sLoser?.id || s.combatant.servant.id));
+        const sIdx = s.master.servants.findIndex((srv: any) => srv.id === sLoser?.id);
         if (sIdx !== -1) {
           s.master.servants[sIdx] = updatedLoser;
-        } else {
+        } else if (!isRandomMatch) {
           s.master.servants[0] = updatedLoser;
         }
 
@@ -8962,8 +9128,9 @@ async function finalizeDuelRewardsAndSync(
       const battleLvlStr = loserBattleLvlUp ? ` 🌟 **[LEVEL UP! Lv.${loserNewBattleLvl}]**` : '';
       const bondLvlStr = loserBondLvlUp ? ` 💖 **[Bond Lv.${loserNewBondLvl}!]**` : '';
       const roleStr = (isGank2v1) ? ' 🛡️ **[Courageous Stand]**' : '';
+      const draftTag = isRandomMatch ? ` 🎲 *[Draft: ${s.combatant.servant.template?.name}]*` : '';
       loserRewardLines.push(
-        `• 🎗️ **Master ${s.combatant.username}** (${sLoserName})${roleStr}: +${loseSq} SQ 💎 | +${loseLevelExp.toLocaleString()} Level EXP ⚔️ | +${loseBondExp} Bond EXP 💖 | +${loseManaPrisms} Prisms 🔵${statStr}${battleLvlStr}${bondLvlStr}`
+        `• 🎗️ **Master ${s.combatant.username}** (${sLoserName}${draftTag})${roleStr}: +${loseSq} SQ 💎 | +${loseLevelExp.toLocaleString()} Level EXP ⚔️ | +${loseBondExp} Bond EXP 💖 | +${loseManaPrisms} Prisms 🔵${statStr}${battleLvlStr}${bondLvlStr}`
       );
     }
   }
@@ -9019,7 +9186,8 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       }
     }
 
-    const isExplicitFree = text.includes('free') || text.includes('spar') || text.includes('safe');
+    const isRandomMatch = text.includes('random');
+    const isExplicitFree = text.includes('free') || text.includes('spar') || text.includes('safe') || isRandomMatch;
     let isFreeBattle = false;
     if (!preferredGuildId) {
       // Direct Messages: strictly default to Safe Mode
@@ -9046,7 +9214,9 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       mode = '2v2';
     }
 
-    const challengerServant = challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) || challengerMaster.servants[0];
+    const challengerServant = isRandomMatch
+      ? generateRandomDraftServant(challengerMaster.discordId)
+      : (challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) || challengerMaster.servants[0]);
 
     // ==========================================
     // 1v2 or 2v2 Multi-Master Prefix Duel
@@ -9061,7 +9231,7 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       if (is2v2) {
         if (mentionedUsers.length < 3) {
           await message.reply({
-            content: '❌ **2v2 Alliance Duel requires 3 mentioned Masters!**\nUsage: `!duel 2v2 @Ally @Opponent1 @Opponent2` (or `!duel free 2v2 @Ally @Opponent1 @Opponent2`)'
+            content: '❌ **2v2 Alliance Duel requires 3 mentioned Masters!**\nUsage: `!duel 2v2 @Ally @Opponent1 @Opponent2` (or `!duel random 2v2 @Ally @Opponent1 @Opponent2`)'
           });
           return;
         }
@@ -9071,7 +9241,7 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       } else {
         if (mentionedUsers.length < 2) {
           await message.reply({
-            content: '❌ **1v2 Raid Duel requires 2 mentioned rival Masters!**\nUsage: `!duel 1v2 @Opponent1 @Opponent2` (or `!duel free 1v2 @Opponent1 @Opponent2`)'
+            content: '❌ **1v2 Raid Duel requires 2 mentioned rival Masters!**\nUsage: `!duel 1v2 @Opponent1 @Opponent2` (or `!duel random 1v2 @Opponent1 @Opponent2`)'
           });
           return;
         }
@@ -9082,8 +9252,12 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       const opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
       const opp2Master = await getOrCreateMaster(opponent2User.id, opponent2User.username);
 
-      const opponentServant = opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0];
-      const opp2Servant = opp2Master.servants?.find(s => s.id === opp2Master.activeServantId) || opp2Master.servants?.[0];
+      const opponentServant = isRandomMatch
+        ? generateRandomDraftServant(opponentUser.id)
+        : (opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0]);
+      const opp2Servant = isRandomMatch
+        ? generateRandomDraftServant(opponent2User.id)
+        : (opp2Master.servants?.find(s => s.id === opp2Master.activeServantId) || opp2Master.servants?.[0]);
 
       if (!opponentServant) {
         await message.reply({ content: `❌ Rival Master <@${opponentUser.id}> has not summoned a Servant yet!` });
@@ -9100,7 +9274,9 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       if (is2v2 && allyUser) {
         const allyMaster = await getOrCreateMaster(allyUser.id, allyUser.username);
         p1AllyMaster = allyMaster;
-        const allyServant = allyMaster.servants?.find(s => s.id === allyMaster.activeServantId) || allyMaster.servants?.[0];
+        const allyServant = isRandomMatch
+          ? generateRandomDraftServant(allyUser.id)
+          : (allyMaster.servants?.find(s => s.id === allyMaster.activeServantId) || allyMaster.servants?.[0]);
         if (!allyServant) {
           await message.reply({ content: `❌ Allied Master <@${allyUser.id}> has not summoned a Servant yet!` });
           return;
@@ -9108,23 +9284,23 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
         const allyPart = warSession.participants[allyMaster.discordId];
         const allyHp = (isFreeBattle || getMasterEnvironment(allyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (allyPart ? calculateCurrentHp(allyPart) : undefined);
         const allySeals = (isFreeBattle || getMasterEnvironment(allyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (allyPart?.commandSeals ?? allyMaster.commandSeals);
-        p1Ally = createCombatant(allyMaster, allyServant, false, allyHp, isFreeBattle, allySeals);
+        p1Ally = createCombatant(allyMaster, allyServant, false, allyHp, isFreeBattle, allySeals, isRandomMatch);
       }
 
       const p1Part = warSession.participants[challengerMaster.discordId];
       const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
       const p1Seals = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part?.commandSeals ?? challengerMaster.commandSeals);
-      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals);
+      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals, isRandomMatch);
 
       const p2Part = warSession.participants[opponentMaster.discordId];
       const p2Hp = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
       const p2Seals = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part?.commandSeals ?? opponentMaster.commandSeals);
-      const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle, p2Seals);
+      const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle, p2Seals, isRandomMatch);
 
       const opp2Part = warSession.participants[opp2Master.discordId];
       const opp2Hp = (isFreeBattle || getMasterEnvironment(opp2Master, preferredGuildId, warSession) === 'safe') ? undefined : (opp2Part ? calculateCurrentHp(opp2Part) : undefined);
       const opp2Seals = (isFreeBattle || getMasterEnvironment(opp2Master, preferredGuildId, warSession) === 'safe') ? undefined : (opp2Part?.commandSeals ?? opp2Master.commandSeals);
-      const p2Ally = createCombatant(opp2Master, opp2Servant, false, opp2Hp, isFreeBattle, opp2Seals);
+      const p2Ally = createCombatant(opp2Master, opp2Servant, false, opp2Hp, isFreeBattle, opp2Seals, isRandomMatch);
 
       if (is2v2) {
         p1.critStars = 25;
@@ -9141,13 +9317,17 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
         invitedHumans.set(allyUser.id, { user: allyUser, role: 'Allied Master (Team 1)', accepted: false });
       }
 
-      const matchHeading = isFreeBattle
-        ? (is2v2 ? '🕊️ FREE BATTLE: 2v2 ALLIANCE SPARRING' : '🕊️ FREE BATTLE: 1v2 RAID SPARRING')
-        : (is2v2 ? '⚔️ HOLY GRAIL WAR: 2v2 TAG-TEAM CLASH' : '⚔️ HOLY GRAIL WAR: 1v2 RAID SURVIVAL');
+      const matchHeading = isRandomMatch
+        ? (is2v2 ? '🎲 RANDOM MATCH: 2v2 ALLIANCE DRAFT' : '🎲 RANDOM MATCH: 1v2 RAID DRAFT')
+        : (isFreeBattle
+          ? (is2v2 ? '🕊️ FREE BATTLE: 2v2 ALLIANCE SPARRING' : '🕊️ FREE BATTLE: 1v2 RAID SPARRING')
+          : (is2v2 ? '⚔️ HOLY GRAIL WAR: 2v2 TAG-TEAM CLASH' : '⚔️ HOLY GRAIL WAR: 1v2 RAID SURVIVAL'));
 
-      const matchFormatDesc = isFreeBattle
-        ? `• **Format:** 🕊️ Free Battle / Safe Mode *(Zero elimination risk, intact Command Seals & friendly sparring rewards)*`
-        : `• **Format:** ⚔️ Holy Grail War Tournament *(Ranked stakes, Command Seal survival & full War rewards)*`;
+      const matchFormatDesc = isRandomMatch
+        ? `• **Format:** 🎲 Random Match / Safe Mode *(Random Lv.100 Servants + Random 5★ CE + 100 Stat Points, Zero elimination risk)*`
+        : (isFreeBattle
+          ? `• **Format:** 🕊️ Free Battle / Safe Mode *(Zero elimination risk, intact Command Seals & friendly sparring rewards)*`
+          : `• **Format:** ⚔️ Holy Grail War Tournament *(Ranked stakes, Command Seal survival & full War rewards)*`);
 
       const inviteEmbed = new EmbedBuilder()
         .setTitle(matchHeading)
@@ -9262,9 +9442,11 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       const targetMaster = await getOrCreateMaster(targetUser.id, targetUser.username);
       const p2Part = warSession.participants[targetMaster.discordId];
       const isTargetInWar = !isFreeBattle && getMasterEnvironment(targetMaster, preferredGuildId, warSession) === 'war' && p2Part && p2Part.isAlive;
-      const targetServant = (isTargetInWar && p2Part?.servantId)
-        ? (targetMaster.servants?.find(s => s.id === p2Part.servantId) || targetMaster.servants?.find(s => s.id === targetMaster.activeServantId) || targetMaster.servants?.[0])
-        : (targetMaster.servants?.find(s => s.id === targetMaster.activeServantId) || targetMaster.servants?.[0]);
+      const targetServant = isRandomMatch
+        ? generateRandomDraftServant(targetUser.id)
+        : ((isTargetInWar && p2Part?.servantId)
+          ? (targetMaster.servants?.find(s => s.id === p2Part.servantId) || targetMaster.servants?.find(s => s.id === targetMaster.activeServantId) || targetMaster.servants?.[0])
+          : (targetMaster.servants?.find(s => s.id === targetMaster.activeServantId) || targetMaster.servants?.[0]));
       if (!targetServant) {
         await message.reply({ content: `❌ Rival Master <@${targetUser.id}> has not summoned a Servant yet!` });
         return;
@@ -9273,21 +9455,27 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
       const p1Part = warSession.participants[challengerMaster.discordId];
       const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
       const p1Seals = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part?.commandSeals ?? challengerMaster.commandSeals);
-      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals);
+      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals, isRandomMatch);
 
       const p2Hp = (isFreeBattle || getMasterEnvironment(targetMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
       const p2Seals = (isFreeBattle || getMasterEnvironment(targetMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part?.commandSeals ?? targetMaster.commandSeals);
-      const p2 = createCombatant(targetMaster, targetServant, false, p2Hp, isFreeBattle, p2Seals);
+      const p2 = createCombatant(targetMaster, targetServant, false, p2Hp, isFreeBattle, p2Seals, isRandomMatch);
 
-      const matchHeading = isFreeBattle ? '🕊️ FREE BATTLE: 1v1 SPARRING' : '⚔️ HOLY GRAIL WAR: 1v1 DUEL CHALLENGE';
+      const matchHeading = isRandomMatch
+        ? '🎲 RANDOM MATCH: 1v1 DRAFT CHALLENGE'
+        : (isFreeBattle ? '🕊️ FREE BATTLE: 1v1 SPARRING' : '⚔️ HOLY GRAIL WAR: 1v1 DUEL CHALLENGE');
+      const formatDesc = isRandomMatch
+        ? '🎲 Random Draft / Safe Mode (Lv.100 + 5★ CE + 100 Stat Points, Zero elimination risk)'
+        : (isFreeBattle ? '🕊️ Free Battle / Safe Mode (Zero elimination risk, intact seals)' : '⚔️ Holy Grail War (Ranked stakes)');
+
       const inviteEmbed = new EmbedBuilder()
         .setTitle(matchHeading)
         .setDescription(
-          `Master <@${message.author.id}> (**${challengerServant.template?.name || 'Servant'}**) challenges <@${targetUser.id}> (**${targetServant.template?.name || 'Servant'}**) to a ${isFreeBattle ? 'friendly sparring match' : 'Holy Grail War duel'}!\n\n` +
-          `• **Format:** ${isFreeBattle ? '🕊️ Free Battle / Safe Mode (Zero elimination risk, intact seals)' : '⚔️ Holy Grail War (Ranked stakes)'}\n\n` +
+          `Master <@${message.author.id}> (**${challengerServant.template?.name || 'Servant'}**) challenges <@${targetUser.id}> (**${targetServant.template?.name || 'Servant'}**) to a ${isRandomMatch ? 'Random Draft duel' : isFreeBattle ? 'friendly sparring match' : 'Holy Grail War duel'}!\n\n` +
+          `• **Format:** ${formatDesc}\n\n` +
           `<@${targetUser.id}>, do you accept this challenge?`
         )
-        .setColor(isFreeBattle ? 0x38bdf8 : 0xd4af37);
+        .setColor(isRandomMatch ? 0x8b5cf6 : isFreeBattle ? 0x38bdf8 : 0xd4af37);
 
       const inviteRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId('accept_1v1_duel').setLabel('Accept Duel').setEmoji('⚔️').setStyle(ButtonStyle.Success),
@@ -9338,6 +9526,50 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
     }
 
     // Solo 1v1 vs AI or Available Master
+    if (isRandomMatch) {
+      const aiDraftServant = generateRandomDraftServant('ai_random_vanguard');
+      const aiMasterMock: MasterProfile = {
+        id: 'ai_random_vanguard',
+        discordId: 'ai_random_vanguard',
+        username: 'Shadow Magus (AI Random Vanguard)',
+        avatarUrl: aiDraftServant.template.avatarUrl,
+        saintQuartz: 0,
+        summonTickets: 0,
+        commandSeals: 3,
+        actionPoints: 100,
+        maxActionPoints: 100,
+        pityCount: 0,
+        grailWarWins: 0,
+        duelsWon: 0,
+        duelsLost: 0,
+        activeServantId: aiDraftServant.id,
+        servants: [aiDraftServant],
+        craftEssences: [],
+        environmentMode: 'safe'
+      };
+
+      const p1 = createCombatant(challengerMaster, challengerServant, false, undefined, true, 3, true);
+      const p2 = createCombatant(aiMasterMock, aiDraftServant, true, undefined, true, 0, true);
+
+      const startMsg = await message.reply({
+        content: `🎲 **Entering Random Draft Arena!** Drafted **${challengerServant.template.name}** [Lv.100 • 5★ ${challengerServant.equippedCe?.name}] vs **${aiDraftServant.template.name}** [Lv.100 • 5★ ${aiDraftServant.equippedCe?.name}]!`
+      });
+
+      const fakeTrigger: any = {
+        deferred: true,
+        replied: true,
+        user: message.author,
+        channel: message.channel,
+        editReply: async (opts: any) => startMsg.edit(opts),
+        reply: async (opts: any) => message.reply(opts),
+        fetchReply: async () => startMsg,
+        isButton: () => false
+      };
+
+      await startInteractiveDuel(fakeTrigger, p1, p2, challengerMaster, aiMasterMock, undefined, undefined, null, null, true);
+      return;
+    }
+
     const p1Part = warSession.participants[challengerMaster.discordId];
     const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
     const p1Seals = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part?.commandSeals ?? challengerMaster.commandSeals);
