@@ -2581,7 +2581,7 @@ function activateCombatantSkill(
     combatant.activeBuffs.push({
       name: 'Idea Blood (Buff-On-Defense: Heal)',
       type: 'buff_on_defense_heal',
-      value: 10,
+      value: 5000,
       remainingHits: 3,
       remainingTurns: 3,
       isHitCount: true
@@ -2592,7 +2592,7 @@ function activateCombatantSkill(
       value: 1,
       remainingTurns: 1
     });
-    logText = `🩸 **${sName}** activated **${skill.name}**! (Hand converted to All ${chosenType} [1T]!, +20% NP Gauge, +100% DEF [1T], +10% HP Heal on Hit [3 Hits/3T]!)${quoteLine}`;
+    logText = `🩸 **${sName}** activated **${skill.name}**! (Hand converted to All ${chosenType} [1T]!, +20% NP Gauge, +100% DEF [1T], +5,000 HP Heal on Hit [3 Hits/3T]!)${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
@@ -4450,13 +4450,13 @@ function resolveStrike(
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
 
-  // Ciel S3: Idea Blood: Hemonomic Principle B (Recovers 10% HP when taking attack, 3 hits/3 turns)
+  // Ciel S3: Idea Blood: Hemonomic Principle B (Recovers 5,000 HP when taking attack, 3 hits/3 turns)
   if (totalSeqDmg > 0 && defender.currentHp > 0 && defender.activeBuffs) {
     const healOnDef = defender.activeBuffs.find(b => b.type === 'buff_on_defense_heal') as any;
     if (healOnDef && (healOnDef.remainingHits === undefined || healOnDef.remainingHits > 0)) {
       const healingDownDebuff = defender.activeBuffs.filter(b => b.type === 'healing_down').reduce((s, b) => s + b.value, 0);
       const healMod = Math.max(0, 1.0 - healingDownDebuff / 100);
-      const healAmt = Math.round(defender.maxHp * 0.10 * healMod);
+      const healAmt = Math.round((healOnDef.value || 5000) * healMod);
       defender.currentHp = Math.min(defender.maxHp, defender.currentHp + healAmt);
       if (healOnDef.remainingHits !== undefined) {
         healOnDef.remainingHits--;

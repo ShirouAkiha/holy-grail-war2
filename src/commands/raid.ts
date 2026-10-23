@@ -3077,12 +3077,12 @@ async function runRaidBattle(
             active.activeBuffs.push({
               name: 'Idea Blood (Buff-On-Defense: Heal)',
               type: 'buff_on_defense_heal',
-              value: 10,
+              value: 5000,
               remainingHits: 3,
               remainingTurns: 3,
               isHitCount: true
             } as any);
-            buffLog = `(🩸 Hand converted to All ${chosenType} [1T]!, +50% NP Gauge, +100% DEF [3T], +10% HP Heal on Hit [3 Hits/3T]!)`;
+            buffLog = `(🩸 Hand converted to All ${chosenType} [1T]!, +50% NP Gauge, +100% DEF [3T], +5,000 HP Heal on Hit [3 Hits/3T]!)`;
           } else if (skillObj?.id === 'knight_of_utopia_ex' || /knight of utopia/i.test(sName)) {
             // Artoria S1: Knight of Utopia EX
             participants.forEach(p => {
@@ -5095,11 +5095,11 @@ function applyDamageToRaidParticipant(
   const finalDamage = Math.round(damage * endMitigation);
   p.currentHp = p.currentHp - finalDamage;
 
-  // Idea Blood: Recover 10% HP when taking damage (3 times, 3 turns)
+  // Idea Blood: Recover 5,000 HP when taking damage (3 times, 3 turns)
   if (finalDamage > 0 && p.currentHp > 0 && p.activeBuffs) {
     const healOnDef = p.activeBuffs.find(b => b.type === 'buff_on_defense_heal') as any;
     if (healOnDef && (healOnDef.remainingHits === undefined || healOnDef.remainingHits > 0)) {
-      const healAmt = Math.round(p.maxHp * 0.10);
+      const healAmt = healOnDef.value || 5000;
       p.currentHp = Math.min(p.maxHp, p.currentHp + healAmt);
       if (healOnDef.remainingHits !== undefined) {
         healOnDef.remainingHits--;

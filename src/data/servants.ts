@@ -3119,7 +3119,7 @@ Upon revival, she was bewildered by her newfound shock and anger. Over time, as 
         id: 'ciel_skill_3',
         name: 'Idea Blood: Hemonomic Principle B',
         cooldown: 6,
-        description: 'Randomly changes all attack cards in Command Deck to one of the 3 types (all Buster, all Arts, or all Quick) for 1 turn. Charges own NP gauge by 20% in duels (50% in raids). Increases own defense by 100% for 1 turn in duels (3 turns in raids). Grants self Buff-On-Defense for 3 hits/3 turns (Recovers own HP by 10% when taking an attack).',
+        description: 'Randomly changes all attack cards in Command Deck to one of the 3 types (all Buster, all Arts, or all Quick) for 1 turn. Charges own NP gauge by 20% in duels (50% in raids). Increases own defense by 100% for 1 turn in duels (3 turns in raids). Grants self Buff-On-Defense for 3 hits/3 turns (Recovers own HP by 5000 when taking an attack).',
         effectType: 'def_up',
         value: 100,
         duration: 1,
