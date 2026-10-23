@@ -22,7 +22,7 @@ import { getUnlockedPassives } from '../data/servants';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
 import { calculateInstantDeathChance } from '../utils/instantDeathHelper';
-import { TurnTelemetryEntry, buildTurnTelemetryEmbed, buildTurnTelemetryComponents } from '../engine/combatTelemetry';
+import { TurnTelemetryEntry, CardStrikeDetail, SkillActivationDetail, buildTurnTelemetryEmbed, buildTurnTelemetryComponents } from '../engine/combatTelemetry';
 import {
   DARK_SAKURA_ASSETS,
   checkPacifistMilestone,
@@ -1520,6 +1520,7 @@ async function runRaidBattle(
       let npEffectsLog: string[] = [];
       let npEffectsHud: string[] = [];
       let npNameUsed = '';
+      const cardStrikes: CardStrikeDetail[] = [];
 
       pendingCards.forEach((card, cIdx) => {
         const stepMult = cIdx === 0 ? 1.0 : cIdx === 1 ? 1.2 : 1.4;
@@ -1548,20 +1549,35 @@ async function runRaidBattle(
         }
 
         if (card === 'Buster') {
-          totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * classAdvantageMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
-          starsGenerated += Math.round(3 * critStarBonus);
+          const strikeDmg = Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * classAdvantageMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          totalTurnDmg += strikeDmg;
+          const strikeStars = Math.round(3 * critStarBonus);
+          starsGenerated += strikeStars;
           let bsterNp = Math.round(5 * critNpBonus);
           if (active.activeBuffs && active.activeBuffs.some(b => b.type === 'buff_on_attack_buster_np' || b.type === 'ciel_buster_on_attack' || (b.name && b.name.includes('Knight of Utopia')))) {
             bsterNp += 10;
             npEffectsLog.push('⚡ [Ciel Buster: +10% NP Gauge!]');
           }
           npGained += bsterNp;
+
+          cardStrikes.push({
+            cardIndex: cIdx,
+            cardType: 'Buster',
+            isCrit,
+            critChancePercent: critPct,
+            damageDealt: strikeDmg,
+            npRefund: bsterNp,
+            starsGenerated: strikeStars
+          });
         } else if (card === 'Arts') {
-          totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * classAdvantageMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          const strikeDmg = Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * classAdvantageMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          totalTurnDmg += strikeDmg;
           const totalAtkMana = (baseStatsAtk.mana || 10) + (allocAtk.mana || 0);
           const manaNpBonus = Math.min(0.35, (totalAtkMana / (totalAtkMana + 120)) * 0.35);
-          npGained += Math.round(25 * critNpBonus * (1.0 + manaNpBonus));
-          starsGenerated += Math.round(2 * critStarBonus);
+          const strikeNp = Math.round(25 * critNpBonus * (1.0 + manaNpBonus));
+          npGained += strikeNp;
+          const strikeStars = Math.round(2 * critStarBonus);
+          starsGenerated += strikeStars;
 
           // Ciel Arts On-Attack effects: -20% Healing Received (3T), strip boss Guts, 30% chance for 1 Diamond drain
           if (active.activeBuffs && active.activeBuffs.some(b => b.type === 'ciel_arts_on_attack')) {
@@ -1582,10 +1598,23 @@ async function runRaidBattle(
               npEffectsLog.push('🔒 [Phasing Fluid Blade: Drained 1 Boss Charge Diamond!]');
             }
           }
+
+          cardStrikes.push({
+            cardIndex: cIdx,
+            cardType: 'Arts',
+            isCrit,
+            critChancePercent: critPct,
+            damageDealt: strikeDmg,
+            npRefund: strikeNp,
+            starsGenerated: strikeStars
+          });
         } else if (card === 'Quick') {
-          totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
-          starsGenerated += Math.round(12 * critStarBonus);
-          npGained += Math.round(10 * critNpBonus);
+          const strikeDmg = Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          totalTurnDmg += strikeDmg;
+          const strikeStars = Math.round(12 * critStarBonus);
+          starsGenerated += strikeStars;
+          const strikeNp = Math.round(10 * critNpBonus);
+          npGained += strikeNp;
 
           // Quick Curse Cleanse Buff (Soul of Water Channels)
           if (active.activeBuffs && active.activeBuffs.some(b => b.type === 'buff_on_quick_curse_cleanse')) {
@@ -1601,6 +1630,16 @@ async function runRaidBattle(
               npEffectsLog.push('🧹 [Quick Cleanse: Removed 1 Curse & Gained +10% ATK!]');
             }
           }
+
+          cardStrikes.push({
+            cardIndex: cIdx,
+            cardType: 'Quick',
+            isCrit,
+            critChancePercent: critPct,
+            damageDealt: strikeDmg,
+            npRefund: strikeNp,
+            starsGenerated: strikeStars
+          });
         } else if (card === 'NP') {
           const rawNpMult = active.servant.template?.noblePhantasm?.multiplier ?? 600;
           const npMultiplier = rawNpMult >= 20 ? rawNpMult / 100 : (rawNpMult || 6.0);
@@ -2198,17 +2237,32 @@ async function runRaidBattle(
             const cardPerfMult = effectiveNpCardType === 'Arts' ? artsBuffMult : effectiveNpCardType === 'Quick' ? quickBuffMult : busterBuffMult;
             const npCeDmgMult = 1.0 + (moonMargaretNpDmgBonus / 100);
 
-            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * cardPerfMult * typhonRaidDebuffScale * archetypeChaoticRaidScale * apocryphaRaidScale * cielDemonicRaidScale * classAdvantageMult * atkBuffMult * specialAtkMult * effectiveBossDef * npSpecialMult * npCeDmgMult * (0.95 + Math.random() * 0.1));
+            const npStepDmg = Math.round(baseAtk * npMultiplier * overchargeScale * cardPerfMult * typhonRaidDebuffScale * archetypeChaoticRaidScale * apocryphaRaidScale * cielDemonicRaidScale * classAdvantageMult * atkBuffMult * specialAtkMult * effectiveBossDef * npSpecialMult * npCeDmgMult * (0.95 + Math.random() * 0.1));
+            totalTurnDmg += npStepDmg;
+
+            let npRefundVal = 0;
+            let npStarsVal = 0;
             if (effectiveNpCardType === 'Arts') {
-              npGained += Math.round(25 * (1.0 + (artsBuffMult - 1.0)));
-              starsGenerated += 5;
+              npRefundVal = Math.round(25 * (1.0 + (artsBuffMult - 1.0)));
+              npStarsVal = 5;
             } else if (effectiveNpCardType === 'Quick') {
-              starsGenerated += Math.round(25 * (1.0 + (quickBuffMult - 1.0)));
-              npGained += 10;
+              npStarsVal = Math.round(25 * (1.0 + (quickBuffMult - 1.0)));
+              npRefundVal = 10;
             } else {
-              starsGenerated += 10;
-              npGained += 15;
+              npStarsVal = 10;
+              npRefundVal = 15;
             }
+            npGained += npRefundVal;
+            starsGenerated += npStarsVal;
+
+            cardStrikes.push({
+              cardIndex: cIdx,
+              cardType: 'NP',
+              isCrit: false,
+              damageDealt: npStepDmg,
+              npRefund: npRefundVal,
+              starsGenerated: npStarsVal
+            });
           }
         }
       });
@@ -2282,9 +2336,9 @@ async function runRaidBattle(
         targetHpBefore: bossHpBeforeAttack,
         targetHpAfter: battleState.bossCurrentHp,
         targetMaxHp: battleState.bossMaxHp,
-        skillsUsed: [],
+        skillsUsed: active.skillsUsedThisTurn || [],
         cardsSequence: [...pendingCards],
-        cardStrikes: [],
+        cardStrikes: cardStrikes,
         totalDamage: totalTurnDmg,
         totalNpGained: npGained,
         totalStarsGained: starsGenerated,
@@ -2293,6 +2347,7 @@ async function runRaidBattle(
         targetBuffsSummary: (battleState.bossBuffs || []).map(b => `${b.name} (${b.value > 0 ? '+' : ''}${b.value}%) [${b.remainingTurns}t]`),
         wasTargetVanquished: battleState.bossCurrentHp <= 0
       };
+      active.skillsUsedThisTurn = [];
       battleState.telemetryHistory.push(raidTelemetry);
 
       // Update single-focus Tactical Action HUD with THIS turn's strike damage & full NP details!
@@ -4205,6 +4260,15 @@ async function runRaidBattle(
         const sServName = active.servant.nickname || active.servant.template?.name || 'Heroic Spirit';
         battleState.recentLogs.push(`✨ **${sServName}** invoked **${sName}**! ${buffLog}${quoteText}`);
         if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
+
+        active.skillsUsedThisTurn = active.skillsUsedThisTurn || [];
+        active.skillsUsedThisTurn.push({
+          skillName: sName,
+          skillIndex: sIdx,
+          description: sDesc,
+          cooldownPlaced: cd,
+          effects: buffLog ? [buffLog.replace(/[\(\)\*]/g, '').trim()] : []
+        });
 
         // Update single-focus Tactical Action HUD for this skill activation!
         const cleanBuffDetail = buffLog ? buffLog.replace(/[\(\)\*]/g, '').trim() : 'Active Skill Protocols Activated';

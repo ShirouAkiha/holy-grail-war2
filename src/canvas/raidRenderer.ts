@@ -574,6 +574,7 @@ export interface RaidParticipantState {
   gutsCount?: number;
   isEvading?: boolean;
   bondLevel?: number;
+  skillsUsedThisTurn?: any[];
 }
 
 export interface RaidBattleState {
