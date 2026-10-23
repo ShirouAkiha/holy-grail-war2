@@ -125,12 +125,22 @@ function formatBuffList(buffs: string[]): string[] {
     }
   }
 
-  // Display up to 8 distinct grouped buff lines (fits cleanly within Discord embed 1024 char limits)
-  const MAX_DISPLAY = 8;
-  const topBuffs = grouped.slice(0, MAX_DISPLAY);
-  const remainingCount = grouped.length - topBuffs.length;
+  // Display ALL buffs dynamically up to character safety limit (leaving room for both combatants within Discord's 1024 char field limit)
+  const lines: string[] = [];
+  let currentLength = 0;
+  const MAX_CHAR_LIMIT = 460; // Max characters per combatant section
 
-  const lines = topBuffs.map(b => `  • ${b}`);
+  let idx = 0;
+  for (; idx < grouped.length; idx++) {
+    const line = `  • ${grouped[idx]}`;
+    if (currentLength + line.length > MAX_CHAR_LIMIT) {
+      break;
+    }
+    lines.push(line);
+    currentLength += line.length + 1;
+  }
+
+  const remainingCount = grouped.length - idx;
   if (remainingCount > 0) {
     lines.push(`  └─ *+${remainingCount} additional active effects*`);
   }
