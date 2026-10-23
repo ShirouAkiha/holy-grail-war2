@@ -3000,11 +3000,10 @@ async function runRaidBattle(
               value: 10,
               remainingTurns: 5
             });
-            const maxHp = active.maxHp || calculateServantMaxHp(active.servant);
             active.activeBuffs.push({
               name: 'Human Mana Factory (HP Regen)',
               type: 'hp_regen',
-              value: Math.round(maxHp * 0.05),
+              value: 5000,
               remainingTurns: 5
             });
             active.activeBuffs.push({
@@ -3019,7 +3018,7 @@ async function runRaidBattle(
               value: 100,
               remainingTurns: 5
             });
-            buffLog = `(✝️ +10% NP/T [5T], +5% HP/T [5T], +50% Debuff Res [5T], +100% Buff Removal Res [5T]!)`;
+            buffLog = `(✝️ +10% NP/T [5T], +5,000 HP/T [5T], +50% Debuff Res [5T], +100% Buff Removal Res [5T]!)`;
           } else if (skillObj?.id === 'phasing_fluid_blade_b_plus' || /phasing fluid blade/i.test(sName)) {
             // Ciel S2: Phasing Fluid Blade B+
             active.activeBuffs = active.activeBuffs || [];

@@ -3096,8 +3096,8 @@ Upon revival, she was bewildered by her newfound shock and anger. Over time, as 
       {
         id: 'ciel_skill_1',
         name: 'Human Mana Factory A',
-        cooldown: 6,
-        description: 'Charges own NP gauge by 10% every turn for 5 turns. Recovers own HP by 5% every turn for 5 turns. Increases own debuff resistance by 50% for 5 turns. Increases own buff removal resistance by 100% for 5 turns.',
+        cooldown: 8,
+        description: 'Charges own NP gauge by 10% every turn for 5 turns. Recovers own HP by 5000 every turn for 5 turns. Increases own debuff resistance by 50% for 5 turns. Increases own buff removal resistance by 100% for 5 turns.',
         effectType: 'np_regen',
         value: 10,
         duration: 5,

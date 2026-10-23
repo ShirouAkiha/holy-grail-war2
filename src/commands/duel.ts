@@ -2507,7 +2507,7 @@ function activateCombatantSkill(
     combatant.activeBuffs.push({
       name: 'Human Mana Factory (HP Regen)',
       type: 'hp_regen',
-      value: Math.round(combatant.maxHp * 0.05),
+      value: 5000,
       remainingTurns: 5
     });
     combatant.activeBuffs.push({
@@ -2522,7 +2522,7 @@ function activateCombatantSkill(
       value: 100,
       remainingTurns: 5
     });
-    logText = `✝️ **${sName}** activated **${skill.name}**! (+10% NP/T [5T], +5% HP/T [5T], +50% Debuff Res [5T], +100% Buff Removal Res [5T]!)${quoteLine}`;
+    logText = `✝️ **${sName}** activated **${skill.name}**! (+10% NP/T [5T], +5,000 HP/T [5T], +50% Debuff Res [5T], +100% Buff Removal Res [5T]!)${quoteLine}`;
   } else if (skill.id === 'ciel_skill_2' || skill.id === 'phasing_fluid_blade_b_plus' || /phasing fluid blade/i.test(skill.name)) {
     // Ciel S2: Phasing Fluid Blade B+
     combatant.activeBuffs = combatant.activeBuffs || [];
