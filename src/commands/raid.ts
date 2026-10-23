@@ -22,6 +22,7 @@ import { getUnlockedPassives } from '../data/servants';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
 import { calculateInstantDeathChance } from '../utils/instantDeathHelper';
+import { TurnTelemetryEntry, buildTurnTelemetryEmbed, buildTurnTelemetryComponents } from '../engine/combatTelemetry';
 import {
   DARK_SAKURA_ASSETS,
   checkPacifistMilestone,
@@ -1406,6 +1407,8 @@ async function runRaidBattle(
 
     try {
       const active = currentActiveParticipant;
+      const actorHpBeforeAttack = active.currentHp;
+      const bossHpBeforeAttack = battleState.bossCurrentHp;
       if (interactionToEdit) {
         try {
           if (!interactionToEdit.deferred && !interactionToEdit.replied) {
@@ -2256,6 +2259,35 @@ async function runRaidBattle(
       battleState.recentLogs.push(playerAttackLog);
       while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
 
+      battleState.telemetryHistory = battleState.telemetryHistory || [];
+      const raidTelemetry: TurnTelemetryEntry = {
+        turnNumber: battleState.telemetryHistory.length + 1,
+        round: battleState.round,
+        timestamp: new Date(),
+        actorName: servName,
+        actorClass: active.servant.template?.servantClass || 'Saber',
+        actorUserId: active.userId,
+        targetName: boss.name,
+        targetClass: boss.servantClass,
+        actorHpBefore: actorHpBeforeAttack,
+        actorHpAfter: active.currentHp,
+        actorMaxHp: active.maxHp,
+        targetHpBefore: bossHpBeforeAttack,
+        targetHpAfter: battleState.bossCurrentHp,
+        targetMaxHp: battleState.bossMaxHp,
+        skillsUsed: [],
+        cardsSequence: [...pendingCards],
+        cardStrikes: [],
+        totalDamage: totalTurnDmg,
+        totalNpGained: npGained,
+        totalStarsGained: starsGenerated,
+        defensesTriggered: [],
+        actorBuffsSummary: (active.activeBuffs || []).map(b => `${b.name} (${b.value > 0 ? '+' : ''}${b.value}%) [${b.remainingTurns}t]`),
+        targetBuffsSummary: (battleState.bossBuffs || []).map(b => `${b.name} (${b.value > 0 ? '+' : ''}${b.value}%) [${b.remainingTurns}t]`),
+        wasTargetVanquished: battleState.bossCurrentHp <= 0
+      };
+      battleState.telemetryHistory.push(raidTelemetry);
+
       // Update single-focus Tactical Action HUD with THIS turn's strike damage & full NP details!
       let subDetailStr = '';
       if (usedNp) {
@@ -2614,41 +2646,70 @@ async function runRaidBattle(
       return;
     }
 
-    // 0.1 Combat Log Inspection (Accessible by any Master at any time)
-    if (i.customId === 'raid_combat_log') {
+    // 0.1 Combat Log Inspection (Accessible by any Master at any time - Paginated 1-Turn Per Page)
+    if (i.customId === 'raid_combat_log' || i.customId.startsWith('raid_log_nav_')) {
       try {
-        if (!i.deferred && !i.replied) {
-          await i.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
-        }
-        const fullLines = (battleState.fullCombatLog && battleState.fullCombatLog.length > 0)
-          ? battleState.fullCombatLog
-          : (battleState.recentLogs && battleState.recentLogs.length > 0)
-            ? battleState.recentLogs
-            : ['Battle commenced. No actions logged yet.'];
-
-        const logChunks: string[] = [];
-        let cur = '';
-        for (const line of fullLines) {
-          if ((cur + '\n' + line).length > 3800) {
-            logChunks.push(cur);
-            cur = line;
+        let reqPage = -1;
+        if (i.customId.startsWith('raid_log_nav_')) {
+          if (i.customId.includes('indicator')) {
+            await i.deferUpdate().catch(() => {});
+            return;
+          }
+          if (i.customId.includes('_first')) {
+            reqPage = 0;
+          } else if (i.customId.includes('_latest')) {
+            reqPage = -1;
           } else {
-            cur = cur ? cur + '\n' + line : line;
+            const parts = i.customId.split('_');
+            const lastPart = parts[parts.length - 1];
+            reqPage = parseInt(lastPart, 10);
+            if (isNaN(reqPage)) reqPage = -1;
           }
         }
-        if (cur) logChunks.push(cur);
 
-        const isTiamat = battleState.boss.id === 'tiamat';
-        const logEmbed = new EmbedBuilder()
-          .setTitle(`📜 Complete Combat Log • Round ${battleState.round} • ${battleState.boss.name}`)
-          .setDescription(logChunks[logChunks.length - 1] || 'No events recorded yet.')
-          .setColor(isTiamat ? 0xd946ef : 0x8b5cf6)
-          .setFooter({ text: `Total Battle Events: ${fullLines.length} • Fate/Grand Order PvE Raid` });
+        const history = (battleState.telemetryHistory || []) as TurnTelemetryEntry[];
 
-        if (i.deferred || i.replied) {
-          await i.editReply({ embeds: [logEmbed] }).catch(() => {});
+        if (history.length > 0) {
+          const totalPages = history.length;
+          let page = reqPage;
+          if (page === -1 || page >= totalPages) page = totalPages - 1;
+          page = Math.max(0, Math.min(totalPages - 1, page));
+
+          const entry = history[page];
+          const logEmbed = buildTurnTelemetryEmbed(entry, page, totalPages);
+          const components = buildTurnTelemetryComponents(page, totalPages, 'raid_log_nav');
+
+          if (i.customId.startsWith('raid_log_nav_')) {
+            await i.update({ embeds: [logEmbed], components }).catch(() => {});
+          } else {
+            if (!i.deferred && !i.replied) {
+              await i.reply({ embeds: [logEmbed], components, flags: MessageFlags.Ephemeral }).catch(() => {});
+            } else {
+              await i.editReply({ embeds: [logEmbed], components }).catch(() => {});
+            }
+          }
         } else {
-          await i.reply({ embeds: [logEmbed], flags: MessageFlags.Ephemeral }).catch(() => {});
+          // Fallback if no telemetry entries exist yet
+          const fullLines = (battleState.fullCombatLog && battleState.fullCombatLog.length > 0)
+            ? battleState.fullCombatLog
+            : (battleState.recentLogs && battleState.recentLogs.length > 0)
+              ? battleState.recentLogs
+              : ['Battle commenced. No actions logged yet.'];
+
+          const isTiamat = battleState.boss.id === 'tiamat';
+          const logEmbed = new EmbedBuilder()
+            .setTitle(`📜 Complete Combat Log • Round ${battleState.round} • ${battleState.boss.name}`)
+            .setDescription(fullLines.slice(-15).join('\n'))
+            .setColor(isTiamat ? 0xd946ef : 0x8b5cf6)
+            .setFooter({ text: `Total Battle Events: ${fullLines.length} • Fate/Grand Order PvE Raid` });
+
+          if (i.customId.startsWith('raid_log_nav_')) {
+            await i.update({ embeds: [logEmbed], components: [] }).catch(() => {});
+          } else if (!i.deferred && !i.replied) {
+            await i.reply({ embeds: [logEmbed], flags: MessageFlags.Ephemeral }).catch(() => {});
+          } else {
+            await i.editReply({ embeds: [logEmbed] }).catch(() => {});
+          }
         }
       } catch (logErr: any) {
         const errCode = logErr?.code || logErr?.rawError?.code;

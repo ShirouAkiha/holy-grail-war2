@@ -32,6 +32,14 @@ import { getRandomBackgroundUrl } from '../data/backgrounds';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 import { getParameterRankMultiplier, getEnduranceDamageReductionPercent, getServantDefaultParamRank } from '../engine/statSystem';
 import { calculateInstantDeathChance } from '../utils/instantDeathHelper';
+import {
+  TurnTelemetryEntry,
+  CardStrikeDetail,
+  SkillActivationDetail,
+  DefensiveTriggerDetail,
+  buildTurnTelemetryEmbed,
+  buildTurnTelemetryComponents
+} from '../engine/combatTelemetry';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -1069,59 +1077,13 @@ function buildDetailedCombatLogEmbed(
   p2: DuelCombatant,
   round: number,
   activeUserId: string,
-  history: DetailedDuelAction[],
+  history: (DetailedDuelAction | TurnTelemetryEntry)[],
   p1Ally?: DuelCombatant,
   p2Ally?: DuelCombatant,
   teamSoloList: DuelCombatant[] = [],
   requestedPage: number = -1
 ): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] } {
-  const PAGE_SIZE = 4;
-  const totalEntries = history.length;
-  const totalPages = Math.max(1, Math.ceil(totalEntries / PAGE_SIZE));
-
-  let page = requestedPage;
-  if (page === -1 || page >= totalPages) {
-    page = totalPages - 1; // Default to latest page so user sees recent actions
-  }
-  page = Math.max(0, Math.min(totalPages - 1, page));
-
-  const startIdx = page * PAGE_SIZE;
-  const pageEntries = history.slice(startIdx, startIdx + PAGE_SIZE);
-
-  const embed = new EmbedBuilder()
-    .setTitle(`📜 HOLY GRAIL WAR — COMBAT DOSSIER & BATTLE LOG`)
-    .setColor(0x38bdf8)
-    .setDescription(
-      `⚔️ **Current Battle State:** Round **${round}** • Turn Active: <@${activeUserId}>\n` +
-      `📊 **Total Actions Recorded:** **${history.length}** tactical event(s) • **Page ${page + 1} of ${totalPages}**\n` +
-      `──────────────────────────────────────────────`
-    );
-
-  if (pageEntries.length > 0) {
-    for (let idx = 0; idx < pageEntries.length; idx++) {
-      const entry = pageEntries[idx];
-      const globalNum = startIdx + idx + 1;
-      const targetStr = entry.targetName ? ` ➔ **${entry.targetName}**` : '';
-      const formattedDetails = formatCombatLogEntryDetails(entry);
-
-      const fieldTitle = `#${globalNum} [R${entry.round}] ${entry.title}`;
-      const fieldValue =
-        `• **Actor:** **${entry.actorName}**${targetStr}\n` +
-        `${formattedDetails}`;
-
-      embed.addFields({
-        name: fieldTitle.slice(0, 256),
-        value: fieldValue.slice(0, 1024)
-      });
-    }
-  } else {
-    embed.addFields({
-      name: '🏆 Turn-by-Turn Combat Chronicle',
-      value: '• *No combat actions recorded in history yet.*'
-    });
-  }
-
-  // Combatant Health & Gauge Overview
+  // Combatant Health & Gauge Overview summary
   const allLiving = [p1, p2, p1Ally, p2Ally, ...teamSoloList].filter((c): c is DuelCombatant => !!c);
   const statusOverview = allLiving.map(c => {
     const sName = c.servant.nickname || c.servant.template?.name || 'Servant';
@@ -1130,8 +1092,7 @@ function buildDetailedCombatLogEmbed(
     const npType = getCombatantNpCardTypeDisplay(c);
     const seals = c.commandSeals !== undefined ? `${c.commandSeals} Seal(s)` : 'N/A';
     const buffCount = c.activeBuffs ? c.activeBuffs.length : 0;
-    
-    // Skill cooldown status
+
     const skills = c.servant.template?.skills || [];
     const skillStatus = skills.map((s, idx) => {
       const cd = c.skillCooldowns[idx] || 0;
@@ -1144,40 +1105,59 @@ function buildDetailedCombatLogEmbed(
            `• **Skills:** ${skillStatus || 'None'}`;
   }).join('\n\n');
 
-  embed.addFields({
-    name: '📊 Combatants Status & Tactical Skills',
-    value: statusOverview.slice(0, 1024)
-  });
+  if (!history || history.length === 0) {
+    const emptyEmbed = new EmbedBuilder()
+      .setTitle(`📜 HOLY GRAIL WAR — COMBAT DOSSIER & BATTLE LOG`)
+      .setColor(0x38bdf8)
+      .setDescription(
+        `⚔️ **Current Battle State:** Round **${round}** • Turn Active: <@${activeUserId}>\n` +
+        `📊 **Total Actions Recorded:** **0** tactical events • **Round 1 Initial Engagement**\n` +
+        `──────────────────────────────────────────────\n` +
+        `*No combat turns executed yet. Select 3 Command Cards or activate tactical skills to commence battle!*`
+      )
+      .addFields({
+        name: '📊 Combatants Status & Tactical Skills',
+        value: statusOverview.slice(0, 1024)
+      })
+      .setFooter({ text: 'Holy Grail War Tactical Telemetry • Real-Time Combat Log Archive' });
 
-  embed.setFooter({ text: `Holy Grail War Tactical Telemetry • Page ${page + 1}/${totalPages} • Real-Time Combat Log Archive` });
-
-  const components: ActionRowBuilder<ButtonBuilder>[] = [];
-  if (totalPages > 1 || history.length > 0) {
-    const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`combat_log_page_${Math.max(0, page - 1)}`)
-        .setLabel('◀ Prev Actions')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(page <= 0),
-      new ButtonBuilder()
-        .setCustomId('combat_log_page_indicator')
-        .setLabel(`Page ${page + 1} / ${totalPages}`)
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(true),
-      new ButtonBuilder()
-        .setCustomId(`combat_log_page_${Math.min(totalPages - 1, page + 1)}`)
-        .setLabel('Next Actions ▶')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(page >= totalPages - 1),
-      new ButtonBuilder()
-        .setCustomId(`combat_log_page_${page}`)
-        .setLabel('🔄 Refresh')
-        .setStyle(ButtonStyle.Success)
-    );
-    components.push(navRow);
+    return { embed: emptyEmbed, components: buildTurnTelemetryComponents(0, 1, 'combat_log_nav') };
   }
 
-  return { embed, components };
+  const totalPages = history.length;
+  let page = requestedPage;
+  if (page === -1 || page >= totalPages) {
+    page = totalPages - 1; // Default to latest turn
+  }
+  page = Math.max(0, Math.min(totalPages - 1, page));
+
+  const entry = history[page];
+
+  // If this entry is a rich TurnTelemetryEntry, render the comprehensive full breakdown
+  if ('turnNumber' in entry && 'cardStrikes' in entry) {
+    const embed = buildTurnTelemetryEmbed(entry as TurnTelemetryEntry, page, totalPages, statusOverview);
+    const components = buildTurnTelemetryComponents(page, totalPages, 'combat_log_nav');
+    return { embed, components };
+  }
+
+  // Fallback for legacy DetailedDuelAction format
+  const legacyAction = entry as DetailedDuelAction;
+  const legacyEmbed = new EmbedBuilder()
+    .setTitle(`📜 COMBAT DOSSIER — ROUND ${legacyAction.round || round} • EVENT #${page + 1}`)
+    .setColor(0x38bdf8)
+    .setDescription(
+      `⚔️ **Action:** **${legacyAction.title || 'Tactical Event'}**\n` +
+      `• **Actor:** **${legacyAction.actorName}**${legacyAction.targetName ? ` ➔ **${legacyAction.targetName}**` : ''}\n` +
+      `──────────────────────────────────────────────\n` +
+      `${formatCombatLogEntryDetails(legacyAction)}`
+    )
+    .addFields({
+      name: '📊 Combatants Status & Tactical Skills',
+      value: statusOverview.slice(0, 1024)
+    })
+    .setFooter({ text: `Turn ${page + 1} of ${totalPages} • Holy Grail War Engine` });
+
+  return { embed: legacyEmbed, components: buildTurnTelemetryComponents(page, totalPages, 'combat_log_nav') };
 }
 
 // ==========================================
@@ -3099,9 +3079,17 @@ function resolveStrike(
   cardsSequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[],
   dialogue?: { quote: string; tag: string },
   livingOpponents?: DuelCombatant[],
-  livingAllies?: DuelCombatant[]
+  livingAllies?: DuelCombatant[],
+  outTelemetry?: Partial<TurnTelemetryEntry>
 ): string {
   const chainTags: string[] = [];
+
+  if (outTelemetry) {
+    outTelemetry.actorHpBefore = attacker.currentHp;
+    outTelemetry.targetHpBefore = defender.currentHp;
+    outTelemetry.cardStrikes = [];
+    outTelemetry.defensesTriggered = [];
+  }
 
   // Auto-activate [Ignore Invincibility] if Noble Phantasm is selected and has Ignore Invincible (e.g. Typhon Ephemeros)
   const npTpl = attacker.servant.template?.noblePhantasm;
@@ -4265,6 +4253,16 @@ function resolveStrike(
       attacker.npGauge = npRefund;
       totalNpGained += npRefund;
       totalStarsGained += npStars;
+      if (outTelemetry) {
+        outTelemetry.cardStrikes?.push({
+          cardIndex: i,
+          cardType: 'NP',
+          isCrit: false,
+          damageDealt: totalNpDmgVal,
+          npRefund,
+          starsGenerated: npStars
+        });
+      }
       // NP damage is handled separately in the flashy NP block.
     } else if (card === 'Buster') {
       if (attackerCe) {
@@ -4320,6 +4318,19 @@ function resolveStrike(
       }
 
       totalSeqDmg += hitDmg;
+
+      if (outTelemetry) {
+        outTelemetry.cardStrikes?.push({
+          cardIndex: i,
+          cardType: 'Buster',
+          isCrit: hitCrit,
+          critChancePercent: Math.round(critChance * 100),
+          damageDealt: hitDmg,
+          blockedBy: hitProt.isProtected ? hitProt.type : undefined,
+          npRefund: npAmt,
+          starsGenerated: starsAmt
+        });
+      }
     } else if (card === 'Arts') {
       if (attackerCe) {
         const ceLogs = processCeOnAttackEffects(attacker, defender, card);
@@ -4407,6 +4418,19 @@ function resolveStrike(
       }
 
       totalSeqDmg += hitDmg;
+
+      if (outTelemetry) {
+        outTelemetry.cardStrikes?.push({
+          cardIndex: i,
+          cardType: 'Arts',
+          isCrit: hitCrit,
+          critChancePercent: Math.round(critChance * 100),
+          damageDealt: hitDmg,
+          blockedBy: hitProt.isProtected ? hitProt.type : undefined,
+          npRefund: npGain,
+          starsGenerated: artsStars
+        });
+      }
     } else if (card === 'Quick') {
       if (attackerCe) {
         const ceLogs = processCeOnAttackEffects(attacker, defender, card);
@@ -4473,6 +4497,19 @@ function resolveStrike(
       totalNpGained += quickNp;
 
       totalSeqDmg += hitDmg;
+
+      if (outTelemetry) {
+        outTelemetry.cardStrikes?.push({
+          cardIndex: i,
+          cardType: 'Quick',
+          isCrit: hitCrit,
+          critChancePercent: Math.round(critChance * 100),
+          damageDealt: hitDmg,
+          blockedBy: hitProt.isProtected ? hitProt.type : undefined,
+          npRefund: quickNp,
+          starsGenerated: starsGained
+        });
+      }
     }
   }
 
@@ -4495,6 +4532,18 @@ function resolveStrike(
     totalNpGained += extraNp;
     const extraStars = 3 + (isQuickFirst ? 2 : 0) + (presenceConcealBonus > 0 ? 2 : 0);
     totalStarsGained += extraStars;
+
+    if (outTelemetry) {
+      outTelemetry.cardStrikes?.push({
+        cardIndex: 3,
+        cardType: 'Buster',
+        isCrit: false,
+        damageDealt: extraDmg,
+        blockedBy: extraProt.isProtected ? extraProt.type : undefined,
+        npRefund: extraNp,
+        starsGenerated: extraStars
+      });
+    }
   }
 
   // Set the combatant's critical star pool for the upcoming turn based on hits + active turn-start star buffs
@@ -4523,6 +4572,13 @@ function resolveStrike(
     const actualCut = Math.min(totalSeqDmg, totalCut);
     totalSeqDmg = Math.max(0, totalSeqDmg - actualCut);
     chainTags.push(`🛡️ Damage Cut (-${actualCut.toLocaleString()} DMG)`);
+    if (outTelemetry && actualCut > 0) {
+      outTelemetry.defensesTriggered?.push({
+        type: 'damage_cut',
+        label: `🛡️ Damage Cut: Absorbed -${actualCut.toLocaleString()} DMG`,
+        value: actualCut
+      });
+    }
   }
 
   // Veteran of the Slums EX Check (Bond 5 Passive)
@@ -4561,6 +4617,13 @@ function resolveStrike(
         }
       }
       chainTags.push(`🩸 Idea Blood (+${healAmt.toLocaleString()} HP Recovered on Hit)`);
+      if (outTelemetry) {
+        outTelemetry.defensesTriggered?.push({
+          type: 'on_defense_heal',
+          label: `🩸 Idea Blood: Recovered +${healAmt.toLocaleString()} HP on Hit`,
+          value: healAmt
+        });
+      }
     }
   }
 
@@ -4622,6 +4685,13 @@ function resolveStrike(
     const avengerRefund = Math.round(12 * (1.0 + avengerBonus / 100));
     defender.npGauge = Math.min(300, defender.npGauge + avengerRefund);
     avengerLog = `\n🖤 **[Avenger]** ${defender.servant.template.name} gained **+${avengerRefund}% NP** from suffering damage!`;
+    if (outTelemetry) {
+      outTelemetry.defensesTriggered?.push({
+        type: 'avenger',
+        label: `🖤 Avenger: +${avengerRefund}% NP gained from suffering damage`,
+        value: avengerRefund
+      });
+    }
   }
 
   // Check for Guts (Battle Continuation / Castle of Snow / Absolute Permanence / Indomitable A)
@@ -4660,6 +4730,14 @@ function resolveStrike(
     }
     defender.currentHp = reviveHp;
 
+    if (outTelemetry && gutsText) {
+      outTelemetry.defensesTriggered?.push({
+        type: 'guts',
+        label: gutsText.trim().replace(/^\n+/, ''),
+        value: reviveHp
+      });
+    }
+
     // Check On-Guts Buster Up buff (Indomitable A)
     const onGutsIndex = defender.activeBuffs.findIndex(b => (b.type as any) === 'on_guts_buster');
     if (onGutsIndex !== -1) {
@@ -4693,6 +4771,21 @@ function resolveStrike(
   const quoteLine = dInfo.quote ? `\n💬 *“${dInfo.quote}”*` : '';
 
   const grandTotalDamage = totalSeqDmg + (hasNpHit ? totalNpDmgVal : 0);
+
+  if (outTelemetry) {
+    outTelemetry.actorHpAfter = attacker.currentHp;
+    outTelemetry.targetHpAfter = defender.currentHp;
+    outTelemetry.totalDamage = grandTotalDamage;
+    outTelemetry.totalNpGained = totalNpGained;
+    outTelemetry.totalStarsGained = totalStarsGained;
+    outTelemetry.chainsTriggered = [...chainTags];
+    outTelemetry.wasTargetVanquished = defender.currentHp <= 0;
+    outTelemetry.actorBuffsSummary = (attacker.activeBuffs || []).map(b => `${b.name || b.type}${b.value ? ` (${b.value > 0 ? '+' : ''}${b.value}%)` : ''} [${b.remainingTurns ?? b.remainingHits ?? '∞'}t]`);
+    outTelemetry.targetBuffsSummary = (defender.activeBuffs || []).map(b => `${b.name || b.type}${b.value ? ` (${b.value > 0 ? '+' : ''}${b.value}%)` : ''} [${b.remainingTurns ?? b.remainingHits ?? '∞'}t]`);
+    if (dInfo?.quote) {
+      outTelemetry.quote = dInfo.quote;
+    }
+  }
 
   const dmgLine = hasNpHit
     ? `• Dealt **${grandTotalDamage.toLocaleString()} DMG** to target team *(Breakdown: ${totalNpDmgVal.toLocaleString()} NP DMG • ${totalSeqDmg.toLocaleString()} Chain Cards DMG)*\n`
@@ -6418,7 +6511,8 @@ async function startInteractiveDuel(
           (btn.customId.startsWith('card_') ||
            btn.customId.startsWith('target_') ||
            btn.customId.startsWith('skill_') ||
-           btn.customId.startsWith('fj_'))
+           btn.customId.startsWith('fj_') ||
+           btn.customId.startsWith('combat_log_'))
       })
     : battleMsg.createMessageComponentCollector({
         componentType: ComponentType.Button,
@@ -6429,7 +6523,8 @@ async function startInteractiveDuel(
           (btn.customId.startsWith('card_') ||
            btn.customId.startsWith('target_') ||
            btn.customId.startsWith('skill_') ||
-           btn.customId.startsWith('fj_'))
+           btn.customId.startsWith('fj_') ||
+           btn.customId.startsWith('combat_log_'))
       });
 
   const advanceTurn = async (
@@ -6798,16 +6893,16 @@ async function startInteractiveDuel(
       }
 
       // CASE: COMPREHENSIVE COMBAT LOG & BATTLE CHRONICLE
-      if (i.customId === 'card_combat_log' || i.customId === 'duel_combat_log' || i.customId.startsWith('combat_log_page_')) {
+      if (i.customId === 'card_combat_log' || i.customId === 'duel_combat_log' || i.customId.startsWith('combat_log_')) {
         let reqPage = -1; // -1 defaults to latest page
-        if (i.customId.startsWith('combat_log_page_')) {
-          const parts = i.customId.split('_');
-          const pageStr = parts[3];
-          if (pageStr === 'indicator') {
+        if (i.customId.startsWith('combat_log_')) {
+          if (i.customId === 'combat_log_indicator' || i.customId === 'combat_log_page_indicator') {
             await i.deferUpdate().catch(() => {});
             return;
           }
-          reqPage = parseInt(pageStr, 10);
+          const parts = i.customId.split('_');
+          const lastPart = parts[parts.length - 1];
+          reqPage = parseInt(lastPart, 10);
           if (isNaN(reqPage)) reqPage = -1;
         }
 
@@ -6823,7 +6918,7 @@ async function startInteractiveDuel(
           reqPage
         );
 
-        if (i.customId.startsWith('combat_log_page_')) {
+        if (i.customId.startsWith('combat_log_') && i.customId !== 'card_combat_log' && i.customId !== 'duel_combat_log') {
           await i.update({
             embeds: [combatLogEmbed],
             components: pageComponents

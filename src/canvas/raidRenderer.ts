@@ -588,6 +588,7 @@ export interface RaidBattleState {
   lastPlayerAttackLog?: string;
   bossBuffs?: { name: string; type: string; value: number; remainingTurns: number; appliedRound?: number }[];
   fullCombatLog?: string[];
+  telemetryHistory?: any[];
   // Multi-Phase Break Gauge fields
   currentPhase?: number; // 1, 2, or 3
   totalPhases?: number; // e.g. 3
