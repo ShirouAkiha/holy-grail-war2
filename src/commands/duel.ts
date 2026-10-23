@@ -255,7 +255,8 @@ function createCombatant(
   servant: MasterServantInstance,
   isAi: boolean = false,
   overrideCurrentHp?: number,
-  isFreeBattle: boolean = false
+  isFreeBattle: boolean = false,
+  overrideCommandSeals?: number
 ): DuelCombatant {
   const templateId = servant.templateId || servant.template?.id || servant.id;
   const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || servant.template;
@@ -379,7 +380,13 @@ function createCombatant(
     activeBuffs: initialBuffs,
     skillCooldowns: {},
     gutsCount: 0,
-    commandSeals: isAi ? 0 : (isFreeBattle || master.environmentMode === 'safe' ? 3 : (master.commandSeals ?? 3)),
+    commandSeals: isAi
+      ? 0
+      : (isFreeBattle
+        ? 3
+        : (overrideCommandSeals !== undefined
+          ? Math.max(0, overrideCommandSeals)
+          : (master.commandSeals ?? 3))),
     drawPile: [],
     masterAvatarUrl: (master.avatarUrl && !master.avatarUrl.includes('unsplash.com')) ? master.avatarUrl : undefined
   };
@@ -4880,20 +4887,24 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         }
         const allyPart = warSession.participants[allyMaster.discordId];
         const allyHp = (isFreeBattle || getMasterEnvironment(allyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (allyPart ? calculateCurrentHp(allyPart) : undefined);
-        p1Ally = createCombatant(allyMaster, allyServant, false, allyHp, isFreeBattle);
+        const allySeals = (isFreeBattle || getMasterEnvironment(allyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (allyPart?.commandSeals ?? allyMaster.commandSeals);
+        p1Ally = createCombatant(allyMaster, allyServant, false, allyHp, isFreeBattle, allySeals);
       }
 
       const p1Part = warSession.participants[challengerMaster.discordId];
       const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
-      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
+      const p1Seals = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part?.commandSeals ?? challengerMaster.commandSeals);
+      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals);
 
       const p2Part = warSession.participants[opponentMaster.discordId];
       const p2Hp = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
-      const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle);
+      const p2Seals = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part?.commandSeals ?? opponentMaster.commandSeals);
+      const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle, p2Seals);
 
       const opp2Part = warSession.participants[p2AllyMaster.discordId];
       const opp2Hp = (isFreeBattle || getMasterEnvironment(p2AllyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (opp2Part ? calculateCurrentHp(opp2Part) : undefined);
-      const p2Ally = createCombatant(p2AllyMaster, opp2Servant, false, opp2Hp, isFreeBattle);
+      const opp2Seals = (isFreeBattle || getMasterEnvironment(p2AllyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (opp2Part?.commandSeals ?? p2AllyMaster.commandSeals);
+      const p2Ally = createCombatant(p2AllyMaster, opp2Servant, false, opp2Hp, isFreeBattle, opp2Seals);
 
       if (is2v2) {
         p1.critStars = 25;
@@ -5331,12 +5342,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             try {
               const p1Part = warSession.participants[challengerMaster.discordId];
               const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
-              const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
+              const p1Seals = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part?.commandSeals ?? challengerMaster.commandSeals);
+              const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals);
 
               const p2Part = warSession.participants[opponentUser.id] ||
                 Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
               const p2Hp = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
-              const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle);
+              const p2Seals = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part?.commandSeals ?? opponentMaster.commandSeals);
+              const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle, p2Seals);
               await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster, undefined, undefined, undefined, undefined, isFreeBattle);
             } catch (duelErr: any) {
               console.error('Error starting duel after accept:', duelErr);
@@ -5605,12 +5618,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           try {
             const p1Part = warSession.participants[challengerMaster.discordId];
             const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
-            const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
+            const p1Seals = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part?.commandSeals ?? challengerMaster.commandSeals);
+            const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals);
 
             const p2Part = warSession.participants[targetRival.discordId] ||
               Object.values(warSession.participants).find(p => p.username.toLowerCase() === targetRival.username.toLowerCase());
             const p2Hp = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
-            const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle);
+            const p2Seals = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part?.commandSeals ?? opponentMaster.commandSeals);
+            const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle, p2Seals);
             await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster, undefined, undefined, undefined, undefined, isFreeBattle);
           } catch (duelErr: any) {
             console.error('Error starting duel after accept (rival):', duelErr);
@@ -5668,6 +5683,7 @@ async function startInteractiveDuel(
   isFreeBattle?: boolean
 ) {
   const preferredGuildId = contextInteraction?.guildId || undefined;
+  const warSession = findActiveWarSessionForMaster(p1Master.discordId, p1Master, preferredGuildId);
   let round = 1;
   const t1 = p1.servant.template;
   const t2 = p2.servant.template;
@@ -6983,6 +6999,7 @@ async function startInteractiveDuel(
         const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
 
         const joinHp = (isFreeBattle || joinerMaster.environmentMode === 'safe') ? undefined : (joinPart ? calculateCurrentHp(joinPart) : undefined);
+        const joinSeals = (isFreeBattle || joinerMaster.environmentMode === 'safe') ? undefined : (joinPart?.commandSeals ?? joinerMaster.commandSeals);
 
         if (!isFreeBattle && ((joinServant.currentHp !== undefined && joinServant.currentHp <= 0) || (joinHp !== undefined && joinHp <= 0))) {
           await i.update({
@@ -6992,7 +7009,7 @@ async function startInteractiveDuel(
           return;
         }
 
-        const joinCombatant = createCombatant(joinerMaster, joinServant, false, joinHp, isFreeBattle);
+        const joinCombatant = createCombatant(joinerMaster, joinServant, false, joinHp, isFreeBattle, joinSeals);
         duelParticipantIds.add(i.user.id);
 
         joinCombatant.critStars = 20;
@@ -7178,6 +7195,7 @@ async function startInteractiveDuel(
         const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
 
         const joinHp = (isFreeBattle || joinerMaster.environmentMode === 'safe') ? undefined : (joinPart ? calculateCurrentHp(joinPart) : undefined);
+        const joinSeals = (isFreeBattle || joinerMaster.environmentMode === 'safe') ? undefined : (joinPart?.commandSeals ?? joinerMaster.commandSeals);
 
         if (!isFreeBattle && ((joinServant.currentHp !== undefined && joinServant.currentHp <= 0) || (joinHp !== undefined && joinHp <= 0))) {
           await i.update({
@@ -7187,7 +7205,7 @@ async function startInteractiveDuel(
           return;
         }
 
-        const joinCombatant = createCombatant(joinerMaster, joinServant, false, joinHp, isFreeBattle);
+        const joinCombatant = createCombatant(joinerMaster, joinServant, false, joinHp, isFreeBattle, joinSeals);
         duelParticipantIds.add(i.user.id);
 
         joinCombatant.critStars = 20;
@@ -7511,8 +7529,13 @@ async function startInteractiveDuel(
         }
 
         if (actingMaster) {
-          if (!isFreeBattle && actingMaster.environmentMode !== 'safe') {
+          const isActorWar = !isFreeBattle && (getMasterEnvironment(actingMaster, preferredGuildId, warSession) === 'war' || Boolean(warSession?.participants[actingMaster.discordId]?.isAlive));
+          if (isActorWar) {
             actingMaster.commandSeals = actor.commandSeals;
+            const wPart = warSession?.participants[actingMaster.discordId];
+            if (wPart) {
+              wPart.commandSeals = actor.commandSeals;
+            }
             await saveMaster(actingMaster);
           }
         }
@@ -8460,7 +8483,12 @@ async function finishDuel(
       if (s.master.bountyActive || (s.master.innocentKills || 0) >= 10 || s.master.isRogueHeretic) {
         const winningMaster = await getOrCreateMaster(primaryWinner.userId, primaryWinner.username);
         winningMaster.saintQuartz = (winningMaster.saintQuartz || 0) + 15;
-        winningMaster.commandSeals = Math.min(3, (winningMaster.commandSeals || 0) + 1);
+        const maxSeals = warSession?.rules?.startingCommandSeals ? Math.max(3, warSession.rules.startingCommandSeals) : 3;
+        winningMaster.commandSeals = Math.min(maxSeals, (winningMaster.commandSeals || 0) + 1);
+        const wPartBounty = warSession?.participants[primaryWinner.userId];
+        if (wPartBounty) {
+          wPartBounty.commandSeals = Math.min(maxSeals, (wPartBounty.commandSeals || 0) + 1);
+        }
 
         const winnerServant = winningMaster.servants?.find((srv: any) => srv.id === primaryWinner.servant.id);
         if (winnerServant) {
@@ -8767,6 +8795,7 @@ async function finalizeDuelRewardsAndSync(
           const sMaxHp = (updatedS as any).maxHp || updatedS.template?.baseHp || 50000;
           // If fallen teammate in ranked, revive safely at 1 HP Sanctuary rather than perishing
           updatedS.currentHp = Math.min(sMaxHp, Math.max(1, isFallenTeammate ? 1 : winner.currentHp));
+          wMaster.commandSeals = winner.commandSeals;
         }
 
         const sIdx = wMaster.servants.findIndex(srv => srv.id === (s?.id || winner.servant.id));
@@ -8827,6 +8856,7 @@ async function finalizeDuelRewardsAndSync(
         wPart.baseHpAtDamage = wPart.currentHp;
         wPart.lastDamageTime = Date.now();
         wPart.isAlive = true;
+        wPart.commandSeals = winner.commandSeals;
       }
     }
   }
@@ -8873,7 +8903,7 @@ async function finalizeDuelRewardsAndSync(
           updatedLoser.availableStatPoints = (updatedLoser.availableStatPoints || 0) + loseStatPoints;
         }
 
-        if (isLoserSafe || s.fate === 'kill') {
+        if (isLoserSafe) {
           const loserMaxHp = (updatedLoser as any).maxHp || updatedLoser.template?.baseHp || 50000;
           updatedLoser.currentHp = loserMaxHp;
           s.master.commandSeals = 3;
@@ -8882,13 +8912,36 @@ async function finalizeDuelRewardsAndSync(
             if (!s.master.guildEnvironmentModes) s.master.guildEnvironmentModes = {};
             s.master.guildEnvironmentModes[preferredGuildId] = 'safe';
           }
-          if (s.fate === 'kill' && s.master.servants) {
+        } else if (s.fate === 'kill') {
+          const loserMaxHp = (updatedLoser as any).maxHp || updatedLoser.template?.baseHp || 50000;
+          updatedLoser.currentHp = loserMaxHp;
+          s.master.commandSeals = 3;
+          s.master.environmentMode = 'safe';
+          if (preferredGuildId) {
+            if (!s.master.guildEnvironmentModes) s.master.guildEnvironmentModes = {};
+            s.master.guildEnvironmentModes[preferredGuildId] = 'safe';
+          }
+          if (s.participant) {
+            s.participant.commandSeals = 0;
+            s.participant.isAlive = false;
+          }
+          if (s.master.servants) {
             for (const srv of s.master.servants) {
               srv.currentHp = (srv as any).maxHp || srv.template?.baseHp || 50000;
             }
           }
         } else if (s.evacuated) {
           updatedLoser.currentHp = 1;
+          s.master.commandSeals = Math.max(0, s.availableSeals - 1);
+          if (s.participant) {
+            s.participant.commandSeals = Math.max(0, s.availableSeals - 1);
+          }
+        } else {
+          // Spared or surviving participant in Holy Grail War
+          s.master.commandSeals = s.combatant.commandSeals;
+          if (s.participant) {
+            s.participant.commandSeals = s.combatant.commandSeals;
+          }
         }
 
         const sIdx = s.master.servants.findIndex((srv: any) => srv.id === (sLoser?.id || s.combatant.servant.id));
@@ -9054,20 +9107,24 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
         }
         const allyPart = warSession.participants[allyMaster.discordId];
         const allyHp = (isFreeBattle || getMasterEnvironment(allyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (allyPart ? calculateCurrentHp(allyPart) : undefined);
-        p1Ally = createCombatant(allyMaster, allyServant, false, allyHp, isFreeBattle);
+        const allySeals = (isFreeBattle || getMasterEnvironment(allyMaster, preferredGuildId, warSession) === 'safe') ? undefined : (allyPart?.commandSeals ?? allyMaster.commandSeals);
+        p1Ally = createCombatant(allyMaster, allyServant, false, allyHp, isFreeBattle, allySeals);
       }
 
       const p1Part = warSession.participants[challengerMaster.discordId];
       const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
-      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
+      const p1Seals = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part?.commandSeals ?? challengerMaster.commandSeals);
+      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals);
 
       const p2Part = warSession.participants[opponentMaster.discordId];
       const p2Hp = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
-      const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle);
+      const p2Seals = (isFreeBattle || getMasterEnvironment(opponentMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part?.commandSeals ?? opponentMaster.commandSeals);
+      const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle, p2Seals);
 
       const opp2Part = warSession.participants[opp2Master.discordId];
       const opp2Hp = (isFreeBattle || getMasterEnvironment(opp2Master, preferredGuildId, warSession) === 'safe') ? undefined : (opp2Part ? calculateCurrentHp(opp2Part) : undefined);
-      const p2Ally = createCombatant(opp2Master, opp2Servant, false, opp2Hp, isFreeBattle);
+      const opp2Seals = (isFreeBattle || getMasterEnvironment(opp2Master, preferredGuildId, warSession) === 'safe') ? undefined : (opp2Part?.commandSeals ?? opp2Master.commandSeals);
+      const p2Ally = createCombatant(opp2Master, opp2Servant, false, opp2Hp, isFreeBattle, opp2Seals);
 
       if (is2v2) {
         p1.critStars = 25;
@@ -9215,10 +9272,12 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
 
       const p1Part = warSession.participants[challengerMaster.discordId];
       const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
-      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
+      const p1Seals = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part?.commandSeals ?? challengerMaster.commandSeals);
+      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals);
 
       const p2Hp = (isFreeBattle || getMasterEnvironment(targetMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
-      const p2 = createCombatant(targetMaster, targetServant, false, p2Hp, isFreeBattle);
+      const p2Seals = (isFreeBattle || getMasterEnvironment(targetMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p2Part?.commandSeals ?? targetMaster.commandSeals);
+      const p2 = createCombatant(targetMaster, targetServant, false, p2Hp, isFreeBattle, p2Seals);
 
       const matchHeading = isFreeBattle ? '🕊️ FREE BATTLE: 1v1 SPARRING' : '⚔️ HOLY GRAIL WAR: 1v1 DUEL CHALLENGE';
       const inviteEmbed = new EmbedBuilder()
@@ -9281,7 +9340,8 @@ export async function handlePrefixDuel(message: Message, args: string[]) {
     // Solo 1v1 vs AI or Available Master
     const p1Part = warSession.participants[challengerMaster.discordId];
     const p1Hp = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
-    const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
+    const p1Seals = (isFreeBattle || getMasterEnvironment(challengerMaster, preferredGuildId, warSession) === 'safe') ? undefined : (p1Part?.commandSeals ?? challengerMaster.commandSeals);
+    const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle, p1Seals);
 
     const allSpirits = getAllThroneServants();
     const otherSpirits = allSpirits.filter((s: any) => s.id !== challengerServant.templateId);
