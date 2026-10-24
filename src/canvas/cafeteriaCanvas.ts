@@ -24,6 +24,38 @@ const ROOM_COORDINATES: Record<string, NodeCoords> = {
   hallway: { x: 250, y: 250, label: 'Central Corridor' }
 };
 
+const DEFAULT_ROOM_DIALOGUES: Record<string, string> = {
+  dining_hall: '“Welcome to the Dining Hall, Master! Shall we prepare a feast for our fellow Servants?”',
+  kitchen_prep: '“The prep counter is clear, Master. Let us chop and season our ingredients with care.”',
+  kitchen_stove: '“The stove fires are blazingly hot! Keep an eye on the simmer pot so our dish turns out exquisite.”',
+  pantry: '“Our dry pantry is stocked with fine grains and spices. What shall we retrieve for today’s menu?”',
+  greenhouse: '“The greenhouse herbs and produce are thriving under Chaldea’s mana lights. Freshly harvested!”',
+  cold_storage: '“Brrr! It’s freezing in cold storage! Let’s quickly grab the fresh meats and seafood.”',
+  staff_lounge: '“Ah, a quiet moment in the staff lounge. Take a break and recharge your Mana, Master.”',
+  hallway: '“The central corridor of Chaldea... Servants are bustling to and from the kitchen!”'
+};
+
+function wrapCanvasText(ctx: any, text: string, maxWidth: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+  return lines;
+}
+
 async function safeLoadImage(canvasMod: any, url: string | undefined): Promise<any | null> {
   if (!url) return null;
   try {
@@ -201,7 +233,8 @@ export async function renderChaldeaLocationCanvas(
   room: CafeteriaRoom,
   currentMaster: StationedMaster,
   roomMasters: StationedMaster[],
-  activeStovePot?: StoveCookingPot
+  activeStovePot?: StoveCookingPot,
+  customDialogue?: string
 ): Promise<Buffer> {
   const canvasMod = getCanvasModule();
   const width = 960;

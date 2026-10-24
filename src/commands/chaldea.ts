@@ -118,7 +118,8 @@ export const data = new SlashCommandBuilder()
 export async function buildChaldeaViewportResponse(
   discordId: string,
   username: string,
-  avatarUrl: string
+  avatarUrl: string,
+  customDialogue?: string
 ): Promise<{ embeds: EmbedBuilder[]; components: ActionRowBuilder<any>[]; files: AttachmentBuilder[] }> {
   // Fetch master & active servant
   const dbMaster = await getMaster(discordId);
@@ -144,7 +145,7 @@ export async function buildChaldeaViewportResponse(
   // 1. Generate Dual Canvases in parallel
   const [mapBuffer, viewportBuffer] = await Promise.all([
     renderChaldeaNodeMapCanvas(room.id, Object.values(world.masters)),
-    renderChaldeaLocationCanvas(room, master, roomMasters, activePot)
+    renderChaldeaLocationCanvas(room, master, roomMasters, activePot, customDialogue)
   ]);
 
   const mapAttachment = new AttachmentBuilder(mapBuffer, { name: 'chaldea_map.png' });
