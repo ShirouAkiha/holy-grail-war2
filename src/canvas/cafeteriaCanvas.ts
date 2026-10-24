@@ -352,172 +352,195 @@ export async function renderChaldeaLocationCanvas(
   const otherMasters = roomMasters.filter(m => m.discordId !== currentMaster.discordId);
   const count = otherMasters.length;
 
-  // Sleek compact box dimensions (Tightly framed so background & servant remain prominent)
+  // Sleek compact top title pill bar (Does not obstruct background or characters)
   const hudX = 20;
   const hudY = 16;
-  const hudW = Math.min(460, 200 + Math.max(1, count) * 130);
-  const hudH = count === 0 ? 54 : 76;
+  const hudW = Math.min(480, 240 + Math.max(1, count) * 120);
+  const hudH = 36;
 
-  // Semi-transparent sci-fi slate background
   ctx.save();
-  ctx.fillStyle = 'rgba(8, 14, 28, 0.88)';
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.5)';
+  ctx.fillStyle = 'rgba(8, 14, 28, 0.85)';
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)';
   ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.roundRect(hudX, hudY, hudW, hudH, 8);
+  ctx.roundRect(hudX, hudY, hudW, hudH, 18);
   ctx.fill();
   ctx.stroke();
 
-  // Header title ribbon
+  // Header Title
   ctx.fillStyle = '#00e5ff';
-  ctx.font = 'bold 12px sans-serif';
+  ctx.font = 'bold 18px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`👥 STATIONED MASTERS IN THIS ZONE (${roomMasters.length})`, hudX + 14, hudY + 20);
+  ctx.shadowColor = 'rgba(0, 229, 255, 0.7)';
+  ctx.shadowBlur = 8;
+  ctx.fillText(`👥 STATIONED MASTERS IN THIS ZONE (${roomMasters.length})`, hudX + 16, hudY + 24);
+  ctx.restore();
 
   if (count === 0) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillText('You are currently the only Master stationed here.', hudX + 14, hudY + 40);
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 8;
+    ctx.fillText('You are currently the only Master stationed here.', hudX + 10, hudY + 68);
+    ctx.restore();
   } else {
-    // Dynamic Avatar Sizing: Clean 42px avatars with crisp 13px bold labels
-    const avatarSize = count <= 2 ? 42 : 36;
-    const radius = avatarSize / 2;
-    const nameFont = count <= 2 ? 'bold 13px sans-serif' : 'bold 11px sans-serif';
-    const statusFont = count <= 2 ? 'bold 11px sans-serif' : 'bold 10px sans-serif';
-    const stepX = count <= 2 ? 140 : 115;
+    // Render individual sleek floating glass pills for each stationed Master
     const maxDisplayed = Math.min(count, 3);
+    const pillW = count <= 2 ? 220 : 170;
+    const pillH = 64;
 
     for (let i = 0; i < maxDisplayed; i++) {
       const m = otherMasters[i];
-      const slotX = hudX + 14 + i * stepX;
-      const slotY = hudY + 26;
+      const slotX = hudX + i * (pillW + 12);
+      const slotY = hudY + 46;
 
-      const avatarCenterX = slotX + radius;
-      const avatarCenterY = slotY + radius;
+      // Floating Glass Pill Backdrop
+      ctx.save();
+      ctx.fillStyle = 'rgba(8, 14, 28, 0.85)';
+      ctx.strokeStyle = m.isAfk ? 'rgba(245, 158, 11, 0.6)' : 'rgba(16, 185, 129, 0.6)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(slotX, slotY, pillW, pillH, 32);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      const avatarSize = 54;
+      const radius = avatarSize / 2;
+      const avatarCenterX = slotX + 5 + radius;
+      const avatarCenterY = slotY + (pillH - avatarSize) / 2 + radius;
 
       const avImg = await safeLoadImage(canvasMod, m.avatarUrl);
 
-      // Draw circular avatar
+      // Draw circular avatar inside pill
       ctx.save();
       ctx.beginPath();
       ctx.arc(avatarCenterX, avatarCenterY, radius, 0, Math.PI * 2);
       ctx.clip();
       if (avImg) {
-        ctx.drawImage(avImg, slotX, slotY, avatarSize, avatarSize);
+        ctx.drawImage(avImg, slotX + 5, slotY + (pillH - avatarSize) / 2, avatarSize, avatarSize);
       } else {
         ctx.fillStyle = '#3b82f6';
-        ctx.fillRect(slotX, slotY, avatarSize, avatarSize);
+        ctx.fillRect(slotX + 5, slotY + (pillH - avatarSize) / 2, avatarSize, avatarSize);
       }
       ctx.restore();
 
-      // Glowing status border
+      // Glowing avatar stroke border
       ctx.save();
       ctx.beginPath();
       ctx.arc(avatarCenterX, avatarCenterY, radius, 0, Math.PI * 2);
       ctx.strokeStyle = m.isAfk ? '#f59e0b' : '#10b981';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
       ctx.restore();
 
-      // Master name badge
-      const textX = slotX + avatarSize + 8;
+      // Master name & status labels
+      const textX = slotX + avatarSize + 14;
+      ctx.save();
       ctx.textAlign = 'left';
-      ctx.font = nameFont;
+      ctx.font = count <= 2 ? 'bold 22px sans-serif' : 'bold 18px sans-serif';
       ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 6;
 
       const maxLen = count <= 2 ? 10 : 7;
       const displayName = m.username.length > maxLen ? `${m.username.slice(0, maxLen)}…` : m.username;
 
-      ctx.fillText(displayName, textX, avatarCenterY - 2);
+      ctx.fillText(displayName, textX, avatarCenterY - 4);
 
       // Status badge
-      ctx.font = statusFont;
+      ctx.font = count <= 2 ? 'bold 16px sans-serif' : 'bold 14px sans-serif';
       ctx.fillStyle = m.isAfk ? '#f59e0b' : '#10b981';
-      ctx.fillText(m.isAfk ? '💤 AFK' : '⚡ Active', textX, avatarCenterY + 12);
+      ctx.fillText(m.isAfk ? '💤 AFK' : '⚡ Active', textX, avatarCenterY + 18);
+      ctx.restore();
     }
 
     if (count > maxDisplayed) {
       const extraCount = count - maxDisplayed;
-      const extraX = hudX + 14 + maxDisplayed * stepX;
+      const extraX = hudX + maxDisplayed * (pillW + 12);
+      ctx.save();
       ctx.fillStyle = '#cbd5e1';
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillText(`+${extraCount} more`, extraX, hudY + 48);
+      ctx.font = 'bold 16px sans-serif';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = 6;
+      ctx.fillText(`+${extraCount} more`, extraX, hudY + 84);
+      ctx.restore();
     }
   }
-  ctx.restore();
 
   // 5. Active Stove Pot Callout (If currently in kitchen_stove)
   if (room.id === 'kitchen_stove' && activeStovePot) {
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
     ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(20, 100, 320, 48, 6);
+    ctx.roundRect(20, 122, 380, 56, 8);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillText(`🔥 ${activeStovePot.recipeEmoji} ${activeStovePot.recipeName}`, 32, 120);
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText(`🔥 ${activeStovePot.recipeEmoji} ${activeStovePot.recipeName}`, 34, 146);
 
     const now = Date.now();
     const remSec = Math.max(0, Math.ceil((activeStovePot.readyAt - now) / 1000));
     ctx.fillStyle = '#e2e8f0';
-    ctx.font = 'bold 10px sans-serif';
+    ctx.font = 'bold 14px sans-serif';
     const potStatus = remSec > 0 ? `Simmering (${remSec}s left) • Stirs: ${activeStovePot.stirCount}` : `READY TO PLATE!`;
-    ctx.fillText(potStatus, 32, 138);
+    ctx.fillText(potStatus, 34, 168);
   }
 
-  // 6. Visual Novel Dialogue Box Ribbon (Bottom)
-  const vnBoxX = 24;
-  const vnBoxY = height - 135;
-  const vnBoxW = width - 48;
-  const vnBoxH = 120;
+  // 6. Visual Novel Dialogue Box Ribbon (Bottom - 2x Scaled Large & Bold)
+  const vnBoxX = 20;
+  const vnBoxY = height - 160;
+  const vnBoxW = width - 40;
+  const vnBoxH = 140;
 
   // Semi-transparent deep dark background overlay
-  ctx.fillStyle = 'rgba(6, 10, 22, 0.92)';
+  ctx.fillStyle = 'rgba(6, 10, 22, 0.94)';
   ctx.strokeStyle = '#d4af37';
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.roundRect(vnBoxX, vnBoxY, vnBoxW, vnBoxH, 10);
+  ctx.roundRect(vnBoxX, vnBoxY, vnBoxW, vnBoxH, 12);
   ctx.fill();
   ctx.stroke();
 
   // Ornate gold corner accents
   ctx.fillStyle = '#d4af37';
-  ctx.fillRect(vnBoxX + 6, vnBoxY + 6, 14, 2);
-  ctx.fillRect(vnBoxX + 6, vnBoxY + 6, 2, 14);
-  ctx.fillRect(vnBoxX + vnBoxW - 20, vnBoxY + 6, 14, 2);
-  ctx.fillRect(vnBoxX + vnBoxW - 8, vnBoxY + 6, 2, 14);
+  ctx.fillRect(vnBoxX + 8, vnBoxY + 8, 16, 3);
+  ctx.fillRect(vnBoxX + 8, vnBoxY + 8, 3, 16);
+  ctx.fillRect(vnBoxX + vnBoxW - 24, vnBoxY + 8, 16, 3);
+  ctx.fillRect(vnBoxX + vnBoxW - 11, vnBoxY + 8, 3, 16);
 
-  ctx.fillRect(vnBoxX + 6, vnBoxY + vnBoxH - 8, 14, 2);
-  ctx.fillRect(vnBoxX + 6, vnBoxY + vnBoxH - 16, 2, 14);
-  ctx.fillRect(vnBoxX + vnBoxW - 20, vnBoxY + vnBoxH - 8, 14, 2);
-  ctx.fillRect(vnBoxX + vnBoxW - 8, vnBoxY + vnBoxH - 16, 2, 14);
+  ctx.fillRect(vnBoxX + 8, vnBoxY + vnBoxH - 11, 16, 3);
+  ctx.fillRect(vnBoxX + 8, vnBoxY + vnBoxH - 19, 3, 16);
+  ctx.fillRect(vnBoxX + vnBoxW - 24, vnBoxY + vnBoxH - 11, 16, 3);
+  ctx.fillRect(vnBoxX + vnBoxW - 11, vnBoxY + vnBoxH - 19, 3, 16);
 
-  // Servant Speaker Nameplate Badge
+  // Servant Speaker Nameplate Badge (30px Bold)
   const speakerName = currentMaster.companionServantName || 'Contracted Companion';
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 20px sans-serif';
+  ctx.font = 'bold 30px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`💬 ${speakerName}`, vnBoxX + 24, vnBoxY + 30);
+  ctx.fillText(`💬 ${speakerName}`, vnBoxX + 28, vnBoxY + 42);
 
-  // Servant Dialogue Text (Scaled Font Size ~22px with multi-line word wrapping)
+  // Servant Dialogue Text (32px Italic with multi-line word wrapping)
   const rawDialogue = customDialogue || DEFAULT_ROOM_DIALOGUES[room.id] || `“Master, what are your orders for ${room.shortName}?”`;
   const dialogueText = rawDialogue.startsWith('“') ? rawDialogue : `“${rawDialogue}”`;
 
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'italic 22px sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'italic 32px sans-serif';
   ctx.textAlign = 'left';
 
-  const maxLineWidth = vnBoxW - 48;
+  const maxLineWidth = vnBoxW - 56;
   const dialogueLines = wrapCanvasText(ctx, dialogueText, maxLineWidth);
 
-  let startY = vnBoxY + 62;
-  const lineHeight = 30;
+  let startY = vnBoxY + 84;
+  const lineHeight = 42;
 
   for (const line of dialogueLines.slice(0, 2)) {
-    ctx.fillText(line, vnBoxX + 24, startY);
+    ctx.fillText(line, vnBoxX + 28, startY);
     startY += lineHeight;
   }
 
