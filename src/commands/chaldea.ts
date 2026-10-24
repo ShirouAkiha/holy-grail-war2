@@ -210,6 +210,12 @@ export async function buildChaldeaViewportResponse(
     ? world.activeCommunityBuffs.map(b => `✨ **${b.title}**: ${b.description}`).join('\n')
     : 'None active (Serve dishes to patrons to unlock buffs!)';
 
+  // 5b. Room Event Log (Top 5 room-isolated activity entries with relative Discord timestamps)
+  const roomActivities = (world.recentActivityFeed || []).filter(a => a.roomId === room.id).slice(0, 5);
+  const roomEventsSummary = roomActivities.length > 0
+    ? roomActivities.map(a => `• <t:${Math.floor(a.timestamp / 1000)}:R> ${a.text}`).join('\n')
+    : '*No recent events recorded in this sector.*';
+
   // 6. Assemble Dual Embed Stack
   // Top Banner Embed: Full-width Chaldea Facility Node Map (stacked cleanly above room viewport)
   const mapEmbed = new EmbedBuilder()
@@ -229,7 +235,8 @@ export async function buildChaldeaViewportResponse(
       `${room.description}\n\n` +
       `👥 **Masters Stationed Here (${roomMasters.length}):**\n${mastersSummary}\n\n` +
       `🍲 **Workstation Status:**\n${stationDetails}` +
-      (platedStr ? `\n\n${platedStr}` : '')
+      (platedStr ? `\n\n${platedStr}` : '') +
+      `\n\n📜 **Recent Room Activity:**\n${roomEventsSummary}`
     )
     .setColor(0xd4af37)
     .setImage('attachment://chaldea_viewport.png')
