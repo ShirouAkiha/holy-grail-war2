@@ -1,11 +1,9 @@
-// Chaldea Cafeteria & Campus Hub - Dual Canvas Visual Novel Renderer
-// 1. renderChaldeaNodeMapCanvas: Dynamic stylized 2D map node-graph compositing Masters onto room nodes
-// 2. renderChaldeaLocationCanvas: Cinematic Visual Novel room viewport with Servant companion and stationed player avatars
-
 import { getCanvasModule } from './canvasLoader';
 import { CAFETERIA_ROOMS, CafeteriaRoom } from '../data/cafeteriaData';
 import { StationedMaster, StoveCookingPot } from '../engine/cafeteriaEngine';
 import { drawServantBattleSprite, isAtlasMergedSprite, getAtlasFigureBounds } from './renderer';
+import { getLocalMediaDiskPath, saveLocalMediaBuffer } from '../utils/localMedia';
+import path from 'path';
 
 interface NodeCoords {
   x: number;
@@ -60,35 +58,85 @@ const IMAGE_CACHE = new Map<string, any>();
 const IN_FLIGHT_PROMISES = new Map<string, Promise<any | null>>();
 
 async function safeLoadImage(canvasMod: any, url: string | undefined): Promise<any | null> {
-  if (!url) return null;
-  if (IMAGE_CACHE.has(url)) {
-    return IMAGE_CACHE.get(url);
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  if (IMAGE_CACHE.has(trimmed)) {
+    return IMAGE_CACHE.get(trimmed);
   }
-  if (IN_FLIGHT_PROMISES.has(url)) {
-    return IN_FLIGHT_PROMISES.get(url)!;
+  if (IN_FLIGHT_PROMISES.has(trimmed)) {
+    return IN_FLIGHT_PROMISES.get(trimmed)!;
   }
 
   const loadTask = (async () => {
     try {
-      const loadPromise = canvasMod.loadImage(url);
-      const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 1800));
-      const img = await Promise.race([loadPromise, timeoutPromise]);
-      if (img) {
-        if (IMAGE_CACHE.size > 150) {
-          const firstKey = IMAGE_CACHE.keys().next().value;
-          if (firstKey) IMAGE_CACHE.delete(firstKey);
+      // 1. Try local disk path first
+      const localPath = getLocalMediaDiskPath(trimmed);
+      if (localPath) {
+        const img = await canvasMod.loadImage(localPath);
+        if (img) {
+          IMAGE_CACHE.set(trimmed, img);
+          return img;
         }
-        IMAGE_CACHE.set(url, img);
       }
+
+      // 2. Fetch remote media with custom User-Agent and domain Referer
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6000);
+
+      const headers: Record<string, string> = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+      };
+
+      if (trimmed.includes('atlasacademy.io')) {
+        headers['Referer'] = 'https://atlasacademy.io/';
+      } else if (trimmed.includes('wikia.nocookie.net')) {
+        headers['Referer'] = 'https://fategrandorder.fandom.com/';
+      } else if (trimmed.includes('janitorai.com')) {
+        headers['Referer'] = 'https://janitorai.com/';
+      }
+
+      const res = await fetch(trimmed, { signal: controller.signal, headers });
+      clearTimeout(timeout);
+
+      if (res.ok) {
+        const arrayBuffer = await res.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const img = await canvasMod.loadImage(buffer);
+        if (img) {
+          if (IMAGE_CACHE.size > 200) {
+            const firstKey = IMAGE_CACHE.keys().next().value;
+            if (firstKey) IMAGE_CACHE.delete(firstKey);
+          }
+          IMAGE_CACHE.set(trimmed, img);
+
+          // Save to local disk cache for instant future reloads
+          try {
+            const filename = path.basename(trimmed.split('?')[0]);
+            saveLocalMediaBuffer(buffer, filename);
+          } catch {}
+        }
+        return img;
+      }
+    } catch {
+      // Silently fall back to direct canvasMod.loadImage
+    } finally {
+      IN_FLIGHT_PROMISES.delete(trimmed);
+    }
+
+    // Direct fallback attempt via canvasMod.loadImage
+    try {
+      const img = await canvasMod.loadImage(trimmed);
+      if (img) IMAGE_CACHE.set(trimmed, img);
       return img;
     } catch {
       return null;
-    } finally {
-      IN_FLIGHT_PROMISES.delete(url);
     }
   })();
 
-  IN_FLIGHT_PROMISES.set(url, loadTask);
+  IN_FLIGHT_PROMISES.set(trimmed, loadTask);
   return loadTask;
 }
 
@@ -214,7 +262,7 @@ export async function renderChaldeaNodeMapCanvas(
     ctx.fillStyle = isCurrent ? '#fbbf24' : roomMasters.length > 0 ? '#e2e8f0' : '#94a3b8';
     ctx.fillText(coord.label, coord.x, coord.y + radius + 12);
 
-    // If Masters are stationed, draw tiny avatar circles or tokens
+    // If Masters are stationed, draw tiny avatar circles
     if (roomMasters.length > 0) {
       const tokenSpacing = 16;
       const startX = coord.x - ((Math.min(3, roomMasters.length) - 1) * tokenSpacing) / 2;
@@ -294,11 +342,23 @@ export async function renderChaldeaLocationCanvas(
   ctx.fillStyle = bottomGrad;
   ctx.fillRect(0, height - 200, width, 200);
 
-  // 3. Contracted Servant Sprite (Flank Right - Visual Novel Character Cutout)
-  const candidateUrl = currentMaster.companionServantSprite || currentMaster.companionServantAvatar;
-  let servantImg = await safeLoadImage(canvasMod, candidateUrl);
-  if (!servantImg && currentMaster.companionServantAvatar && currentMaster.companionServantAvatar !== candidateUrl) {
-    servantImg = await safeLoadImage(canvasMod, currentMaster.companionServantAvatar);
+  // 3. Contracted Servant Sprite (Flank Right - Visual Novel Character Cutout with Multi-Tier Fallback)
+  const candidateUrls = [
+    currentMaster.companionServantSprite,
+    currentMaster.companionServantAvatar,
+    'https://static.atlasacademy.io/NA/CharaGraph/100100/100100a@1.png',
+    'https://ella.janitorai.com/media-approved/JCilim7R92jfy-l4IIdBd.webp'
+  ].filter(Boolean) as string[];
+
+  let servantImg: any = null;
+  let usedUrl = '';
+
+  for (const url of candidateUrls) {
+    servantImg = await safeLoadImage(canvasMod, url);
+    if (servantImg && servantImg.width && servantImg.height) {
+      usedUrl = url;
+      break;
+    }
   }
 
   if (servantImg && servantImg.width && servantImg.height) {
