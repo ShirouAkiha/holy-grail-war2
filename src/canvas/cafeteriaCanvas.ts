@@ -56,15 +56,40 @@ function wrapCanvasText(ctx: any, text: string, maxWidth: number): string[] {
   return lines;
 }
 
+const IMAGE_CACHE = new Map<string, any>();
+const IN_FLIGHT_PROMISES = new Map<string, Promise<any | null>>();
+
 async function safeLoadImage(canvasMod: any, url: string | undefined): Promise<any | null> {
   if (!url) return null;
-  try {
-    const loadPromise = canvasMod.loadImage(url);
-    const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 2500));
-    return await Promise.race([loadPromise, timeoutPromise]);
-  } catch {
-    return null;
+  if (IMAGE_CACHE.has(url)) {
+    return IMAGE_CACHE.get(url);
   }
+  if (IN_FLIGHT_PROMISES.has(url)) {
+    return IN_FLIGHT_PROMISES.get(url)!;
+  }
+
+  const loadTask = (async () => {
+    try {
+      const loadPromise = canvasMod.loadImage(url);
+      const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 1800));
+      const img = await Promise.race([loadPromise, timeoutPromise]);
+      if (img) {
+        if (IMAGE_CACHE.size > 150) {
+          const firstKey = IMAGE_CACHE.keys().next().value;
+          if (firstKey) IMAGE_CACHE.delete(firstKey);
+        }
+        IMAGE_CACHE.set(url, img);
+      }
+      return img;
+    } catch {
+      return null;
+    } finally {
+      IN_FLIGHT_PROMISES.delete(url);
+    }
+  })();
+
+  IN_FLIGHT_PROMISES.set(url, loadTask);
+  return loadTask;
 }
 
 /**
@@ -385,8 +410,11 @@ export async function renderChaldeaLocationCanvas(
     ctx.fillText('You are currently the only Master stationed here.', hudX + 10, hudY + 68);
     ctx.restore();
   } else {
-    // Render individual sleek floating glass pills for each stationed Master
+    // Preload avatars in parallel
     const maxDisplayed = Math.min(count, 3);
+    const avatarImgs = await Promise.all(
+      otherMasters.slice(0, maxDisplayed).map(m => safeLoadImage(canvasMod, m.avatarUrl))
+    );
     const pillW = count <= 2 ? 220 : 170;
     const pillH = 64;
 
@@ -411,7 +439,7 @@ export async function renderChaldeaLocationCanvas(
       const avatarCenterX = slotX + 5 + radius;
       const avatarCenterY = slotY + (pillH - avatarSize) / 2 + radius;
 
-      const avImg = await safeLoadImage(canvasMod, m.avatarUrl);
+      const avImg = avatarImgs[i];
 
       // Draw circular avatar inside pill
       ctx.save();
