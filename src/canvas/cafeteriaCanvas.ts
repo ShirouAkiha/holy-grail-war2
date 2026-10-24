@@ -350,59 +350,141 @@ export async function renderChaldeaLocationCanvas(
 
   // 4. Stationed Masters HUD Banner (Top-Left)
   const otherMasters = roomMasters.filter(m => m.discordId !== currentMaster.discordId);
-  ctx.fillStyle = 'rgba(10, 15, 29, 0.85)';
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.4)';
-  ctx.lineWidth = 1.5;
+  const count = otherMasters.length;
+
+  // Dynamic Box Dimensions
+  const hudX = 24;
+  const hudY = 18;
+  const hudW = 520;
+  const hudH = count >= 5 ? 104 : 96;
+
+  // Semi-transparent sci-fi slate background
+  ctx.save();
+  ctx.fillStyle = 'rgba(8, 14, 28, 0.90)';
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.5)';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.roundRect(24, 20, 420, 72, 8);
+  ctx.roundRect(hudX, hudY, hudW, hudH, 10);
   ctx.fill();
   ctx.stroke();
 
+  // Glowing header ribbon
   ctx.fillStyle = '#00e5ff';
-  ctx.font = 'bold 11px sans-serif';
+  ctx.font = 'bold 13px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`👥 STATIONED MASTERS IN THIS ZONE (${roomMasters.length})`, 38, 40);
+  ctx.shadowColor = 'rgba(0, 229, 255, 0.6)';
+  ctx.shadowBlur = 8;
+  ctx.fillText(`👥 STATIONED MASTERS IN THIS ZONE (${roomMasters.length})`, hudX + 16, hudY + 22);
+  ctx.restore();
 
-  if (otherMasters.length === 0) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    ctx.font = 'italic 11px sans-serif';
-    ctx.fillText('You are currently the only Master stationed here.', 38, 65);
+  if (count === 0) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText('You are currently the only Master stationed here.', hudX + 16, hudY + 58);
   } else {
-    // Show names and AFK statuses of up to 3 other masters
-    let avatarOffsetX = 38;
-    for (let i = 0; i < Math.min(3, otherMasters.length); i++) {
+    // Determine dynamic avatar size & layout step based on count
+    let avatarSize: number;
+    let nameFont: string;
+    let statusFont: string;
+    let maxNameLen: number;
+    let stepX: number;
+
+    if (count <= 2) {
+      // Large Double-Sized Mode (~54px)
+      avatarSize = 54;
+      nameFont = 'bold 15px sans-serif';
+      statusFont = 'bold 12px sans-serif';
+      maxNameLen = 12;
+      stepX = 240;
+    } else if (count <= 4) {
+      // Medium Mode (~40px)
+      avatarSize = 40;
+      nameFont = 'bold 12px sans-serif';
+      statusFont = 'bold 10px sans-serif';
+      maxNameLen = 9;
+      stepX = 120;
+    } else {
+      // Compact Density Mode (~32px)
+      avatarSize = 32;
+      nameFont = 'bold 11px sans-serif';
+      statusFont = 'bold 9px sans-serif';
+      maxNameLen = 7;
+      stepX = 92;
+    }
+
+    const radius = avatarSize / 2;
+    const maxDisplayed = Math.min(count, count <= 4 ? 4 : 5);
+
+    for (let i = 0; i < maxDisplayed; i++) {
       const m = otherMasters[i];
+      const slotX = hudX + 16 + i * stepX;
+      const slotY = hudY + 32;
+
+      const avatarCenterX = slotX + radius;
+      const avatarCenterY = slotY + radius;
+
       const avImg = await safeLoadImage(canvasMod, m.avatarUrl);
 
       // Draw circular avatar
       ctx.save();
       ctx.beginPath();
-      ctx.arc(avatarOffsetX + 14, 62, 14, 0, Math.PI * 2);
+      ctx.arc(avatarCenterX, avatarCenterY, radius, 0, Math.PI * 2);
       ctx.clip();
       if (avImg) {
-        ctx.drawImage(avImg, avatarOffsetX, 48, 28, 28);
+        ctx.drawImage(avImg, slotX, slotY, avatarSize, avatarSize);
       } else {
         ctx.fillStyle = '#3b82f6';
-        ctx.fillRect(avatarOffsetX, 48, 28, 28);
+        ctx.fillRect(slotX, slotY, avatarSize, avatarSize);
       }
       ctx.restore();
 
+      // High-contrast glowing status border
+      ctx.save();
       ctx.beginPath();
-      ctx.arc(avatarOffsetX + 14, 62, 14, 0, Math.PI * 2);
+      ctx.arc(avatarCenterX, avatarCenterY, radius, 0, Math.PI * 2);
       ctx.strokeStyle = m.isAfk ? '#f59e0b' : '#10b981';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = m.isAfk ? 'rgba(245, 158, 11, 0.7)' : 'rgba(16, 185, 129, 0.7)';
+      ctx.shadowBlur = 8;
       ctx.stroke();
+      ctx.restore();
 
       // Master name badge
-      ctx.font = 'bold 10px sans-serif';
+      const textX = slotX + avatarSize + 10;
+      ctx.textAlign = 'left';
+      ctx.font = nameFont;
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(m.username.slice(0, 9), avatarOffsetX + 34, 58);
 
-      ctx.font = '9px sans-serif';
-      ctx.fillStyle = m.isAfk ? '#f59e0b' : '#94a3b8';
-      ctx.fillText(m.isAfk ? '[AFK]' : '[Active]', avatarOffsetX + 34, 71);
+      const displayName = m.username.length > maxNameLen ? `${m.username.slice(0, maxNameLen)}…` : m.username;
 
-      avatarOffsetX += 120;
+      if (count <= 2) {
+        ctx.fillText(displayName, textX, avatarCenterY - 4);
+
+        // Status badge
+        ctx.font = statusFont;
+        ctx.fillStyle = m.isAfk ? '#f59e0b' : '#10b981';
+        ctx.fillText(m.isAfk ? '💤 [AFK]' : '⚡ [Active]', textX, avatarCenterY + 14);
+      } else if (count <= 4) {
+        ctx.fillText(displayName, textX, avatarCenterY - 3);
+
+        ctx.font = statusFont;
+        ctx.fillStyle = m.isAfk ? '#f59e0b' : '#10b981';
+        ctx.fillText(m.isAfk ? '💤 AFK' : '⚡ Active', textX, avatarCenterY + 11);
+      } else {
+        ctx.fillText(displayName, textX, avatarCenterY - 2);
+
+        ctx.font = statusFont;
+        ctx.fillStyle = m.isAfk ? '#f59e0b' : '#10b981';
+        ctx.fillText(m.isAfk ? 'AFK' : 'Active', textX, avatarCenterY + 10);
+      }
+    }
+
+    if (count > maxDisplayed) {
+      const extraCount = count - maxDisplayed;
+      const extraX = hudX + 16 + maxDisplayed * stepX;
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(`+${extraCount} more`, extraX, hudY + 58);
     }
   }
 
@@ -412,7 +494,7 @@ export async function renderChaldeaLocationCanvas(
     ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(24, 105, 340, 52, 6);
+    ctx.roundRect(24, 122, 340, 52, 6);
     ctx.fill();
     ctx.stroke();
 
