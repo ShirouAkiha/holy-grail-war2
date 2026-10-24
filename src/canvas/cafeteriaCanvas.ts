@@ -352,35 +352,35 @@ export async function renderChaldeaLocationCanvas(
   const otherMasters = roomMasters.filter(m => m.discordId !== currentMaster.discordId);
   const count = otherMasters.length;
 
-  // Dynamic Box Dimensions
-  const hudX = 24;
-  const hudY = 18;
-  const hudW = 520;
-  const hudH = count >= 5 ? 104 : 96;
+  // Dynamic Box Dimensions (Doubled size for extreme readability in Discord embeds)
+  const hudX = 20;
+  const hudY = 16;
+  const hudW = 660;
+  const hudH = count >= 5 ? 152 : 142;
 
   // Semi-transparent sci-fi slate background
   ctx.save();
-  ctx.fillStyle = 'rgba(8, 14, 28, 0.90)';
-  ctx.strokeStyle = 'rgba(0, 229, 255, 0.5)';
-  ctx.lineWidth = 2;
+  ctx.fillStyle = 'rgba(8, 14, 28, 0.92)';
+  ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)';
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.roundRect(hudX, hudY, hudW, hudH, 10);
+  ctx.roundRect(hudX, hudY, hudW, hudH, 12);
   ctx.fill();
   ctx.stroke();
 
   // Glowing header ribbon
   ctx.fillStyle = '#00e5ff';
-  ctx.font = 'bold 13px sans-serif';
+  ctx.font = 'bold 20px sans-serif';
   ctx.textAlign = 'left';
-  ctx.shadowColor = 'rgba(0, 229, 255, 0.6)';
-  ctx.shadowBlur = 8;
-  ctx.fillText(`👥 STATIONED MASTERS IN THIS ZONE (${roomMasters.length})`, hudX + 16, hudY + 22);
+  ctx.shadowColor = 'rgba(0, 229, 255, 0.7)';
+  ctx.shadowBlur = 10;
+  ctx.fillText(`👥 STATIONED MASTERS IN THIS ZONE (${roomMasters.length})`, hudX + 20, hudY + 34);
   ctx.restore();
 
   if (count === 0) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('You are currently the only Master stationed here.', hudX + 16, hudY + 58);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillText('You are currently the only Master stationed here.', hudX + 20, hudY + 84);
   } else {
     // Determine dynamic avatar size & layout step based on count
     let avatarSize: number;
@@ -390,26 +390,26 @@ export async function renderChaldeaLocationCanvas(
     let stepX: number;
 
     if (count <= 2) {
-      // Large Double-Sized Mode (~54px)
-      avatarSize = 54;
-      nameFont = 'bold 15px sans-serif';
-      statusFont = 'bold 12px sans-serif';
+      // Massive Double-Sized Mode (~80px avatars, 22px text)
+      avatarSize = 80;
+      nameFont = 'bold 22px sans-serif';
+      statusFont = 'bold 18px sans-serif';
       maxNameLen = 12;
-      stepX = 240;
+      stepX = 310;
     } else if (count <= 4) {
-      // Medium Mode (~40px)
-      avatarSize = 40;
-      nameFont = 'bold 12px sans-serif';
-      statusFont = 'bold 10px sans-serif';
+      // Medium Mode (~64px avatars, 17px text)
+      avatarSize = 64;
+      nameFont = 'bold 17px sans-serif';
+      statusFont = 'bold 14px sans-serif';
       maxNameLen = 9;
-      stepX = 120;
+      stepX = 152;
     } else {
-      // Compact Density Mode (~32px)
-      avatarSize = 32;
-      nameFont = 'bold 11px sans-serif';
-      statusFont = 'bold 9px sans-serif';
+      // Compact Mode (~52px avatars, 14px text)
+      avatarSize = 52;
+      nameFont = 'bold 14px sans-serif';
+      statusFont = 'bold 12px sans-serif';
       maxNameLen = 7;
-      stepX = 92;
+      stepX = 120;
     }
 
     const radius = avatarSize / 2;
@@ -417,8 +417,8 @@ export async function renderChaldeaLocationCanvas(
 
     for (let i = 0; i < maxDisplayed; i++) {
       const m = otherMasters[i];
-      const slotX = hudX + 16 + i * stepX;
-      const slotY = hudY + 32;
+      const slotX = hudX + 20 + i * stepX;
+      const slotY = hudY + 46;
 
       const avatarCenterX = slotX + radius;
       const avatarCenterY = slotY + radius;
@@ -443,14 +443,14 @@ export async function renderChaldeaLocationCanvas(
       ctx.beginPath();
       ctx.arc(avatarCenterX, avatarCenterY, radius, 0, Math.PI * 2);
       ctx.strokeStyle = m.isAfk ? '#f59e0b' : '#10b981';
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = m.isAfk ? 'rgba(245, 158, 11, 0.7)' : 'rgba(16, 185, 129, 0.7)';
-      ctx.shadowBlur = 8;
+      ctx.lineWidth = 3.5;
+      ctx.shadowColor = m.isAfk ? 'rgba(245, 158, 11, 0.8)' : 'rgba(16, 185, 129, 0.8)';
+      ctx.shadowBlur = 10;
       ctx.stroke();
       ctx.restore();
 
       // Master name badge
-      const textX = slotX + avatarSize + 10;
+      const textX = slotX + avatarSize + 14;
       ctx.textAlign = 'left';
       ctx.font = nameFont;
       ctx.fillStyle = '#ffffff';
@@ -458,56 +458,56 @@ export async function renderChaldeaLocationCanvas(
       const displayName = m.username.length > maxNameLen ? `${m.username.slice(0, maxNameLen)}…` : m.username;
 
       if (count <= 2) {
-        ctx.fillText(displayName, textX, avatarCenterY - 4);
+        ctx.fillText(displayName, textX, avatarCenterY - 6);
 
         // Status badge
         ctx.font = statusFont;
         ctx.fillStyle = m.isAfk ? '#f59e0b' : '#10b981';
-        ctx.fillText(m.isAfk ? '💤 [AFK]' : '⚡ [Active]', textX, avatarCenterY + 14);
+        ctx.fillText(m.isAfk ? '💤 [AFK]' : '⚡ [Active]', textX, avatarCenterY + 20);
       } else if (count <= 4) {
-        ctx.fillText(displayName, textX, avatarCenterY - 3);
+        ctx.fillText(displayName, textX, avatarCenterY - 4);
 
         ctx.font = statusFont;
         ctx.fillStyle = m.isAfk ? '#f59e0b' : '#10b981';
-        ctx.fillText(m.isAfk ? '💤 AFK' : '⚡ Active', textX, avatarCenterY + 11);
+        ctx.fillText(m.isAfk ? '💤 AFK' : '⚡ Active', textX, avatarCenterY + 16);
       } else {
         ctx.fillText(displayName, textX, avatarCenterY - 2);
 
         ctx.font = statusFont;
         ctx.fillStyle = m.isAfk ? '#f59e0b' : '#10b981';
-        ctx.fillText(m.isAfk ? 'AFK' : 'Active', textX, avatarCenterY + 10);
+        ctx.fillText(m.isAfk ? 'AFK' : 'Active', textX, avatarCenterY + 14);
       }
     }
 
     if (count > maxDisplayed) {
       const extraCount = count - maxDisplayed;
-      const extraX = hudX + 16 + maxDisplayed * stepX;
+      const extraX = hudX + 20 + maxDisplayed * stepX;
       ctx.fillStyle = '#cbd5e1';
-      ctx.font = 'bold 12px sans-serif';
-      ctx.fillText(`+${extraCount} more`, extraX, hudY + 58);
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(`+${extraCount} more`, extraX, hudY + 86);
     }
   }
 
   // 5. Active Stove Pot Callout (If currently in kitchen_stove)
   if (room.id === 'kitchen_stove' && activeStovePot) {
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
     ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(24, 122, 340, 52, 6);
+    ctx.roundRect(20, 168, 380, 56, 8);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillText(`🔥 ${activeStovePot.recipeEmoji} ${activeStovePot.recipeName}`, 36, 126);
+    ctx.font = 'bold 15px sans-serif';
+    ctx.fillText(`🔥 ${activeStovePot.recipeEmoji} ${activeStovePot.recipeName}`, 34, 191);
 
     const now = Date.now();
     const remSec = Math.max(0, Math.ceil((activeStovePot.readyAt - now) / 1000));
     ctx.fillStyle = '#e2e8f0';
-    ctx.font = '10px sans-serif';
+    ctx.font = 'bold 13px sans-serif';
     const potStatus = remSec > 0 ? `Simmering (${remSec}s left) • Stirs: ${activeStovePot.stirCount}` : `READY TO PLATE!`;
-    ctx.fillText(potStatus, 36, 144);
+    ctx.fillText(potStatus, 34, 212);
   }
 
   // 6. Visual Novel Dialogue Box Ribbon (Bottom)
@@ -540,23 +540,23 @@ export async function renderChaldeaLocationCanvas(
   // Servant Speaker Nameplate Badge
   const speakerName = currentMaster.companionServantName || 'Contracted Companion';
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 20px sans-serif';
+  ctx.font = 'bold 24px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`💬 ${speakerName}`, vnBoxX + 24, vnBoxY + 32);
+  ctx.fillText(`💬 ${speakerName}`, vnBoxX + 24, vnBoxY + 34);
 
-  // Servant Dialogue Text (Doubled Font Size ~23px with multi-line word wrapping)
+  // Servant Dialogue Text (Doubled Font Size ~25px with multi-line word wrapping)
   const rawDialogue = customDialogue || DEFAULT_ROOM_DIALOGUES[room.id] || `“Master, what are your orders for ${room.shortName}?”`;
   const dialogueText = rawDialogue.startsWith('“') ? rawDialogue : `“${rawDialogue}”`;
 
   ctx.fillStyle = '#f8fafc';
-  ctx.font = 'italic 23px sans-serif';
+  ctx.font = 'italic 25px sans-serif';
   ctx.textAlign = 'left';
 
   const maxLineWidth = vnBoxW - 48;
   const dialogueLines = wrapCanvasText(ctx, dialogueText, maxLineWidth);
 
-  let startY = vnBoxY + 68;
-  const lineHeight = 32;
+  let startY = vnBoxY + 70;
+  const lineHeight = 35;
 
   for (const line of dialogueLines.slice(0, 2)) {
     ctx.fillText(line, vnBoxX + 24, startY);
