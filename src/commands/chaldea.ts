@@ -305,12 +305,19 @@ export async function buildChaldeaViewportResponse(
       .setLabel('📌 Set AFK Status')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
+      .setCustomId('chaldea_action_guide')
+      .setLabel('📖 Guide')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId('chaldea_action_refresh')
       .setLabel('🔄 Refresh')
       .setStyle(ButtonStyle.Secondary)
   );
 
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(actionButtons.slice(0, 5));
+  const actionRows: ActionRowBuilder<any>[] = [];
+  for (let i = 0; i < actionButtons.length; i += 5) {
+    actionRows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(actionButtons.slice(i, i + 5)));
+  }
 
   // 8. Row 2: Room Movement Select Menu
   const roomSelect = new StringSelectMenuBuilder()
@@ -329,11 +336,11 @@ export async function buildChaldeaViewportResponse(
     );
   }
 
-  const row2 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(roomSelect);
+  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(roomSelect);
 
   return {
     embeds: [mapEmbed, roomEmbed],
-    components: [row1, row2],
+    components: [...actionRows, selectRow],
     files: [mapAttachment, viewportAttachment]
   };
 }
@@ -649,6 +656,73 @@ export async function handleChaldeaGlobalInteraction(
       embeds: payload.embeds,
       components: payload.components,
       files: payload.files
+    });
+    return true;
+  }
+
+  // 11. Button: Operational Guide
+  if (interaction.isButton() && customId === 'chaldea_action_guide') {
+    const guideEmbed = new EmbedBuilder()
+      .setTitle('📖 Chaldea Cafeteria & Campus Hub — Operational Guide')
+      .setDescription(
+        'Welcome to **Chaldea Cafeteria & Campus Hub** — an asynchronous, real-time visual novel cooking MUD!\n' +
+        'Work together with fellow Masters and Heroic Spirits to harvest ingredients, prep recipe kits, simmer gourmet meals, and present feasts to visiting patrons.'
+      )
+      .setColor(0xd4af37)
+      .addFields(
+        {
+          name: '🌾 1. Foraging & Harvesting',
+          value:
+            '• Visit resource rooms like the **Pantry**, **Hydroponics Greenhouse**, or **Cold Storage** using `/move` or the room menu.\n' +
+            '• Click `[🌾 Gather / Harvest]` to collect raw produce (Saint Quartz Berries, Sacred Dragon Flour, Mana Milk, etc.) into your apron pockets.',
+          inline: false
+        },
+        {
+          name: '📦 2. Shared Basin & Kitchen Prep',
+          value:
+            '• Head to `Kitchen — Prep & Cutting Stations` (`/move kitchen_prep`).\n' +
+            '• Click `[📦 Deposit to Basin]` to share harvested ingredients with all Masters in Chaldea.\n' +
+            '• Click `[🔪 Chop & Prep Recipe]` to assemble community ingredients into prepped recipe kits.',
+          inline: false
+        },
+        {
+          name: '🔥 3. Stove Cooking, Stirring & Plating',
+          value:
+            '• Move to `Kitchen — Stoves & Commercial Ovens` (`/move kitchen_stove`).\n' +
+            '• Click `[🔥 Start Cooking]` to place a prepped kit onto a gas range stove.\n' +
+            '• Click `[🥄 Stir Pot]` periodically while simmering to boost dish quality score (up to 100)!\n' +
+            '• Once ready, click `[🍽️ Plate Dish]` to carry the freshly cooked dish in your hands.',
+          inline: false
+        },
+        {
+          name: '🍽️ 4. Patron Serving & Gemini AI Food Critiques',
+          value:
+            '• Enter the `Dining Hall & Serving Counter` (`/move dining_hall`).\n' +
+            '• Click `[⭐ Present to Patron]` to present your meal to visiting Heroic Spirits (e.g. Saber, Gilgamesh, Emiya).\n' +
+            '• Servants deliver real-time **Gemini AI Food Reviews** and activate server-wide **Community Cafeteria Buffs**!',
+          inline: false
+        },
+        {
+          name: '📌 5. AFK Stationing & Room Navigation',
+          value:
+            '• Click `[📌 Set AFK Status]` to set a custom roleplay status for your Master (e.g. *"Dicing onions"*, *"Brewing Earl Grey"*).\n' +
+            '• Use the drop-down menu at any time to travel between all 8 Chaldea facility sectors.',
+          inline: false
+        },
+        {
+          name: '💬 6. Telepathic Resonance & Servant Bond Systems',
+          value:
+            '• Your active Servant companion appears alongside you in full visual novel stage rendering.\n' +
+            '• Raise your Servant Bond level in the Bond Sanctum to unlock high-tier ascension artwork and stage presence.',
+          inline: false
+        }
+      )
+      .setFooter({ text: 'Chaldea Facility Operations Manual • Press Refresh anytime to update status' })
+      .setTimestamp();
+
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      embeds: [guideEmbed]
     });
     return true;
   }
