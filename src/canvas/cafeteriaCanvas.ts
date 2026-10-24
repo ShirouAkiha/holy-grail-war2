@@ -373,7 +373,7 @@ export async function renderChaldeaLocationCanvas(
       isMerged = Boolean(servantImg._isAtlasMerged) ||
         (servantImg._sourceUrl && String(servantImg._sourceUrl).includes('CharaFigure')) ||
         (servantImg.src && String(servantImg.src).includes('CharaFigure')) ||
-        Boolean(candidateUrl && candidateUrl.includes('CharaFigure'));
+        Boolean(usedUrl && usedUrl.includes('CharaFigure'));
     }
 
     let sourceW = servantImg.width;

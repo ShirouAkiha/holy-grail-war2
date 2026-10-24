@@ -534,3 +534,262 @@ export const VISITING_PATRONS: ServantPatron[] = [
     ]
   }
 ];
+
+export interface RoomNpc {
+  id: string;
+  name: string;
+  title: string;
+  avatarUrl: string;
+  dialogueIntro: string;
+  tips: string[];
+  commission?: {
+    id: string;
+    title: string;
+    description: string;
+    requiredIngredientId?: string;
+    requiredCount?: number;
+    rewardDescription: string;
+  };
+}
+
+export const ROOM_NPCS: Record<string, RoomNpc> = {
+  dining_hall: {
+    id: 'ciel',
+    name: 'Mysterious Executor C.I.E.L.',
+    title: 'Dining Hall Quartermaster',
+    avatarUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/c/c1/Ciel1.png',
+    dialogueIntro: 'Welcome to the Dining Hall, Master! Servants gather here when their stomachs rumble. Have you checked today\'s cravings?',
+    tips: [
+      'Artoria loves Golden Curry! Serving her preferred dish grants double Community Buff duration.',
+      'Father Kotomine only orders Mapo Tofu Hellfire. Be sure to add extra Szechuan peppercorns!',
+      'Gossip says Beni-enma is inspecting the Prep Counter today—keep your cutting boards spotless!'
+    ],
+    commission: {
+      id: 'ciel_curry_order',
+      title: 'Curry Reserve Supply',
+      description: 'Bring 1 Golden Curry Block from the Pantry to keep the serving counter fully stocked.',
+      requiredIngredientId: 'golden_curry_block',
+      requiredCount: 1,
+      rewardDescription: '2x Holy Eden Fruit & +15 Master Reputation'
+    }
+  },
+  kitchen_prep: {
+    id: 'beni_enma_npc',
+    name: 'Beni-enma',
+    title: 'Hell\'s Kitchen Inspector',
+    avatarUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/3/3a/Beni-enma1.png',
+    dialogueIntro: 'Inspect your cleavers-dechi! High dish quality begins with immaculate knife precision at the cutting board.',
+    tips: [
+      'Chopping ingredients with a partner in the room increases assembly speed by 25%!',
+      'Don\'t hoard ingredients in your apron. Deposit them in the Shared Basin so all Masters can assemble kits.',
+      'Always sharpen your cleavers before prepping high-difficulty dishes like Golden Sun Tart!'
+    ],
+    commission: {
+      id: 'beni_prep_task',
+      title: 'Fresh Scallion Precision Prep',
+      description: 'Deposit 2 Fresh Scallions into the Shared Basin for tonight\'s udon broth.',
+      requiredIngredientId: 'fresh_scallions',
+      requiredCount: 2,
+      rewardDescription: '1x Sacred Dragon Flour & +20 Master Reputation'
+    }
+  },
+  kitchen_stove: {
+    id: 'emiya_npc',
+    name: 'Emiya (Kitchen Captain)',
+    title: 'Master Chef of Chaldea',
+    avatarUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/8/87/Emiya1.png',
+    dialogueIntro: 'Welcome to the ranges, Master. Mind the flame temperature and don\'t leave simmering pots unattended.',
+    tips: [
+      'Stir the pot regularly! Each stir boosts Quality Score and prevents burning.',
+      'When the timer turns green, plate immediately before the dish burns on the open flame!',
+      'Working together with another Master allows a Dual Stir synergy for maximum +100 Quality.'
+    ],
+    commission: {
+      id: 'emiya_stove_task',
+      title: 'Stove Maintenance Fuel',
+      description: 'Bring 1 Miyama Koshihikari Rice to fuel the rice cookers.',
+      requiredIngredientId: 'miyama_rice',
+      requiredCount: 1,
+      rewardDescription: '1x Churned Butter & +15 Master Reputation'
+    }
+  },
+  pantry: {
+    id: 'boudica_npc',
+    name: 'Boudica',
+    title: 'Pantry Quartermaster',
+    avatarUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/5/52/Boudica1.png',
+    dialogueIntro: 'Need extra spices or grains? Our dry vaults are always open to hard-working Masters.',
+    tips: [
+      'Check the Pantry drawers carefully—sometimes rare spices are tucked away behind the rice sacks.',
+      'Golden Curry Blocks and Szechuan Peppercorns respawn regularly here.'
+    ]
+  },
+  greenhouse: {
+    id: 'nemo_npc',
+    name: 'Captain Nemo',
+    title: 'Hydroponics Specialist',
+    avatarUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/d/d4/Nemo1.png',
+    dialogueIntro: 'The hydroponic terraces are thriving. Our magical grow-lamps yield the sweetest carrots in Chaldea.',
+    tips: [
+      'Calibrating the UV lights increases the harvest yield of Holy Eden Fruits!',
+      'Gently watering the terraces resets ingredient gather cooldowns faster.'
+    ]
+  },
+  cold_storage: {
+    id: 'skadi_npc',
+    name: 'Scáthach-Skadi',
+    title: 'Deep Freezer Overseer',
+    avatarUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/8/87/Skadi1.png',
+    dialogueIntro: 'It is delightfully cold here... Ice cream and frozen prime cuts remain frozen for eternity.',
+    tips: [
+      'Cold Storage is where high-grade Prime A5 Beef and Pure Mana Milk reside.',
+      'Defrosting the freezer seals prevents frostbite and uncovers frozen treats.'
+    ]
+  },
+  staff_lounge: {
+    id: 'oberon_npc',
+    name: 'Oberon',
+    title: 'Relaxation Lounge Guest',
+    avatarUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/0/05/Oberon1.png',
+    dialogueIntro: 'Ah, taking a break? The tea is hot, and the cushions are soft. Don\'t work yourself to exhaustion.',
+    tips: [
+      'Sipping tea in the Staff Lounge restores Master Energy and clears cooking debuffs.',
+      'Cozy up on the sofas to exchange rumors with fellow Masters.'
+    ]
+  },
+  hallway: {
+    id: 'da_vinci_npc',
+    name: 'Leonardo da Vinci',
+    title: 'Chaldea Facility Director',
+    avatarUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/2/29/DaVinci1.png',
+    dialogueIntro: 'Bonjour, Master! The cafeteria hub connects all sectors of Chaldea. Where are you heading today?',
+    tips: [
+      'Keep an eye on room activity logs to see where other Masters are cooking!',
+      'You can ping fellow Masters to request assistance at the stoves.'
+    ]
+  }
+};
+
+export interface EnvironmentAction {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  effectMessage: string;
+  rewardIngredientId?: string;
+}
+
+export const ROOM_ENVIRONMENT_ACTIONS: Record<string, EnvironmentAction[]> = {
+  dining_hall: [
+    {
+      id: 'inspect_tables',
+      name: 'Inspect High Tables & VIP Booths',
+      emoji: '🔍',
+      description: 'Search under the dining tables for leftover tips or dropped items.',
+      effectMessage: 'You found a forgotten bag of Sweet Wild Honey left behind by Gilgamesh!',
+      rewardIngredientId: 'sweet_honey'
+    },
+    {
+      id: 'polish_silverware',
+      name: 'Polish Dining Silverware & Napkins',
+      emoji: '✨',
+      description: 'Clean and set the dining tables to make patrons feel welcome.',
+      effectMessage: 'You polished all the dining silverware! Dining Hall ambience boosted (+10% Patron Gratitude).'
+    }
+  ],
+  kitchen_prep: [
+    {
+      id: 'sharpen_knives',
+      name: 'Sharpen Cleavers & Paring Knives',
+      emoji: '🔪',
+      description: 'Run the cleavers along the whetstone for razor-sharp cutting precision.',
+      effectMessage: 'You sharpened all the prep knives on the whetstone! Recipe kit assembly is now 20% faster.'
+    },
+    {
+      id: 'clean_cutting_boards',
+      name: 'Sanitize Marble Cutting Boards',
+      emoji: '🧼',
+      description: 'Scrub and sanitize the marble cutting counters.',
+      effectMessage: 'You scrubbed the cutting boards spotless! Beni-enma nods in quiet approval.'
+    }
+  ],
+  kitchen_stove: [
+    {
+      id: 'calibrate_burners',
+      name: 'Calibrate Flame Burner Valves',
+      emoji: '🔥',
+      description: 'Adjust gas burner pressure for perfect even simmer temperatures.',
+      effectMessage: 'You calibrated the gas stove valves! All active stove pots gain +10 Dish Quality.'
+    },
+    {
+      id: 'inspect_spice_rack',
+      name: 'Inspect Overhead Chef Spice Rack',
+      emoji: '🧂',
+      description: 'Rummage through Emiya\'s private spice cabinet.',
+      effectMessage: 'You discovered a jar of rare Szechuan Peppercorns tucked behind the bay leaves!',
+      rewardIngredientId: 'szechuan_peppercorn'
+    }
+  ],
+  pantry: [
+    {
+      id: 'search_rice_sacks',
+      name: 'Search Behind Vintage Grain Sacks',
+      emoji: '📦',
+      description: 'Look through stored crates in the pantry corners.',
+      effectMessage: 'You uncovered a sack of premium Miyama Koshihikari Rice!',
+      rewardIngredientId: 'miyama_rice'
+    },
+    {
+      id: 'organize_shelves',
+      name: 'Organize Dry Vault Shelves',
+      emoji: '🪜',
+      description: 'Stack flour sacks and curry blocks systematically.',
+      effectMessage: 'You organized the dry vault shelves! All pantry items now respawn 25% faster.'
+    }
+  ],
+  greenhouse: [
+    {
+      id: 'calibrate_uv_lamps',
+      name: 'Calibrate Magical Grow-Lamps',
+      emoji: '💡',
+      description: 'Tune the UV wavelength for maximum hydroponic growth.',
+      effectMessage: 'You tuned the grow-lamps! You harvested a rare Holy Eden Fruit!',
+      rewardIngredientId: 'holy_eden_fruit'
+    },
+    {
+      id: 'mist_terraces',
+      name: 'Mist Hydroponic Terraces',
+      emoji: '🌧️',
+      description: 'Spray nutrient water across the carrot and scallion beds.',
+      effectMessage: 'You misted the hydroponic crops! Fresh produce harvested into your apron pockets.'
+    }
+  ],
+  cold_storage: [
+    {
+      id: 'defrost_seals',
+      name: 'Defrost Deep Freezer Door Seals',
+      emoji: '🧊',
+      description: 'Chisel away frost build-up on the deep freezer latches.',
+      effectMessage: 'You chiseled away the ice buildup! Uncovered 1x Pure Mana Milk from storage.',
+      rewardIngredientId: 'mana_milk'
+    }
+  ],
+  staff_lounge: [
+    {
+      id: 'brew_herbal_tea',
+      name: 'Brew Pot of Chaldean Herbal Tea',
+      emoji: '🫖',
+      description: 'Steep fresh tea leaves in hot spring water for idling Masters.',
+      effectMessage: 'You brewed a steaming teapot of Earl Grey! Relaxed the whole room.'
+    }
+  ],
+  hallway: [
+    {
+      id: 'inspect_notice_board',
+      name: 'Inspect Chaldea Cafeteria Notice Board',
+      emoji: '📌',
+      description: 'Read notes posted by kitchen staff and fellow Masters.',
+      effectMessage: 'Notice Board reads: "Beni-enma rates today\'s Udon broth 5 Stars! Artoria is extra hungry."'
+    }
+  ]
+};
