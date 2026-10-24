@@ -58,6 +58,8 @@ import * as ceCommand from './commands/ce';
 import * as helpCommand from './commands/help';
 import * as rankingCommand from './commands/ranking';
 import * as raidCommand from './commands/raid';
+import * as chaldeaCommand from './commands/chaldea';
+import { tickCafeteriaWorld } from './engine/cafeteriaEngine';
 import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, getCustomServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { allocateStatPoints } from './engine/statSystem';
@@ -185,9 +187,17 @@ commands.set(ceCommand.data.name, ceCommand);
 commands.set(helpCommand.data.name, helpCommand);
 commands.set(rankingCommand.data.name, rankingCommand);
 commands.set(raidCommand.data.name, raidCommand);
+commands.set(chaldeaCommand.data.name, chaldeaCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
+  chaldea: chaldeaCommand,
+  cafeteria: chaldeaCommand,
+  kitchen: chaldeaCommand,
+  cooking: chaldeaCommand,
+  cook: chaldeaCommand,
+  station: chaldeaCommand,
+  fridge: chaldeaCommand,
   servants: servantsCommand,
   petrol: patrolCommand,
   board: grailwarCommand,
@@ -317,6 +327,15 @@ client.once(Events.ClientReady, async c => {
   } catch (err) {
     console.error('Error in resumePendingRecruitment on ready:', err);
   }
+
+  // Periodic 30s background ticker for Chaldea Cafeteria MUD (stove timers, AFK status, visiting patrons)
+  setInterval(() => {
+    try {
+      tickCafeteriaWorld();
+    } catch (tickerErr) {
+      console.warn('Cafeteria ticker error:', tickerErr);
+    }
+  }, 30000);
 });
 
 /**
@@ -511,6 +530,11 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // ROUTE B: Modal Text Popup Submission (e.g. user typed custom quotes in /customise quote)
     if (interaction.isModalSubmit()) {
+      if (interaction.customId.startsWith('chaldea_')) {
+        await chaldeaCommand.handleChaldeaGlobalInteraction(interaction);
+        return;
+      }
+
       if (interaction.customId.startsWith('modal_quotes:') || interaction.customId.startsWith('modal_quotes_combat:') || interaction.customId.startsWith('modal_quotes_tactical:')) {
         // Extract the servant ID from the customId string (format: "modal_quotes:servant_id", "modal_quotes_combat:servant_id", or "modal_quotes_tactical:servant_id")
         const servantId = interaction.customId.replace(/^modal_quotes(_combat|_tactical)?:/, '');
@@ -1067,6 +1091,11 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // ROUTE C: Select Dropdown Menus (e.g. equipping Craft Essence from /customise equip or /inventory)
     if (interaction.isStringSelectMenu()) {
+      if (interaction.customId.startsWith('chaldea_')) {
+        await chaldeaCommand.handleChaldeaGlobalInteraction(interaction);
+        return;
+      }
+
       if (interaction.customId === 'help_select_category' || interaction.customId.startsWith('help_')) {
         await helpCommand.handleHelpInteraction(interaction);
         return;
@@ -1220,6 +1249,12 @@ client.on(Events.InteractionCreate, async interaction => {
       if (interaction.replied || interaction.deferred) return;
 
       const btnId = interaction.customId;
+
+      // Chaldea Cafeteria & Campus Hub Buttons
+      if (btnId.startsWith('chaldea_')) {
+        await chaldeaCommand.handleChaldeaGlobalInteraction(interaction);
+        return;
+      }
 
       // Servant Workshop Buttons & Tab Navigation
       if (btnId.startsWith('servant_') && !btnId.startsWith('servant_list_')) {

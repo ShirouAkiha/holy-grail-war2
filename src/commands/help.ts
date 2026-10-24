@@ -246,6 +246,33 @@ export const HELP_CATEGORIES: HelpCategory[] = [
     ]
   },
   {
+    id: 'chaldea',
+    name: 'Chaldea Cafeteria & Hub',
+    emoji: '🍵',
+    shortDesc: 'Multiplayer visual novel cooking MUD, shared stations & Gemini patron reviews',
+    color: 0x10b981,
+    commands: [
+      {
+        command: '/chaldea',
+        description: 'Open your personal dual-canvas visual novel viewport in the Cafeteria',
+        usage: '/chaldea [hub | move | station | forage | cook | serve | fridge]',
+        tips: 'Explore 8 facility rooms, station your character with custom AFK status, and cook with 10+ Masters!'
+      },
+      {
+        command: '/cook',
+        description: 'Chop ingredients, start cooking pots, stir simmering stews, or plate dishes',
+        usage: '/cook [prep | start | stir | plate]',
+        tips: 'Deposit raw items at the Prep Counter so anyone can assemble recipes and tend the stoves.'
+      },
+      {
+        command: '/station',
+        description: 'Park your Master in any room with a custom visual status or AFK note',
+        usage: '/station <status_text>',
+        tips: 'Other passing Masters will see your avatar and status rendered directly on the Canvas!'
+      }
+    ]
+  },
+  {
     id: 'admin',
     name: 'Workshop & Admin Tools',
     emoji: '⚙️',
