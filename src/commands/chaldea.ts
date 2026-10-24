@@ -126,7 +126,13 @@ export async function buildChaldeaViewportResponse(
   const sName = activeServant?.nickname || activeServant?.template?.name || 'Heroic Spirit';
   
   // Resolve transparent visual novel figure sprite (matches Bond Sanctum / Interludes)
-  const sSprite = resolveAscensionSprite(activeServant) || activeServant?.spriteUrl || '';
+  const sSprite = resolveAscensionSprite(
+    activeServant,
+    activeServant?.selectedAscensionStage,
+    activeServant?.level,
+    activeServant?.bondLevel,
+    activeServant?.spriteUrl || activeServant?.customArtworkUrl
+  ) || activeServant?.spriteUrl || activeServant?.customArtworkUrl || '';
   const sAvatar = activeServant?.avatarUrl || activeServant?.template?.avatarUrl || sSprite;
 
   const master = getOrCreateStationedMaster(discordId, username, avatarUrl, sName, sAvatar, sSprite);

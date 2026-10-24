@@ -8,7 +8,7 @@ export interface CardStrikeDetail {
   rawMultiplier?: number;
   classAdvantage?: number;
   damageDealt: number;
-  blockedBy?: 'evade' | 'invincible' | 'anti_purge';
+  blockedBy?: 'evade' | 'invincible' | 'anti_purge' | 'anti_purge_defense';
   damageCutAbsorbed?: number;
   npRefund?: number;
   starsGenerated?: number;

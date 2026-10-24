@@ -1255,14 +1255,14 @@ async function runRaidBattle(
   let turnStartTime = Date.now();
   const TURN_DURATION_MS = 120_000; // 2 Minutes AFK Auto-Action
 
-  const clearTurnTimer = () => {
+  function clearTurnTimer() {
     if (turnTimeoutHandle) {
       clearTimeout(turnTimeoutHandle);
       turnTimeoutHandle = null;
     }
-  };
+  }
 
-  const resetTurnTimer = () => {
+  function resetTurnTimer() {
     clearTurnTimer();
     turnStartTime = Date.now();
     turnTimeoutHandle = setTimeout(async () => {
@@ -1272,9 +1272,9 @@ async function runRaidBattle(
         console.error('[raid] Error during AFK auto play turn execution:', timeoutErr);
       }
     }, TURN_DURATION_MS);
-  };
+  }
 
-  const buildTurnContent = (active: RaidParticipantState, selectedCards: string[] = pendingCards) => {
+  function buildTurnContent(active: RaidParticipantState, selectedCards: string[] = pendingCards) {
     const cardEmojiMap: Record<string, string> = {
       Buster: '🔴 Buster',
       Arts: '🔵 Arts',

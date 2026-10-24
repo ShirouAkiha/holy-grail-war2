@@ -5,6 +5,7 @@
 import { getCanvasModule } from './canvasLoader';
 import { CAFETERIA_ROOMS, CafeteriaRoom } from '../data/cafeteriaData';
 import { StationedMaster, StoveCookingPot } from '../engine/cafeteriaEngine';
+import { drawServantBattleSprite, isAtlasMergedSprite, getAtlasFigureBounds } from './renderer';
 
 interface NodeCoords {
   x: number;
@@ -243,18 +244,30 @@ export async function renderChaldeaLocationCanvas(
   }
 
   if (servantImg && servantImg.width && servantImg.height) {
-    const isMerged = isAtlasMergedSprite(servantImg) ||
-      Boolean(servantImg._isAtlasMerged) ||
-      (servantImg._sourceUrl && String(servantImg._sourceUrl).includes('CharaFigure')) ||
-      (servantImg.src && String(servantImg.src).includes('CharaFigure')) ||
-      Boolean(candidateUrl && candidateUrl.includes('CharaFigure'));
+    let isMerged = false;
+    try {
+      if (typeof isAtlasMergedSprite === 'function') {
+        isMerged = isAtlasMergedSprite(servantImg);
+      }
+    } catch {}
+
+    if (!isMerged) {
+      isMerged = Boolean(servantImg._isAtlasMerged) ||
+        (servantImg._sourceUrl && String(servantImg._sourceUrl).includes('CharaFigure')) ||
+        (servantImg.src && String(servantImg.src).includes('CharaFigure')) ||
+        Boolean(candidateUrl && candidateUrl.includes('CharaFigure'));
+    }
 
     let sourceW = servantImg.width;
     let sourceH = servantImg.height;
     if (isMerged) {
-      const bounds = getAtlasFigureBounds(servantImg);
-      sourceW = bounds.sw;
-      sourceH = bounds.sh;
+      try {
+        if (typeof getAtlasFigureBounds === 'function') {
+          const bounds = getAtlasFigureBounds(servantImg);
+          sourceW = bounds.sw;
+          sourceH = bounds.sh;
+        }
+      } catch {}
     }
 
     const aspect = sourceW / sourceH;
@@ -268,11 +281,11 @@ export async function renderChaldeaLocationCanvas(
       spriteW = Math.round(spriteH * aspect);
     }
 
-    // Anchor to bottom edge and right side
+    // Anchor to bottom edge and right side (Visual Novel right-side hero placement)
     const spriteX = width - spriteW - 24;
     const spriteY = height - spriteH;
 
-    // Gentle warm halo behind servant
+    // Gentle warm ambient halo behind servant figure
     const haloX = spriteX + spriteW / 2;
     const haloY = spriteY + spriteH / 2;
     const haloRadius = Math.max(spriteW, spriteH) * 0.45;
@@ -286,7 +299,7 @@ export async function renderChaldeaLocationCanvas(
     ctx.fill();
 
     ctx.save();
-    // Drop shadow
+    // Drop shadow for Visual Novel figure pop
     ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
     ctx.shadowBlur = 24;
     ctx.shadowOffsetY = 6;
