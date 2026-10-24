@@ -41,6 +41,16 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     fallbackGif: 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',
     chant: 'Hammer of the vile king, shatter the aurora... Swallow the light! EXCALIBUR MORGAN!'
   },
+  'Artoria Alter': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',
+    chant: 'Hammer of the vile king, shatter the aurora... Swallow the light! EXCALIBUR MORGAN!'
+  },
+  'Saber Alter': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',
+    chant: 'Hammer of the vile king, shatter the aurora... Swallow the light! EXCALIBUR MORGAN!'
+  },
   'Gilgamesh': {
     gifUrl: '/api/media/np_gilgamesh_archer.gif',
     fallbackGif: 'https://i.giphy.com/media/13cACn6mlO56kU/giphy.gif',
@@ -67,6 +77,16 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     chant: 'My God is here with me! Holy banner, shield our faithful spirits! LUMINOSITÉ ETERNELLE!'
   },
   'Jeanne d\'Arc (Alter)': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif',
+    chant: 'Burn away to charred ash! This is the scream of my soul turned to roaring wrath! LA GRONDEMENT DU HAINE!'
+  },
+  'Jeanne Alter': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif',
+    chant: 'Burn away to charred ash! This is the scream of my soul turned to roaring wrath! LA GRONDEMENT DU HAINE!'
+  },
+  'Jalter': {
     gifUrl: 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif',
     fallbackGif: 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif',
     chant: 'Burn away to charred ash! This is the scream of my soul turned to roaring wrath! LA GRONDEMENT DU HAINE!'
@@ -212,7 +232,6 @@ const DEFAULT_NP_FALLBACK = 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif';
 export function getNoblePhantasmGif(servantOrTemplate: any, stage?: number): string {
   if (!servantOrTemplate) return DEFAULT_NP_GIF;
 
-  // Check stage-dependent NP animation for Archetype: Earth
   const servantId = (
     servantOrTemplate.templateId ||
     servantOrTemplate.id ||
@@ -234,6 +253,30 @@ export function getNoblePhantasmGif(servantOrTemplate: any, stage?: number): str
         ''
   ).toLowerCase();
 
+  // 1. Direct explicit form overrides
+  if (
+    servantId.includes('artoria_alter') ||
+    servantId.includes('saber_alter') ||
+    servantId.includes('artoria_pendragon_alter') ||
+    rawName.includes('artoria alter') ||
+    rawName.includes('saber alter') ||
+    rawName.includes('artoria pendragon (alter)') ||
+    (rawName.includes('alter') && (rawName.includes('artoria') || rawName.includes('saber')))
+  ) {
+    return normalizeMediaUrl('https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif');
+  }
+
+  if (
+    servantId.includes('jeanne_alter') ||
+    servantId.includes('jalter') ||
+    rawName.includes('jeanne alter') ||
+    rawName.includes('jalter') ||
+    rawName.includes("jeanne d'arc (alter)") ||
+    (rawName.includes('alter') && (rawName.includes('jeanne') || rawName.includes('jalter')))
+  ) {
+    return normalizeMediaUrl('https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif');
+  }
+
   const cleanRawName = rawName.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
 
   if (servantId.includes('archetype') || cleanRawName.includes('archetype') || cleanRawName.includes('arcueid') || servantId.includes('earth')) {
@@ -252,44 +295,61 @@ export function getNoblePhantasmGif(servantOrTemplate: any, stage?: number): str
     return normalizeMediaUrl('https://ella.janitorai.com/media-approved/2FK82Z4D2WXmDXZ9cL4lB.gif');
   }
 
-  // 1. Check direct servant template configuration
+  // 2. Check direct servant template configuration
   const np = typeof servantOrTemplate === 'object' ? (servantOrTemplate.noblePhantasm || servantOrTemplate.template?.noblePhantasm) : undefined;
   if (np?.gifUrl && np.gifUrl.trim()) return normalizeMediaUrl(np.gifUrl.trim());
   if (np?.animationUrl && np.animationUrl.trim()) return normalizeMediaUrl(np.animationUrl.trim());
 
-  // 2. Check admin-configured custom NP animation registry
+  // 3. Check admin-configured custom NP animation registry
   if (servantId && CUSTOM_NP_ANIMATIONS_REGISTRY[servantId]?.gifUrl) {
     return normalizeMediaUrl(CUSTOM_NP_ANIMATIONS_REGISTRY[servantId].gifUrl);
+  }
+  if (rawName && CUSTOM_NP_ANIMATIONS_REGISTRY[rawName]?.gifUrl) {
+    return normalizeMediaUrl(CUSTOM_NP_ANIMATIONS_REGISTRY[rawName].gifUrl);
   }
   if (cleanRawName && CUSTOM_NP_ANIMATIONS_REGISTRY[cleanRawName]?.gifUrl) {
     return normalizeMediaUrl(CUSTOM_NP_ANIMATIONS_REGISTRY[cleanRawName].gifUrl);
   }
 
-  // 3. Match against known canon Servant registry
+  // 4. Match against known canon Servant registry
+  // First pass: Exact match on full raw name or servantId (preserving qualifiers like "(Alter)")
+  for (const [key, data] of Object.entries(NOBLE_PHANTASM_GIFS)) {
+    const keyLower = key.toLowerCase();
+    if (rawName === keyLower || servantId === keyLower) {
+      return normalizeMediaUrl(data.gifUrl || data.fallbackGif);
+    }
+  }
+
+  // Second pass: Cleaned name match (where parenthetical suffixes like "(Saber)" are stripped)
   for (const [key, data] of Object.entries(NOBLE_PHANTASM_GIFS)) {
     const keyClean = key.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
-    if (cleanRawName === keyClean || cleanRawName === key.toLowerCase()) {
+    if (cleanRawName === keyClean) {
       return normalizeMediaUrl(data.gifUrl || data.fallbackGif);
     }
   }
 
+  // Third pass: Substring match sorted by key length descending
   const sortedNpGifs = Object.entries(NOBLE_PHANTASM_GIFS).sort((a, b) => b[0].length - a[0].length);
   for (const [key, data] of sortedNpGifs) {
+    const keyLower = key.toLowerCase();
     const keyClean = key.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
-    if (cleanRawName.includes(keyClean) || (cleanRawName.length >= 3 && keyClean.includes(cleanRawName))) {
+    if (rawName.includes(keyLower) || cleanRawName.includes(keyClean)) {
       return normalizeMediaUrl(data.gifUrl || data.fallbackGif);
     }
   }
 
-  // 4. Check matching by NP name
+  // 5. Check matching by NP name
   const npName = np?.name || '';
   if (npName) {
     const lowerNp = npName.toLowerCase();
+    if (lowerNp.includes('excalibur morgan') || lowerNp.includes('vile king')) {
+      return NOBLE_PHANTASM_GIFS['Artoria Pendragon (Alter)'].gifUrl;
+    }
+    if (lowerNp.includes('grondement') || lowerNp.includes('la grondement')) {
+      return NOBLE_PHANTASM_GIFS['Jeanne d\'Arc (Alter)'].gifUrl;
+    }
     if (lowerNp.includes('sandan-zuki') || lowerNp.includes('sandanzuki') || lowerNp.includes('three-stage thrust') || lowerNp.includes('mumyo') || lowerNp.includes('mumyō')) {
       return NOBLE_PHANTASM_GIFS['Okita Souji'].gifUrl;
-    }
-    if (lowerNp.includes('excalibur morgan')) {
-      return NOBLE_PHANTASM_GIFS['Artoria Pendragon (Alter)'].gifUrl;
     }
     if (lowerNp.includes('excalibur')) {
       return NOBLE_PHANTASM_GIFS['Artoria Pendragon'].gifUrl;
@@ -302,9 +362,6 @@ export function getNoblePhantasmGif(servantOrTemplate: any, stage?: number): str
     }
     if (lowerNp.includes('gae bolg') || lowerNp.includes('gáe bolg')) {
       return NOBLE_PHANTASM_GIFS['Cú Chulainn'].gifUrl;
-    }
-    if (lowerNp.includes('grondement')) {
-      return NOBLE_PHANTASM_GIFS['Jeanne d\'Arc (Alter)'].gifUrl;
     }
     if (lowerNp.includes('luminosité') || lowerNp.includes('luminosite')) {
       return NOBLE_PHANTASM_GIFS['Jeanne d\'Arc'].gifUrl;
@@ -343,7 +400,7 @@ export function getNoblePhantasmChant(servantOrTemplate: any): string {
   let templateNp: any = undefined;
 
   if (typeof servantOrTemplate === 'string') {
-    rawName = servantOrTemplate;
+    rawName = servantOrTemplate.toLowerCase();
   } else if (typeof servantOrTemplate === 'object') {
     custom = servantOrTemplate.customQuotes?.noblePhantasm;
     if (custom) return cleanChantText(custom);
@@ -371,6 +428,30 @@ export function getNoblePhantasmChant(servantOrTemplate: any): string {
     templateNp = servantOrTemplate.noblePhantasm || servantOrTemplate.template?.noblePhantasm || servantOrTemplate.servant?.template?.noblePhantasm;
   }
 
+  // Direct explicit form overrides for chant
+  if (
+    servantId.includes('artoria_alter') ||
+    servantId.includes('saber_alter') ||
+    servantId.includes('artoria_pendragon_alter') ||
+    rawName.includes('artoria alter') ||
+    rawName.includes('saber alter') ||
+    rawName.includes('artoria pendragon (alter)') ||
+    (rawName.includes('alter') && (rawName.includes('artoria') || rawName.includes('saber')))
+  ) {
+    return 'Hammer of the vile king, shatter the aurora... Swallow the light! EXCALIBUR MORGAN!';
+  }
+
+  if (
+    servantId.includes('jeanne_alter') ||
+    servantId.includes('jalter') ||
+    rawName.includes('jeanne alter') ||
+    rawName.includes('jalter') ||
+    rawName.includes("jeanne d'arc (alter)") ||
+    (rawName.includes('alter') && (rawName.includes('jeanne') || rawName.includes('jalter')))
+  ) {
+    return 'Burn away to charred ash! This is the scream of my soul turned to roaring wrath! LA GRONDEMENT DU HAINE!';
+  }
+
   // Check admin custom config
   if (servantId && CUSTOM_NP_ANIMATIONS_REGISTRY[servantId]?.chant) {
     return cleanChantText(CUSTOM_NP_ANIMATIONS_REGISTRY[servantId].chant!);
@@ -394,18 +475,26 @@ export function getNoblePhantasmChant(servantOrTemplate: any): string {
 
   if (templateNp?.chant) return cleanChantText(templateNp.chant);
 
-  if (cleanRawName) {
+  if (rawName) {
+    for (const [key, data] of Object.entries(NOBLE_PHANTASM_GIFS)) {
+      const keyLower = key.toLowerCase();
+      if (rawName === keyLower || servantId === keyLower) {
+        return cleanChantText(data.chant);
+      }
+    }
+
     for (const [key, data] of Object.entries(NOBLE_PHANTASM_GIFS)) {
       const keyClean = key.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
-      if (cleanRawName === keyClean || cleanRawName === key.toLowerCase()) {
+      if (cleanRawName === keyClean) {
         return cleanChantText(data.chant);
       }
     }
 
     const sortedNpGifs = Object.entries(NOBLE_PHANTASM_GIFS).sort((a, b) => b[0].length - a[0].length);
     for (const [key, data] of sortedNpGifs) {
+      const keyLower = key.toLowerCase();
       const keyClean = key.replace(/\s*\([^)]+\)\s*$/g, '').trim().toLowerCase();
-      if (cleanRawName.includes(keyClean) || (cleanRawName.length >= 3 && keyClean.includes(cleanRawName))) {
+      if (rawName.includes(keyLower) || cleanRawName.includes(keyClean)) {
         return cleanChantText(data.chant);
       }
     }

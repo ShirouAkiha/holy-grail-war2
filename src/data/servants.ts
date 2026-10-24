@@ -920,7 +920,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     noblePhantasm: {
       name: 'Le Grondement de la Haine',
       cardType: 'Buster',
-      chant: 'Roar, O\' Rage of Mine',
+      gifUrl: 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif',
+      chant: 'Burn away to charred ash! This is the scream of my soul turned to roaring wrath! LA GRONDEMENT DU HAINE!',
       description: 'Deals devastating single-target Buster damage (1200%), inflicts Buff Block for 1 time, and gains 30 critical stars. Overcharge: Inflicts Curse (2,000 damage/turn) for 5 turns.',
       target: 'single',
       multiplier: 1200,
@@ -1072,7 +1073,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     noblePhantasm: {
       name: 'Excalibur Morgan: Sword of Promised Victory',
       cardType: 'Buster',
-      chant: 'Take this... The cry of a dying star! Let the dark breath of the dragon consume all! EX---CALIBUR... MORGAN!',
+      gifUrl: 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',
+      chant: 'Hammer of the vile king, shatter the aurora... Swallow the light! EXCALIBUR MORGAN!',
       description: 'Unleashes a catastrophic wave of black light, dealing massive damage to all enemies and recharging NP gauge.',
       target: 'aoe',
       multiplier: 450,
