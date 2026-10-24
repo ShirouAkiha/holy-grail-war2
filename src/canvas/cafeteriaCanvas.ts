@@ -397,50 +397,56 @@ export async function renderChaldeaLocationCanvas(
 
   // 6. Visual Novel Dialogue Box Ribbon (Bottom)
   const vnBoxX = 24;
-  const vnBoxY = height - 145;
+  const vnBoxY = height - 150;
   const vnBoxW = width - 48;
-  const vnBoxH = 125;
+  const vnBoxH = 130;
 
-  ctx.fillStyle = 'rgba(8, 12, 22, 0.92)';
+  // Semi-transparent deep dark background overlay
+  ctx.fillStyle = 'rgba(6, 10, 22, 0.92)';
   ctx.strokeStyle = '#d4af37';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
-  ctx.roundRect(vnBoxX, vnBoxY, vnBoxW, vnBoxH, 8);
+  ctx.roundRect(vnBoxX, vnBoxY, vnBoxW, vnBoxH, 10);
   ctx.fill();
   ctx.stroke();
 
   // Ornate gold corner accents
   ctx.fillStyle = '#d4af37';
-  ctx.fillRect(vnBoxX + 6, vnBoxY + 6, 12, 2);
-  ctx.fillRect(vnBoxX + 6, vnBoxY + 6, 2, 12);
-  ctx.fillRect(vnBoxX + vnBoxW - 18, vnBoxY + 6, 12, 2);
-  ctx.fillRect(vnBoxX + vnBoxW - 8, vnBoxY + 6, 2, 12);
+  ctx.fillRect(vnBoxX + 6, vnBoxY + 6, 14, 2);
+  ctx.fillRect(vnBoxX + 6, vnBoxY + 6, 2, 14);
+  ctx.fillRect(vnBoxX + vnBoxW - 20, vnBoxY + 6, 14, 2);
+  ctx.fillRect(vnBoxX + vnBoxW - 8, vnBoxY + 6, 2, 14);
 
-  // Room Title & Activity Tab
-  ctx.fillStyle = '#d4af37';
-  ctx.font = 'bold 15px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(`📍 ${room.name.toUpperCase()}`, vnBoxX + 22, vnBoxY + 28);
+  ctx.fillRect(vnBoxX + 6, vnBoxY + vnBoxH - 8, 14, 2);
+  ctx.fillRect(vnBoxX + 6, vnBoxY + vnBoxH - 16, 2, 14);
+  ctx.fillRect(vnBoxX + vnBoxW - 20, vnBoxY + vnBoxH - 8, 14, 2);
+  ctx.fillRect(vnBoxX + vnBoxW - 8, vnBoxY + vnBoxH - 16, 2, 14);
 
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText(`🎵 ${room.ambientBgm}`, vnBoxX + vnBoxW - 22, vnBoxY + 28);
-
-  // Room Description
-  ctx.fillStyle = '#cbd5e1';
-  ctx.font = '12px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(room.description, vnBoxX + 22, vnBoxY + 54);
-
-  // Player status & companion line
+  // Servant Speaker Nameplate Badge
+  const speakerName = currentMaster.companionServantName || 'Contracted Companion';
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.fillText(`Contracted Companion: ${currentMaster.companionServantName}`, vnBoxX + 22, vnBoxY + 80);
+  ctx.font = 'bold 20px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`💬 ${speakerName}`, vnBoxX + 24, vnBoxY + 32);
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-  ctx.font = 'italic 11px sans-serif';
-  ctx.fillText(`“Master, what are our culinary orders for tonight? The kitchen awaits your command.”`, vnBoxX + 22, vnBoxY + 100);
+  // Servant Dialogue Text (Doubled Font Size ~23px with multi-line word wrapping)
+  const rawDialogue = customDialogue || DEFAULT_ROOM_DIALOGUES[room.id] || `“Master, what are your orders for ${room.shortName}?”`;
+  const dialogueText = rawDialogue.startsWith('“') ? rawDialogue : `“${rawDialogue}”`;
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'italic 23px sans-serif';
+  ctx.textAlign = 'left';
+
+  const maxLineWidth = vnBoxW - 48;
+  const dialogueLines = wrapCanvasText(ctx, dialogueText, maxLineWidth);
+
+  let startY = vnBoxY + 68;
+  const lineHeight = 32;
+
+  for (const line of dialogueLines.slice(0, 2)) {
+    ctx.fillText(line, vnBoxX + 24, startY);
+    startY += lineHeight;
+  }
 
   return canvas.toBuffer('image/png');
 }
