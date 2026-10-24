@@ -26,6 +26,7 @@ import {
   VISITING_PATRONS,
   CafeteriaRoom 
 } from '../data/cafeteriaData';
+import { resolveAscensionSprite } from '../data/servantAscensions';
 import { 
   getOrCreateStationedMaster, 
   moveMasterRoom, 
@@ -123,9 +124,12 @@ export async function buildChaldeaViewportResponse(
   const dbMaster = await getMaster(discordId);
   const activeServant = dbMaster?.servants?.find((s: any) => s.id === dbMaster.activeServantId) || dbMaster?.servants?.[0];
   const sName = activeServant?.nickname || activeServant?.template?.name || 'Heroic Spirit';
-  const sAvatar = activeServant?.avatarUrl || activeServant?.template?.avatarUrl || '';
+  
+  // Resolve transparent visual novel figure sprite (matches Bond Sanctum / Interludes)
+  const sSprite = resolveAscensionSprite(activeServant) || activeServant?.spriteUrl || '';
+  const sAvatar = activeServant?.avatarUrl || activeServant?.template?.avatarUrl || sSprite;
 
-  const master = getOrCreateStationedMaster(discordId, username, avatarUrl, sName, sAvatar);
+  const master = getOrCreateStationedMaster(discordId, username, avatarUrl, sName, sAvatar, sSprite);
   const world = getCafeteriaWorldSnapshot();
   const room = CAFETERIA_ROOMS[master.currentRoomId] || CAFETERIA_ROOMS.dining_hall;
   const roomMasters = getRoomStationedMasters(room.id);
@@ -199,8 +203,18 @@ export async function buildChaldeaViewportResponse(
     ? world.activeCommunityBuffs.map(b => `✨ **${b.title}**: ${b.description}`).join('\n')
     : 'None active (Serve dishes to patrons to unlock buffs!)';
 
-  // 6. Assemble Embed
-  const embed = new EmbedBuilder()
+  // 6. Assemble Dual Embed Stack
+  // Top Banner Embed: Full-width Chaldea Facility Node Map (stacked cleanly above room viewport)
+  const mapEmbed = new EmbedBuilder()
+    .setTitle('🗺️ Chaldea Campus Hub — Facility Node Map')
+    .setDescription(
+      `📍 **Current Sector:** **${room.name}** • 👥 **Stationed Here:** ${roomMasters.length} Master${roomMasters.length === 1 ? '' : 's'} • 🌐 **Online Masters:** ${Object.keys(world.masters).length}`
+    )
+    .setColor(0x00e5ff)
+    .setImage('attachment://chaldea_map.png');
+
+  // Bottom Room Viewport Embed: Cinematic Visual Novel Scene, Activity, Inventory & Buffs
+  const roomEmbed = new EmbedBuilder()
     .setTitle(`🍵 Chaldea Campus Hub — ${room.name}`)
     .setDescription(
       `📍 **Current Location:** **${room.name}**\n` +
@@ -212,7 +226,6 @@ export async function buildChaldeaViewportResponse(
     )
     .setColor(0xd4af37)
     .setImage('attachment://chaldea_viewport.png')
-    .setThumbnail('attachment://chaldea_map.png')
     .addFields(
       {
         name: '🎒 Your Inventory',
@@ -312,7 +325,7 @@ export async function buildChaldeaViewportResponse(
   const row2 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(roomSelect);
 
   return {
-    embeds: [embed],
+    embeds: [mapEmbed, roomEmbed],
     components: [row1, row2],
     files: [mapAttachment, viewportAttachment]
   };

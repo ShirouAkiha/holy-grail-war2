@@ -235,26 +235,70 @@ export async function renderChaldeaLocationCanvas(
   ctx.fillStyle = bottomGrad;
   ctx.fillRect(0, height - 200, width, 200);
 
-  // 3. Contracted Servant Sprite (Flank Right)
-  const servantImg = await safeLoadImage(canvasMod, currentMaster.companionServantAvatar);
-  if (servantImg) {
-    const sWidth = 320;
-    const sHeight = 440;
-    const sX = width - sWidth - 20;
-    const sY = height - sHeight - 20;
+  // 3. Contracted Servant Sprite (Flank Right - Visual Novel Character Cutout)
+  const candidateUrl = currentMaster.companionServantSprite || currentMaster.companionServantAvatar;
+  let servantImg = await safeLoadImage(canvasMod, candidateUrl);
+  if (!servantImg && currentMaster.companionServantAvatar && currentMaster.companionServantAvatar !== candidateUrl) {
+    servantImg = await safeLoadImage(canvasMod, currentMaster.companionServantAvatar);
+  }
 
-    // Gentle halo behind servant
-    const halo = ctx.createRadialGradient(sX + sWidth / 2, sY + sHeight / 2, 20, sX + sWidth / 2, sY + sHeight / 2, sWidth / 2);
+  if (servantImg && servantImg.width && servantImg.height) {
+    const isMerged = isAtlasMergedSprite(servantImg) ||
+      Boolean(servantImg._isAtlasMerged) ||
+      (servantImg._sourceUrl && String(servantImg._sourceUrl).includes('CharaFigure')) ||
+      (servantImg.src && String(servantImg.src).includes('CharaFigure')) ||
+      Boolean(candidateUrl && candidateUrl.includes('CharaFigure'));
+
+    let sourceW = servantImg.width;
+    let sourceH = servantImg.height;
+    if (isMerged) {
+      const bounds = getAtlasFigureBounds(servantImg);
+      sourceW = bounds.sw;
+      sourceH = bounds.sh;
+    }
+
+    const aspect = sourceW / sourceH;
+    const maxSpriteH = Math.round(height * 0.94);
+    const maxSpriteW = Math.round(width * 0.46);
+
+    let spriteW = maxSpriteW;
+    let spriteH = Math.round(spriteW / aspect);
+    if (spriteH > maxSpriteH) {
+      spriteH = maxSpriteH;
+      spriteW = Math.round(spriteH * aspect);
+    }
+
+    // Anchor to bottom edge and right side
+    const spriteX = width - spriteW - 24;
+    const spriteY = height - spriteH;
+
+    // Gentle warm halo behind servant
+    const haloX = spriteX + spriteW / 2;
+    const haloY = spriteY + spriteH / 2;
+    const haloRadius = Math.max(spriteW, spriteH) * 0.45;
+    const halo = ctx.createRadialGradient(haloX, haloY, 20, haloX, haloY, haloRadius);
     halo.addColorStop(0, 'rgba(212, 175, 55, 0.25)');
+    halo.addColorStop(0.7, 'rgba(212, 175, 55, 0.08)');
     halo.addColorStop(1, 'transparent');
     ctx.fillStyle = halo;
-    ctx.fillRect(sX - 40, sY - 40, sWidth + 80, sHeight + 80);
+    ctx.beginPath();
+    ctx.arc(haloX, haloY, haloRadius, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.save();
     // Drop shadow
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-    ctx.shadowBlur = 18;
-    ctx.drawImage(servantImg, sX, sY, sWidth, sHeight);
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowBlur = 24;
+    ctx.shadowOffsetY = 6;
+
+    if (isMerged) {
+      drawServantBattleSprite(ctx, servantImg, spriteX, spriteY, spriteW, spriteH, {
+        fitMode: 'contain',
+        isAtlasMerged: true,
+      });
+    } else {
+      ctx.drawImage(servantImg, spriteX, spriteY, spriteW, spriteH);
+    }
     ctx.restore();
   }
 

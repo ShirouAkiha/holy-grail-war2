@@ -25,6 +25,7 @@ export interface StationedMaster {
   lastActivityAt: number;
   companionServantName: string;
   companionServantAvatar: string;
+  companionServantSprite?: string;
   inventory: Record<string, number>;
   activePlatedDish?: {
     recipeId: string;
@@ -220,7 +221,8 @@ export function getOrCreateStationedMaster(
   username: string,
   avatarUrl: string,
   servantName = 'Heroic Spirit',
-  servantAvatar = ''
+  servantAvatar = '',
+  servantSprite = ''
 ): StationedMaster {
   let master = worldState.masters[discordId];
   const now = Date.now();
@@ -237,6 +239,7 @@ export function getOrCreateStationedMaster(
       lastActivityAt: now,
       companionServantName: servantName,
       companionServantAvatar: servantAvatar,
+      companionServantSprite: servantSprite,
       inventory: {
         miyama_rice: 2,
         chaldean_carrot: 1
@@ -253,6 +256,7 @@ export function getOrCreateStationedMaster(
     if (avatarUrl) master.avatarUrl = avatarUrl;
     if (servantName) master.companionServantName = servantName;
     if (servantAvatar) master.companionServantAvatar = servantAvatar;
+    if (servantSprite) master.companionServantSprite = servantSprite;
     master.lastActivityAt = now;
   }
 
