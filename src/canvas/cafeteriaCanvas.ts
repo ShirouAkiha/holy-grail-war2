@@ -629,7 +629,7 @@ export async function renderChaldeaLocationCanvas(
   ctx.textAlign = 'left';
   ctx.shadowColor = 'rgba(0, 229, 255, 0.7)';
   ctx.shadowBlur = 8;
-  ctx.fillText(`👥 STATIONED MASTERS IN THIS ZONE (${roomMasters.length})`, hudX + 16, hudY + 24);
+  ctx.fillText(`STATIONED MASTERS IN THIS ZONE (${roomMasters.length})`, hudX + 16, hudY + 24);
   ctx.restore();
 
   if (count === 0) {
@@ -782,7 +782,7 @@ export async function renderChaldeaLocationCanvas(
   ctx.fillStyle = '#fbbf24';
   ctx.font = 'bold 30px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`💬 ${speakerName}`, vnBoxX + 28, vnBoxY + 42);
+  ctx.fillText(speakerName, vnBoxX + 28, vnBoxY + 42);
 
   // Dialogue Text (32px Italic with multi-line word wrapping)
   const rawDialogue = options.customDialogue || DEFAULT_ROOM_DIALOGUES[room.id] || `“Master, what are your orders for ${room.shortName}?”`;

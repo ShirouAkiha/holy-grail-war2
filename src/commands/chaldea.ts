@@ -661,7 +661,7 @@ export async function handleChaldeaGlobalInteraction(
   if (interaction.isButton() && customId === 'chaldea_action_switch_doctor') {
     await interaction.deferUpdate();
     const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
-    const docCycle: Array<'nightingale' | 'asclepius' | 'bb'> = ['nightingale', 'asclepius', 'bb'];
+    const docCycle: Array<'nightingale' | 'asclepius' | 'bb' | 'paracelsus'> = ['nightingale', 'asclepius', 'bb', 'paracelsus'];
     const currentDoc = master.attendingDoctorId || 'nightingale';
     const nextIdx = (docCycle.indexOf(currentDoc) + 1) % docCycle.length;
     const nextDocId = docCycle[nextIdx];

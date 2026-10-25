@@ -46,7 +46,7 @@ export interface StationedMaster {
   activeRecoveryType?: 'none' | 'bed_rest';
   bedRestStartedAt?: number;
   bedRestInitialHp?: number;
-  attendingDoctorId?: 'nightingale' | 'asclepius' | 'bb';
+  attendingDoctorId?: 'nightingale' | 'asclepius' | 'bb' | 'paracelsus';
 }
 
 export interface StoveCookingPot {
@@ -1087,7 +1087,7 @@ export function startBedRest(discordId: string): { success: boolean; message: st
   };
 }
 
-export function setAttendingDoctor(discordId: string, doctorId: 'nightingale' | 'asclepius' | 'bb'): { success: boolean; message: string } {
+export function setAttendingDoctor(discordId: string, doctorId: 'nightingale' | 'asclepius' | 'bb' | 'paracelsus'): { success: boolean; message: string } {
   const master = worldState.masters[discordId];
   if (!master) return { success: false, message: 'Master record not found.' };
   master.attendingDoctorId = doctorId;
