@@ -918,7 +918,7 @@ export function getAtlasFigureBounds(img: any): { sx: number; sy: number; sw: nu
     return img._figureBounds;
   }
 
-  const maxScanH = Math.min(img.height, 768);
+  const maxScanH = Math.min(img.height, 720);
   const canvasModule = getCanvasModule();
   if (canvasModule && typeof canvasModule.createCanvas === 'function') {
     try {
@@ -940,7 +940,7 @@ export function getAtlasFigureBounds(img: any): { sx: number; sy: number; sw: nu
       }
 
       if (minY <= maxY && minX <= maxX) {
-        // Add gentle breathing margin around the figure (14px top/sides) without crossing into reaction faces (<= 768)
+        // Add gentle breathing margin around the figure (14px top/sides) without crossing into reaction faces (<= 720)
         const padTop = Math.min(minY, 14);
         const sy = minY - padTop;
         const sh = Math.min(maxScanH - sy, (maxY - sy) + 6);
@@ -961,7 +961,7 @@ export function getAtlasFigureBounds(img: any): { sx: number; sy: number; sw: nu
   const sx = Math.round(img.width * 0.08);
   const sw = Math.round(img.width * 0.84);
   const sy = 0;
-  const sh = Math.min(img.height, 760);
+  const sh = Math.min(img.height, 720);
   const bounds = { sx, sy, sw, sh };
   try { img._figureBounds = bounds; } catch {}
   return bounds;

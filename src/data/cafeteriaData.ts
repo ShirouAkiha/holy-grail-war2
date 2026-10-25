@@ -60,7 +60,7 @@ export interface ServantPatron {
 }
 
 export interface AttendingDoctor {
-  id: 'nightingale' | 'asclepius' | 'bb';
+  id: 'nightingale' | 'asclepius' | 'bb' | 'paracelsus';
   name: string;
   title: string;
   avatarUrl: string;
@@ -73,8 +73,8 @@ export const ATTENDING_DOCTORS: Record<string, AttendingDoctor> = {
     id: 'nightingale',
     name: 'Florence Nightingale',
     title: 'Head Nurse (Berserker)',
-    avatarUrl: 'https://static.atlasacademy.io/NA/Faces/f_7017000.png',
-    spriteUrl: 'https://static.atlasacademy.io/NA/CharaGraph/701700/701700a@1.png',
+    avatarUrl: 'https://static.atlasacademy.io/NA/Faces/f_7014000.png',
+    spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/7014000/7014000_merged.png',
     iconicQuotes: [
       '“Amputation is the cleanest cure for minor thermal burns! Hold still, Master!”',
       '“Sterilization is absolute! I will exterminate every pathogen and burn mark, even if it requires bone saws!”',
@@ -85,8 +85,8 @@ export const ATTENDING_DOCTORS: Record<string, AttendingDoctor> = {
     id: 'asclepius',
     name: 'Asclepius',
     title: 'God of Medicine (Caster)',
-    avatarUrl: 'https://static.atlasacademy.io/NA/Faces/f_4028000.png',
-    spriteUrl: 'https://static.atlasacademy.io/NA/CharaGraph/402800/402800a@1.png',
+    avatarUrl: 'https://static.atlasacademy.io/NA/Faces/f_5043000.png',
+    spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/5043000/5043000_merged.png',
     iconicQuotes: [
       '“Tch. Smoke inhalation and second-degree burns? How careless. Lie down and drink this bitter decoction.”',
       '“I am the God of Medicine. As long as breath remains in your lungs, I will not permit Death to claim you.”',
@@ -97,12 +97,24 @@ export const ATTENDING_DOCTORS: Record<string, AttendingDoctor> = {
     id: 'bb',
     name: 'BB (Nurse)',
     title: 'Devil Nurse (MoonCancer)',
-    avatarUrl: 'https://static.atlasacademy.io/NA/Faces/f_9001000.png',
-    spriteUrl: 'https://static.atlasacademy.io/NA/CharaGraph/900100/900100a@1.png',
+    avatarUrl: 'https://static.atlasacademy.io/NA/Faces/f_23001000.png',
+    spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/23001000/23001000_merged.png',
     iconicQuotes: [
       '“Yahoo~! Your benevolent Super Nurse BB-chan is on duty! Time for your mega-sized syringe injection~!”',
       '“Aww, did Senpai burn your little fingers on the stove? Lie down in bed and let BB-chan pamper you~!”',
       '“No sneakily getting out of bed, Senpai! Nurse BB has locked down your vitals until full rehabilitation!”'
+    ]
+  },
+  paracelsus: {
+    id: 'paracelsus',
+    name: 'Paracelsus von Hohenheim',
+    title: 'Philosopher Physician (Caster)',
+    avatarUrl: 'https://static.atlasacademy.io/NA/Faces/f_5010000.png',
+    spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/5010000/5010000_merged.png',
+    iconicQuotes: [
+      '“Ah, Master. Allow me to prepare a philosophic tonic to soothe your wounds.”',
+      '“The Azoth blade shall excise any taint. Please rest your body peacefully.”',
+      '“Alchemy and medicine are one and the same. Trust in my elixirs, Master.”'
     ]
   }
 };
