@@ -25,6 +25,7 @@ import {
   RECIPES_CATALOG, 
   VISITING_PATRONS,
   ATTENDING_DOCTORS,
+  CHALDEA_SHOP_CATALOG,
   CafeteriaRoom 
 } from '../data/cafeteriaData';
 import { resolveAscensionSprite } from '../data/servantAscensions';
@@ -51,6 +52,8 @@ import {
   startBedRest,
   setAttendingDoctor,
   bringFruitBasketToFriend,
+  craftFruitBasket,
+  purchaseChaldeaShopUpgrade,
   performHeroRescue,
   StationedMaster
 } from '../engine/cafeteriaEngine';
@@ -393,6 +396,15 @@ export async function buildChaldeaViewportResponse(
       );
     }
 
+    if (room.id === 'greenhouse') {
+      actionButtons.push(
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_craft_basket')
+          .setLabel('🧺 Craft Fruit Basket')
+          .setStyle(ButtonStyle.Primary)
+      );
+    }
+
     if (room.id === 'kitchen_prep') {
       actionButtons.push(
         new ButtonBuilder()
@@ -431,6 +443,10 @@ export async function buildChaldeaViewportResponse(
 
   // Always available utility actions
   actionButtons.push(
+    new ButtonBuilder()
+      .setCustomId('chaldea_action_shop_open')
+      .setLabel('🛒 Chaldea Shop')
+      .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('chaldea_action_station_modal')
       .setLabel('📌 AFK Status')
@@ -826,6 +842,92 @@ export async function handleChaldeaGlobalInteraction(
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const res = forageIngredientInRoom(discordId);
     await interaction.editReply({ content: res.message });
+    return true;
+  }
+
+  // 2b. Button: Craft Fruit Basket
+  if (interaction.isButton() && customId === 'chaldea_action_craft_basket') {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const res = craftFruitBasket(discordId);
+    await interaction.editReply({ content: res.message });
+    return true;
+  }
+
+  // 2c. Button: Open Chaldea Shop
+  if (interaction.isButton() && customId === 'chaldea_action_shop_open') {
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const fp = master.friendPoints || 0;
+    const upg = master.facilityUpgrades || { extraStoves: 0, extraPrepCounters: 0, hydroponicLamps: 0 };
+
+    const shopEmbed = new EmbedBuilder()
+      .setTitle('🛒 Chaldea Facility & Capacity Shop')
+      .setDescription(
+        `Welcome to the **Chaldea Capacity Upgrade Shop**!\n` +
+        `Spend **Friend Points (FP)** earned from gifting Fruit Baskets, serving meals, and rescuing friends to upgrade facility capacity so multiple Masters can perform tasks simultaneously.\n\n` +
+        `💰 **Your Current Balance:** **${fp} Friend Points**\n\n` +
+        `🔥 **Heavy Industrial Gas Stove** (Current Lvl: ${upg.extraStoves}/3)\n` +
+        `• *Perk:* +2 Active Stove slots per level (Base: 4 pots)\n` +
+        `• *Next Level Cost:* ${upg.extraStoves! >= 3 ? 'MAXED' : `${CHALDEA_SHOP_CATALOG.extra_stove.baseCostFP * (upg.extraStoves! + 1)} FP`}\n\n` +
+        `🔪 **Marble Dual Prep Station** (Current Lvl: ${upg.extraPrepCounters}/3)\n` +
+        `• *Perk:* Parallel prep counter workspace & double prep efficiency\n` +
+        `• *Next Level Cost:* ${upg.extraPrepCounters! >= 3 ? 'MAXED' : `${CHALDEA_SHOP_CATALOG.extra_prep_counter.baseCostFP * (upg.extraPrepCounters! + 1)} FP`}\n\n` +
+        `💡 **High-Output Magic UV Grow-Lamps** (Current Lvl: ${upg.hydroponicLamps}/3)\n` +
+        `• *Perk:* +1 Bonus harvested produce yield in Greenhouse per level\n` +
+        `• *Next Level Cost:* ${upg.hydroponicLamps! >= 3 ? 'MAXED' : `${CHALDEA_SHOP_CATALOG.hydroponic_uv_lamps.baseCostFP * (upg.hydroponicLamps! + 1)} FP`}`
+      )
+      .setColor(0xd4af37);
+
+    const shopButtons: ButtonBuilder[] = [];
+    if (upg.extraStoves! < 3) {
+      shopButtons.push(
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_shop_buy_extra_stove')
+          .setLabel(`Buy Stove Lvl ${upg.extraStoves! + 1} (${CHALDEA_SHOP_CATALOG.extra_stove.baseCostFP * (upg.extraStoves! + 1)} FP)`)
+          .setStyle(ButtonStyle.Success)
+      );
+    }
+    if (upg.extraPrepCounters! < 3) {
+      shopButtons.push(
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_shop_buy_extra_prep_counter')
+          .setLabel(`Buy Prep Lvl ${upg.extraPrepCounters! + 1} (${CHALDEA_SHOP_CATALOG.extra_prep_counter.baseCostFP * (upg.extraPrepCounters! + 1)} FP)`)
+          .setStyle(ButtonStyle.Success)
+      );
+    }
+    if (upg.hydroponicLamps! < 3) {
+      shopButtons.push(
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_shop_buy_hydroponic_uv_lamps')
+          .setLabel(`Buy Lamps Lvl ${upg.hydroponicLamps! + 1} (${CHALDEA_SHOP_CATALOG.hydroponic_uv_lamps.baseCostFP * (upg.hydroponicLamps! + 1)} FP)`)
+          .setStyle(ButtonStyle.Success)
+      );
+    }
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(shopButtons.length > 0 ? shopButtons : [
+      new ButtonBuilder().setCustomId('chaldea_shop_maxed').setLabel('✨ All Facility Upgrades Maxed!').setStyle(ButtonStyle.Secondary).setDisabled(true)
+    ]);
+
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      embeds: [shopEmbed],
+      components: [row]
+    });
+    return true;
+  }
+
+  // 2d. Button: Purchase Chaldea Shop Item
+  if (interaction.isButton() && customId.startsWith('chaldea_action_shop_buy_')) {
+    await interaction.deferUpdate();
+    const itemId = customId.replace('chaldea_action_shop_buy_', '');
+    const res = purchaseChaldeaShopUpgrade(discordId, itemId);
+
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
     return true;
   }
 

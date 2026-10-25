@@ -63,6 +63,7 @@ export interface AttendingDoctor {
   id: 'nightingale' | 'asclepius' | 'bb' | 'paracelsus';
   name: string;
   title: string;
+  perkDescription: string;
   avatarUrl: string;
   spriteUrl: string;
   iconicQuotes: string[];
@@ -73,6 +74,7 @@ export const ATTENDING_DOCTORS: Record<string, AttendingDoctor> = {
     id: 'nightingale',
     name: 'Florence Nightingale',
     title: 'Head Nurse (Berserker)',
+    perkDescription: '⚡ Rapid Sanitize: Bed rest duration reduced from 60 to 48 minutes (+25% recovery speed).',
     avatarUrl: 'https://static.atlasacademy.io/NA/Faces/f_7014000.png',
     spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/7014000/7014000_merged.png',
     iconicQuotes: [
@@ -85,6 +87,7 @@ export const ATTENDING_DOCTORS: Record<string, AttendingDoctor> = {
     id: 'asclepius',
     name: 'Asclepius',
     title: 'God of Medicine (Caster)',
+    perkDescription: '⚕️ Divine Cure: Instantly cleanses burns & grants +25% HP bonus on bed rest & salves.',
     avatarUrl: 'https://static.atlasacademy.io/NA/Faces/f_5043000.png',
     spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/5043000/5043000_merged.png',
     iconicQuotes: [
@@ -97,6 +100,7 @@ export const ATTENDING_DOCTORS: Record<string, AttendingDoctor> = {
     id: 'bb',
     name: 'BB (Nurse)',
     title: 'Devil Nurse (MoonCancer)',
+    perkDescription: '💉 Devilish Pampering: Random chance for +20% bonus SQ shards or surprise treats.',
     avatarUrl: 'https://static.atlasacademy.io/NA/Faces/f_23001000.png',
     spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/23001000/23001000_merged.png',
     iconicQuotes: [
@@ -109,6 +113,7 @@ export const ATTENDING_DOCTORS: Record<string, AttendingDoctor> = {
     id: 'paracelsus',
     name: 'Paracelsus von Hohenheim',
     title: 'Philosopher Physician (Caster)',
+    perkDescription: '🧪 Philosopher Transmutation: +50% Friend Points (1.5x FP multiplier) on all friend & service actions.',
     avatarUrl: 'https://static.atlasacademy.io/NA/Faces/f_5010000.png',
     spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/5010000/5010000_merged.png',
     iconicQuotes: [
@@ -511,6 +516,70 @@ export const RECIPES_CATALOG: Record<string, Recipe> = {
       statBonusPercent: 10,
       durationHours: 4
     }
+  },
+  fruit_basket: {
+    id: 'fruit_basket',
+    name: 'Fresh Hydroponic Fruit Basket',
+    emoji: '🧺',
+    description: 'A wicker basket overflowing with fresh Golden Eden Apples and Wild Honey. Gift to injured friends in the Infirmary to reduce bed rest time!',
+    requiredIngredients: {
+      holy_eden_fruit: 1,
+      sweet_honey: 1
+    },
+    prepTimeSeconds: 10,
+    cookTimeSeconds: 15,
+    servings: 1,
+    difficulty: 'Novice',
+    favoredBy: ['nightingale', 'asclepius', 'paracelsus'],
+    buffEffect: {
+      title: 'Restorative Care',
+      description: 'Cuts remaining bed rest timer by 25% and awards Friend Points to both Masters when gifted in the Infirmary.',
+      durationHours: 1
+    }
+  }
+};
+
+export interface ChaldeaShopItem {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  baseCostFP: number;
+  maxLevel: number;
+  upgradeType: 'extraStoves' | 'extraPrepCounters' | 'hydroponicLamps';
+  perLevelBonus: string;
+}
+
+export const CHALDEA_SHOP_CATALOG: Record<string, ChaldeaShopItem> = {
+  extra_stove: {
+    id: 'extra_stove',
+    name: 'Heavy Industrial Gas Stove',
+    emoji: '🔥',
+    description: 'Adds +2 additional cooking burner slots to your personal stove capacity line, allowing more simmering pots at once.',
+    baseCostFP: 250,
+    maxLevel: 3,
+    upgradeType: 'extraStoves',
+    perLevelBonus: '+2 Active Stove Slots'
+  },
+  extra_prep_counter: {
+    id: 'extra_prep_counter',
+    name: 'Marble Dual Prep Station',
+    emoji: '🔪',
+    description: 'Adds +1 parallel prep counter workspace, doubling your recipe kit assembly efficiency.',
+    baseCostFP: 200,
+    maxLevel: 3,
+    upgradeType: 'extraPrepCounters',
+    perLevelBonus: '+1 Parallel Prep Workstation'
+  },
+  hydroponic_uv_lamps: {
+    id: 'hydroponic_uv_lamps',
+    name: 'High-Output Magic UV Grow-Lamps',
+    emoji: '💡',
+    description: 'Upgrades Greenhouse hydroponics to yield +1 bonus fruit or produce whenever harvesting.',
+    baseCostFP: 300,
+    maxLevel: 3,
+    upgradeType: 'hydroponicLamps',
+    perLevelBonus: '+1 Bonus Harvest Produce'
   }
 };
 

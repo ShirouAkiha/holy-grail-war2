@@ -8,6 +8,8 @@ import {
   INGREDIENT_CATALOG, 
   RECIPES_CATALOG, 
   VISITING_PATRONS, 
+  ATTENDING_DOCTORS,
+  CHALDEA_SHOP_CATALOG,
   CafeteriaRoom, 
   Ingredient, 
   Recipe, 
@@ -47,6 +49,14 @@ export interface StationedMaster {
   bedRestStartedAt?: number;
   bedRestInitialHp?: number;
   attendingDoctorId?: 'nightingale' | 'asclepius' | 'bb' | 'paracelsus';
+  friendPoints?: number;
+  facilityUpgrades?: {
+    extraStoves?: number;
+    extraPrepCounters?: number;
+    hydroponicLamps?: number;
+  };
+  dailyGiftsSent?: Record<string, { count: number; lastGiftDate: string }>;
+  fruitBasketsCount?: number;
 }
 
 export interface StoveCookingPot {
@@ -281,19 +291,26 @@ export function getOrCreateStationedMaster(
       isHospitalized: false,
       burnStatus: 'none',
       activeRecoveryType: 'none',
-      attendingDoctorId: 'nightingale'
+      attendingDoctorId: 'nightingale',
+      friendPoints: 500,
+      facilityUpgrades: { extraStoves: 0, extraPrepCounters: 0, hydroponicLamps: 0 },
+      dailyGiftsSent: {},
+      fruitBasketsCount: 0
     };
     worldState.masters[discordId] = master;
     addCafeteriaActivity(`👤 Master **${username}** arrived at the **Dining Hall**.`, 'dining_hall');
     saveCafeteriaStateToDisk();
   } else {
-    // Ensure default HP fields exist for loaded records
+    // Ensure default HP & new fields exist for loaded records
     if (typeof master.currentHp !== 'number') master.currentHp = 100;
     if (typeof master.maxHp !== 'number') master.maxHp = 100;
     if (typeof master.isHospitalized !== 'boolean') master.isHospitalized = false;
     if (!master.burnStatus) master.burnStatus = 'none';
     if (!master.activeRecoveryType) master.activeRecoveryType = 'none';
     if (!master.attendingDoctorId) master.attendingDoctorId = 'nightingale';
+    if (typeof master.friendPoints !== 'number') master.friendPoints = 500;
+    if (!master.facilityUpgrades) master.facilityUpgrades = { extraStoves: 0, extraPrepCounters: 0, hydroponicLamps: 0 };
+    if (!master.dailyGiftsSent) master.dailyGiftsSent = {};
 
     // Update live profile info
     master.username = username;
@@ -390,19 +407,22 @@ export function forageIngredientInRoom(discordId: string): { success: boolean; m
     };
   }
 
-  // Award ingredient to Master
+  // Award ingredient to Master (plus bonus yield if hydroponic UV lamps upgrade is owned in Greenhouse)
   worldState.roomForageCooldowns[room.id][ingId] = now;
-  master.inventory[ingId] = (master.inventory[ingId] || 0) + 1;
+  const bonusQty = (room.id === 'greenhouse' && master.facilityUpgrades?.hydroponicLamps) ? (master.facilityUpgrades.hydroponicLamps || 0) : 0;
+  const totalYield = 1 + bonusQty;
+  master.inventory[ingId] = (master.inventory[ingId] || 0) + totalYield;
   master.lastActivityAt = now;
   master.isAfk = false;
   master.statusText = `Harvested ${ingredient.name}`;
 
-  addCafeteriaActivity(`🌾 **${master.username}** gathered **${ingredient.emoji} ${ingredient.name}** in ${room.shortName}.`, room.id);
+  const bonusNote = bonusQty > 0 ? ` (+${bonusQty} Bonus from UV Grow-Lamps!)` : '';
+  addCafeteriaActivity(`🌾 **${master.username}** gathered **${totalYield}x ${ingredient.emoji} ${ingredient.name}** in ${room.shortName}${bonusNote}.`, room.id);
   saveCafeteriaStateToDisk();
 
   return {
     success: true,
-    message: `You gathered **${ingredient.emoji} ${ingredient.name}** (${ingredient.category.toUpperCase()})!\n*${ingredient.description}*\n*(Your inventory: ${master.inventory[ingId]}x)*`,
+    message: `You gathered **${totalYield}x ${ingredient.emoji} ${ingredient.name}** (${ingredient.category.toUpperCase()})!${bonusNote}\n*${ingredient.description}*\n*(Your inventory: ${master.inventory[ingId]}x)*`,
     ingredient
   };
 }
@@ -562,9 +582,10 @@ export function startStoveCooking(discordId: string, recipeId: string): { succes
     if (worldState.sharedFridgeVault[preppedKey] <= 0) delete worldState.sharedFridgeVault[preppedKey];
   }
 
-  // Maximum 4 active pots simultaneously on the stove line
-  if (worldState.stovePots.length >= 4) {
-    return { success: false, message: 'All 4 stove ranges are currently occupied! Stir or plate one of the existing pots first.' };
+  // Maximum active pots simultaneously on the stove line (scales with Chaldea Shop stove capacity upgrade)
+  const maxStovePots = 4 + ((master.facilityUpgrades?.extraStoves || 0) * 2);
+  if (worldState.stovePots.length >= maxStovePots) {
+    return { success: false, message: `All ${maxStovePots} stove ranges are currently occupied! Stir or plate one of the existing pots first, or visit the Chaldea Shop to upgrade stove capacity.` };
   }
 
   const now = Date.now();
@@ -1055,34 +1076,46 @@ export function startBedRest(discordId: string): { success: boolean; message: st
     return { success: false, message: 'You must be in the Chaldea Infirmary to rest in a hospital bed.', elapsedMin: 0, remMin: 60, currentHp: master.currentHp };
   }
 
+  const docId = master.attendingDoctorId || 'nightingale';
+  const doctor = ATTENDING_DOCTORS[docId] || ATTENDING_DOCTORS.nightingale;
+  // Nightingale Perk: +25% recovery speed reduces bed rest duration from 60 mins to 48 mins!
+  const totalDurationMin = docId === 'nightingale' ? 48 : 60;
+  const totalDurationMs = totalDurationMin * 60 * 1000;
+
   const now = Date.now();
   if (master.activeRecoveryType === 'bed_rest' && master.bedRestStartedAt) {
     const elapsedMs = now - master.bedRestStartedAt;
     const elapsedMin = Math.floor(elapsedMs / 60000);
-    const remMin = Math.max(0, 60 - elapsedMin);
+    const remMin = Math.max(0, totalDurationMin - elapsedMin);
     return {
       success: true,
-      message: `🛏️ **Bed Rest Already in Progress!**\nYou are tucked into a clean medical bed.\n• Time Elapsed: **${elapsedMin} / 60 minutes**\n• Current HP: **${master.currentHp}/${master.maxHp}**\n• Time Remaining: **${remMin} minute(s)** until full discharge.`,
+      message: `🛏️ **Bed Rest Already in Progress!**\nYou are tucked into a clean medical bed.\n• **Attending Doctor:** ${doctor.name} (${doctor.title})\n• **Time Elapsed:** **${elapsedMin} / ${totalDurationMin} minutes**\n• **Current HP:** **${master.currentHp}/${master.maxHp}**\n• **Time Remaining:** **${remMin} minute(s)** until full discharge.`,
       elapsedMin,
       remMin,
       currentHp: master.currentHp
     };
   }
 
+  // Asclepius Perk: Instantly cleanses burns & singed status upon entering bed rest
+  if (docId === 'asclepius') {
+    master.burnStatus = 'none';
+  }
+
   master.activeRecoveryType = 'bed_rest';
   master.bedRestStartedAt = now;
   master.bedRestInitialHp = master.currentHp;
-  master.statusText = '🛏️ Resting in Infirmary Bed (Recovering)';
+  master.statusText = `🛏️ Resting under ${doctor.name}'s care`;
   master.isAfk = true;
 
-  addCafeteriaActivity(`🛏️ Master **${master.username}** tucked into an Infirmary bed to begin a 1-hour healing rest.`, 'infirmary');
+  const perkNote = docId === 'nightingale' ? ' (⚡ Nightingale perk: Rest reduced to 48m!)' : docId === 'asclepius' ? ' (⚕️ Asclepius perk: Burns cleansed!)' : '';
+  addCafeteriaActivity(`🛏️ Master **${master.username}** tucked into an Infirmary bed under ${doctor.name}'s care${perkNote}.`, 'infirmary');
   saveCafeteriaStateToDisk();
 
   return {
     success: true,
-    message: `🛏️ **1-HOUR BED REST COMMENCED!**\nHead Nurse Nightingale and Asclepius have adjusted your IV fluids and tucked you into a comfortable hospital bed.\n• **Recovery Duration:** 60 minutes real time\n• **Starting HP:** ${master.currentHp}/${master.maxHp}\n• **Estimated Discharge:** In 60 minutes`,
+    message: `🛏️ **BED REST COMMENCED!**\n${doctor.name} (${doctor.title}) has adjusted your IV fluids and tucked you into a medical bed.\n• **Recovery Duration:** ${totalDurationMin} minutes real time${perkNote}\n• **Starting HP:** ${master.currentHp}/${master.maxHp}\n• **Perk Active:** ${doctor.perkDescription}`,
     elapsedMin: 0,
-    remMin: 60,
+    remMin: totalDurationMin,
     currentHp: master.currentHp
   };
 }
@@ -1092,7 +1125,8 @@ export function setAttendingDoctor(discordId: string, doctorId: 'nightingale' | 
   if (!master) return { success: false, message: 'Master record not found.' };
   master.attendingDoctorId = doctorId;
   saveCafeteriaStateToDisk();
-  return { success: true, message: `Attending doctor updated to ${doctorId}.` };
+  const doc = ATTENDING_DOCTORS[doctorId];
+  return { success: true, message: `Attending doctor updated to **${doc.name}**!\n*Perk:* ${doc.perkDescription}` };
 }
 
 export function drinkBurnSalve(discordId: string): { success: boolean; message: string } {
@@ -1109,7 +1143,9 @@ export function drinkBurnSalve(discordId: string): { success: boolean; message: 
   inv[herbKey] -= 1;
   if (inv[herbKey] <= 0) delete inv[herbKey];
 
-  master.currentHp = Math.min(master.maxHp, master.currentHp + 50);
+  // Asclepius Perk: +25% HP heal bonus on salve
+  const healAmount = master.attendingDoctorId === 'asclepius' ? 65 : 50;
+  master.currentHp = Math.min(master.maxHp, master.currentHp + healAmount);
   master.burnStatus = 'none';
   if (master.currentHp >= master.maxHp) {
     master.isHospitalized = false;
@@ -1118,12 +1154,12 @@ export function drinkBurnSalve(discordId: string): { success: boolean; message: 
     master.statusText = 'Fully recovered with Burn Salve';
   }
 
-  addCafeteriaActivity(`🧪 **${master.username}** drank a freshly brewed herbal burn salve in the Infirmary (+50 HP)!`, 'infirmary');
+  addCafeteriaActivity(`🧪 **${master.username}** drank a freshly brewed herbal burn salve in the Infirmary (+${healAmount} HP)!`, 'infirmary');
   saveCafeteriaStateToDisk();
 
   return {
     success: true,
-    message: `🧪 **HERBAL BURN SALVE CONSUMED!**\nYou drank a soothing herbal decoction brewed by Asclepius.\n• Restored **+50 HP** (Current HP: ${master.currentHp}/${master.maxHp})\n• Cleared Burn & Singed status!`
+    message: `🧪 **HERBAL BURN SALVE CONSUMED!**\nYou drank a soothing herbal decoction brewed by Asclepius.\n• Restored **+${healAmount} HP** (Current HP: ${master.currentHp}/${master.maxHp})\n• Cleared Burn & Singed status!`
   };
 }
 
@@ -1148,17 +1184,98 @@ export function instantRejuvenationSQ(discordId: string, costSq = 500): { succes
   };
 }
 
+export function craftFruitBasket(discordId: string): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master not found.' };
+
+  const inv = master.inventory || {};
+  const hasApple = (inv['holy_eden_fruit'] || 0) >= 1;
+  const hasHoney = (inv['sweet_honey'] || 0) >= 1;
+
+  if (!hasApple || !hasHoney) {
+    return {
+      success: false,
+      message: `❌ Cannot craft Fruit Basket! Missing required ingredients:\n• Golden Eden Apple 🍎 (have ${inv['holy_eden_fruit'] || 0}/1)\n• Wild Forest Honey 🍯 (have ${inv['sweet_honey'] || 0}/1)\n\n*Harvest Golden Apples in the Hydroponic Greenhouse and Honey in the Staff Lounge!*`
+    };
+  }
+
+  // Deduct ingredients
+  inv['holy_eden_fruit'] -= 1;
+  if (inv['holy_eden_fruit'] <= 0) delete inv['holy_eden_fruit'];
+
+  inv['sweet_honey'] -= 1;
+  if (inv['sweet_honey'] <= 0) delete inv['sweet_honey'];
+
+  inv['fruit_basket'] = (inv['fruit_basket'] || 0) + 1;
+  master.fruitBasketsCount = (master.fruitBasketsCount || 0) + 1;
+  master.lastActivityAt = Date.now();
+
+  addCafeteriaActivity(`🧺 **${master.username}** crafted a fresh **Hydroponic Fruit Basket** 🍎🍯 in the Greenhouse!`, master.currentRoomId);
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🧺 **FRUIT BASKET CRAFTED!**\nYou combined 1x Golden Eden Apple and 1x Wild Forest Honey into a decorated wicker **Fresh Fruit Basket**!\n• *(Your Fruit Baskets in Apron: ${inv['fruit_basket']}x)*\n\n*Visit an injured friend in the Infirmary to gift this basket!*`
+  };
+}
+
 export function bringFruitBasketToFriend(rescuerId: string, targetId: string): { success: boolean; message: string } {
   const rescuer = worldState.masters[rescuerId];
   const target = worldState.masters[targetId];
 
   if (!rescuer || !target) return { success: false, message: 'Master records not found.' };
 
-  target.currentHp = Math.min(target.maxHp, target.currentHp + 35);
-  // If friend is undergoing bed rest, advance their rest timer by 30 minutes!
-  if (target.activeRecoveryType === 'bed_rest' && target.bedRestStartedAt) {
-    target.bedRestStartedAt -= 30 * 60 * 1000;
+  const today = new Date().toISOString().slice(0, 10);
+  if (!rescuer.dailyGiftsSent) rescuer.dailyGiftsSent = {};
+  const sentInfo = rescuer.dailyGiftsSent[targetId] || { count: 0, lastGiftDate: '' };
+  const giftsToday = sentInfo.lastGiftDate === today ? sentInfo.count : 0;
+
+  if (giftsToday >= 2) {
+    return {
+      success: false,
+      message: `❌ **DAILY GIFT LIMIT REACHED:** You have already brought 2 Fruit Baskets to **${target.username}** today! (Maximum 2 daily baskets per friend).`
+    };
   }
+
+  const inv = rescuer.inventory || {};
+  let deductedBasket = false;
+
+  if ((inv['fruit_basket'] || 0) >= 1) {
+    inv['fruit_basket'] -= 1;
+    if (inv['fruit_basket'] <= 0) delete inv['fruit_basket'];
+    deductedBasket = true;
+  } else if ((inv['holy_eden_fruit'] || 0) >= 1 && (inv['sweet_honey'] || 0) >= 1) {
+    inv['holy_eden_fruit'] -= 1;
+    if (inv['holy_eden_fruit'] <= 0) delete inv['holy_eden_fruit'];
+    inv['sweet_honey'] -= 1;
+    if (inv['sweet_honey'] <= 0) delete inv['sweet_honey'];
+    deductedBasket = true;
+  }
+
+  if (!deductedBasket) {
+    return {
+      success: false,
+      message: `❌ You do not have a **Fruit Basket** 🧺 in your apron! Craft one in the Greenhouse using **1x Golden Eden Apple** 🍎 and **1x Wild Honey** 🍯.`
+    };
+  }
+
+  // Calculate 25% bed rest timer reduction
+  const now = Date.now();
+  let timeReducedText = '';
+  if (target.activeRecoveryType === 'bed_rest' && target.bedRestStartedAt) {
+    const docId = target.attendingDoctorId || 'nightingale';
+    const totalDurationMs = (docId === 'nightingale' ? 48 : 60) * 60 * 1000;
+    const elapsedMs = Math.max(0, now - target.bedRestStartedAt);
+    const remainingMs = Math.max(0, totalDurationMs - elapsedMs);
+    const reductionMs = Math.floor(remainingMs * 0.25); // 25% reduction of remaining time
+    target.bedRestStartedAt -= reductionMs; // Advance rest start time backward
+    const reducedMin = Math.round(reductionMs / 60000);
+    timeReducedText = ` (Remaining bed rest timer reduced by **25% / ${reducedMin} mins**!)`;
+  }
+
+  // Restore HP
+  const hpBonus = target.attendingDoctorId === 'asclepius' ? 45 : 35;
+  target.currentHp = Math.min(target.maxHp, target.currentHp + hpBonus);
   if (target.currentHp >= target.maxHp) {
     target.isHospitalized = false;
     target.burnStatus = 'none';
@@ -1166,12 +1283,28 @@ export function bringFruitBasketToFriend(rescuerId: string, targetId: string): {
     target.bedRestStartedAt = undefined;
   }
 
-  addCafeteriaActivity(`🤝 **BEDSIDE CARE!** Master **${rescuer.username}** presented a fresh Fruit Basket to **${target.username}** in the Infirmary (+35 HP, +50 FP)!`, 'infirmary');
+  // Calculate Friend Points (Paracelsus Perk: +50% FP multiplier = 1.5x)
+  const isParacelsusActive = rescuer.attendingDoctorId === 'paracelsus' || target.attendingDoctorId === 'paracelsus';
+  const fpMultiplier = isParacelsusActive ? 1.5 : 1.0;
+  const rescuerFp = Math.floor(100 * fpMultiplier);
+  const targetFp = Math.floor(50 * fpMultiplier);
+
+  rescuer.friendPoints = (rescuer.friendPoints || 0) + rescuerFp;
+  target.friendPoints = (target.friendPoints || 0) + targetFp;
+
+  // Track daily gift limit
+  rescuer.dailyGiftsSent[targetId] = {
+    count: giftsToday + 1,
+    lastGiftDate: today
+  };
+
+  const paracelsusNote = isParacelsusActive ? ' 🧪 *(Paracelsus Perk: 1.5x FP Multiplier Active!)*' : '';
+  addCafeteriaActivity(`🍎 **@${rescuer.username}** brought a fresh fruit basket to **@${target.username}**'s bedside in the Infirmary! Recovery time reduced by 25%!`, 'infirmary');
   saveCafeteriaStateToDisk();
 
   return {
     success: true,
-    message: `🍎 **FRUIT BASKET DELIVERED!**\nYou presented a fresh basket of Holy Eden apples to **${target.username}**!\n• Restored **+35 HP** and advanced bed rest time by 30 minutes!\n• Granted **+50 Friend Points** to you!`
+    message: `🍎 **FRUIT BASKET DELIVERED TO ${target.username.toUpperCase()}!**\nYou presented a fresh Hydroponic Fruit Basket to **${target.username}** at their bedside!${timeReducedText}\n\n🎁 **Friend Points Awarded:**\n• You: **+${rescuerFp} FP** (Total: ${rescuer.friendPoints} FP)\n• ${target.username}: **+${targetFp} FP**\n• Daily Limit: **${giftsToday + 1} / 2 baskets** delivered to ${target.username} today.${paracelsusNote}`
   };
 }
 
@@ -1187,11 +1320,53 @@ export function performHeroRescue(rescuerId: string, targetId: string): { succes
   target.hospitalizedAt = Date.now();
   target.statusText = '🏥 Admitted in Infirmary (Rescued)';
 
+  const isParacelsusActive = rescuer.attendingDoctorId === 'paracelsus';
+  const fpEarned = isParacelsusActive ? 150 : 100;
+  rescuer.friendPoints = (rescuer.friendPoints || 0) + fpEarned;
+
   addCafeteriaActivity(`🚑 **HEROIC RESCUE!** Master **${rescuer.username}** dashed through the flames and dragged unconscious **${target.username}** out of ${currentRoom} to the Infirmary!`, currentRoom);
   saveCafeteriaStateToDisk();
 
   return {
     success: true,
-    message: `🚑 **HEROIC RESCUE EXECUTED!**\nYou fearlessly threw open the burning door, lifted **${target.username}** over your shoulder, and carried them out of the inferno to the Infirmary!\n\n🎁 **Heroic Rewards Granted:**\n• **+100 Friend Points**\n• **Karma:** *Lawful Good Hero*`
+    message: `🚑 **HEROIC RESCUE EXECUTED!**\nYou fearlessly threw open the burning door, lifted **${target.username}** over your shoulder, and carried them out of the inferno to the Infirmary!\n\n🎁 **Heroic Rewards Granted:**\n• **+${fpEarned} Friend Points** (Total: ${rescuer.friendPoints} FP)\n• **Karma:** *Lawful Good Hero*`
+  };
+}
+
+export function purchaseChaldeaShopUpgrade(discordId: string, itemId: string): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master record not found.' };
+
+  const shopItem = CHALDEA_SHOP_CATALOG[itemId];
+  if (!shopItem) return { success: false, message: 'Shop upgrade item not found.' };
+
+  if (!master.facilityUpgrades) {
+    master.facilityUpgrades = { extraStoves: 0, extraPrepCounters: 0, hydroponicLamps: 0 };
+  }
+
+  const currentLvl = master.facilityUpgrades[shopItem.upgradeType] || 0;
+  if (currentLvl >= shopItem.maxLevel) {
+    return { success: false, message: `❌ **MAX LEVEL REACHED:** Your **${shopItem.name}** is already at maximum level (${shopItem.maxLevel}/${shopItem.maxLevel})!` };
+  }
+
+  const costFP = shopItem.baseCostFP * (currentLvl + 1);
+  const currentFP = master.friendPoints || 0;
+
+  if (currentFP < costFP) {
+    return {
+      success: false,
+      message: `❌ **INSUFFICIENT FRIEND POINTS:** **${shopItem.name}** Level ${currentLvl + 1} costs **${costFP} FP**! You currently have **${currentFP} FP**.\n*Earn Friend Points by gifting Fruit Baskets, serving patrons, or rescuing friends!*`
+    };
+  }
+
+  master.friendPoints = currentFP - costFP;
+  master.facilityUpgrades[shopItem.upgradeType] = currentLvl + 1;
+
+  addCafeteriaActivity(`🛒 **UPGRADE PURCHASED!** Master **${master.username}** purchased **${shopItem.name} Lvl ${currentLvl + 1}** for ${costFP} FP!`, master.currentRoomId);
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🛒 **CHALDEA SHOP UPGRADE SUCCESSFUL!**\nYou purchased **${shopItem.name} (Level ${currentLvl + 1}/${shopItem.maxLevel})**!\n• **Bonus Applied:** ${shopItem.perLevelBonus}\n• **Cost:** -${costFP} FP (Remaining: **${master.friendPoints} FP**)`
   };
 }

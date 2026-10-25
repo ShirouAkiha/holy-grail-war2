@@ -695,6 +695,7 @@ export default function DiscordEmulator({
           '• `/grailwar [status | attack | leak | skirmish | rest]`\n' +
           '• `/servants [list | search <term> | view <name>]`\n' +
           '• `/summon [ritual | status | release]`\n' +
+          '• `/chaldea hub` — Chaldea Cafeteria & Infirmary Visual Novel Hub\n' +
           '• `/duel [opponent]`',
         color: '#f59e0b',
         footer: 'System Ready • Discord.js v14 • Holy Grail War Secret Engine'
@@ -703,9 +704,9 @@ export default function DiscordEmulator({
         type: 'buttons',
         items: [
           { id: 'quick_daily_claim', label: 'Claim Daily (30 SQ)', style: 'success', emoji: '💎' },
+          { id: 'quick_chaldea_hub', label: 'Chaldea Hub (/chaldea)', style: 'primary', emoji: '🍵' },
           { id: 'quick_war_status', label: 'Intelligence Board (/grailwar)', style: 'secondary', emoji: '🏆' },
-          { id: 'war_attack_prompt', label: 'Ambush Suspect (/grailwar attack)', style: 'danger', emoji: '⚔️' },
-          { id: 'quick_summon_ritual', label: 'Summoning Ritual', style: 'primary', emoji: '✨' }
+          { id: 'war_attack_prompt', label: 'Ambush Suspect (/grailwar attack)', style: 'danger', emoji: '⚔️' }
         ]
       }
     }
