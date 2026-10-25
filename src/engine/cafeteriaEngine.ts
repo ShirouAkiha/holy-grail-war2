@@ -43,6 +43,10 @@ export interface StationedMaster {
   hospitalizedAt?: number;
   burnStatus?: 'none' | 'singed' | 'fainted';
   fireResistanceUntil?: number;
+  activeRecoveryType?: 'none' | 'bed_rest';
+  bedRestStartedAt?: number;
+  bedRestInitialHp?: number;
+  attendingDoctorId?: 'nightingale' | 'asclepius' | 'bb';
 }
 
 export interface StoveCookingPot {
@@ -275,7 +279,9 @@ export function getOrCreateStationedMaster(
       currentHp: 100,
       maxHp: 100,
       isHospitalized: false,
-      burnStatus: 'none'
+      burnStatus: 'none',
+      activeRecoveryType: 'none',
+      attendingDoctorId: 'nightingale'
     };
     worldState.masters[discordId] = master;
     addCafeteriaActivity(`👤 Master **${username}** arrived at the **Dining Hall**.`, 'dining_hall');
@@ -286,6 +292,8 @@ export function getOrCreateStationedMaster(
     if (typeof master.maxHp !== 'number') master.maxHp = 100;
     if (typeof master.isHospitalized !== 'boolean') master.isHospitalized = false;
     if (!master.burnStatus) master.burnStatus = 'none';
+    if (!master.activeRecoveryType) master.activeRecoveryType = 'none';
+    if (!master.attendingDoctorId) master.attendingDoctorId = 'nightingale';
 
     // Update live profile info
     master.username = username;
@@ -302,6 +310,14 @@ export function getOrCreateStationedMaster(
 export function moveMasterRoom(discordId: string, targetRoomId: string): { success: boolean; message: string; room?: CafeteriaRoom } {
   const master = worldState.masters[discordId];
   if (!master) return { success: false, message: 'Master record not found. Please type `/chaldea` first.' };
+
+  // Hospitalization lock: cannot leave the Infirmary until treatment is complete
+  if (master.isHospitalized && master.currentHp < master.maxHp && targetRoomId !== 'infirmary') {
+    return {
+      success: false,
+      message: '🏥 **HOSPITALIZED (RESTRICTED):** Head Nurse Nightingale and Asclepius will not permit you to leave the Infirmary until your recovery is complete! Select a recovery option in the Infirmary.'
+    };
+  }
 
   const targetRoom = CAFETERIA_ROOMS[targetRoomId];
   if (!targetRoom) return { success: false, message: 'Invalid room location.' };
@@ -818,22 +834,31 @@ export function tickCafeteriaWorld(): void {
         m.currentRoomId = 'infirmary';
         m.isHospitalized = true;
         m.hospitalizedAt = now;
-        m.statusText = '🏥 Admitted in Infirmary Bed';
+        m.activeRecoveryType = 'none';
+        m.bedRestStartedAt = undefined;
+        m.statusText = '🏥 Admitted in Infirmary (Awaiting Treatment)';
         addCafeteriaActivity(`🏥 **MEDICAL WARD ADMISSION REPORT:** Master **${m.username}** collapsed from severe smoke inhalation in ${roomHazard.roomId}! Stretchered to the Infirmary under Nurse Nightingale's care.`, 'infirmary');
       }
     } else if (m.isHospitalized || m.currentRoomId === 'infirmary') {
-      const lastTick = m.lastActivityAt || now;
-      const elapsedMin = Math.max(1, Math.floor((now - lastTick) / 60000));
-      if (m.currentHp < m.maxHp && elapsedMin >= 1) {
-        // 1 hour (60 minutes) full recovery time = ~1.67 HP per minute
-        const hpGain = Math.max(1, Math.floor(elapsedMin * (100 / 60)));
-        m.currentHp = Math.min(m.maxHp, m.currentHp + hpGain);
-        m.lastActivityAt = now;
-        if (m.currentHp >= m.maxHp) {
+      // Automatic recovery is DISABLED.
+      // Master only recovers over 1 hour if they explicitly selected [🛏️ Bed Rest]
+      if (m.activeRecoveryType === 'bed_rest' && m.bedRestStartedAt) {
+        const elapsedMs = Math.max(0, now - m.bedRestStartedAt);
+        const totalDurationMs = 60 * 60 * 1000; // 60 minutes = 1 full hour
+        const initialHp = typeof m.bedRestInitialHp === 'number' ? m.bedRestInitialHp : 0;
+        const progress = Math.min(1.0, elapsedMs / totalDurationMs);
+        const computedHp = Math.min(m.maxHp, initialHp + Math.floor(progress * (m.maxHp - initialHp)));
+
+        m.currentHp = computedHp;
+
+        if (elapsedMs >= totalDurationMs || m.currentHp >= m.maxHp) {
+          m.currentHp = m.maxHp;
           m.isHospitalized = false;
           m.burnStatus = 'none';
-          m.statusText = 'Resting quietly in Infirmary';
-          addCafeteriaActivity(`✨ **DISCHARGE APPROVED:** Master **${m.username}** made a full recovery after 1 hour of bed rest in the Infirmary!`, 'infirmary');
+          m.activeRecoveryType = 'none';
+          m.bedRestStartedAt = undefined;
+          m.statusText = 'Resting peacefully (Fully Recovered)';
+          addCafeteriaActivity(`✨ **DISCHARGE APPROVED:** Master **${m.username}** completed 1 full hour of bed rest and made a 100% full recovery!`, 'infirmary');
         }
       }
     }
@@ -1022,6 +1047,54 @@ export function instantRepairRoomSQ(discordId: string, roomId: string, costSq = 
   };
 }
 
+export function startBedRest(discordId: string): { success: boolean; message: string; elapsedMin: number; remMin: number; currentHp: number } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master record not found.', elapsedMin: 0, remMin: 60, currentHp: 0 };
+
+  if (master.currentRoomId !== 'infirmary') {
+    return { success: false, message: 'You must be in the Chaldea Infirmary to rest in a hospital bed.', elapsedMin: 0, remMin: 60, currentHp: master.currentHp };
+  }
+
+  const now = Date.now();
+  if (master.activeRecoveryType === 'bed_rest' && master.bedRestStartedAt) {
+    const elapsedMs = now - master.bedRestStartedAt;
+    const elapsedMin = Math.floor(elapsedMs / 60000);
+    const remMin = Math.max(0, 60 - elapsedMin);
+    return {
+      success: true,
+      message: `🛏️ **Bed Rest Already in Progress!**\nYou are tucked into a clean medical bed.\n• Time Elapsed: **${elapsedMin} / 60 minutes**\n• Current HP: **${master.currentHp}/${master.maxHp}**\n• Time Remaining: **${remMin} minute(s)** until full discharge.`,
+      elapsedMin,
+      remMin,
+      currentHp: master.currentHp
+    };
+  }
+
+  master.activeRecoveryType = 'bed_rest';
+  master.bedRestStartedAt = now;
+  master.bedRestInitialHp = master.currentHp;
+  master.statusText = '🛏️ Resting in Infirmary Bed (Recovering)';
+  master.isAfk = true;
+
+  addCafeteriaActivity(`🛏️ Master **${master.username}** tucked into an Infirmary bed to begin a 1-hour healing rest.`, 'infirmary');
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🛏️ **1-HOUR BED REST COMMENCED!**\nHead Nurse Nightingale and Asclepius have adjusted your IV fluids and tucked you into a comfortable hospital bed.\n• **Recovery Duration:** 60 minutes real time\n• **Starting HP:** ${master.currentHp}/${master.maxHp}\n• **Estimated Discharge:** In 60 minutes`,
+    elapsedMin: 0,
+    remMin: 60,
+    currentHp: master.currentHp
+  };
+}
+
+export function setAttendingDoctor(discordId: string, doctorId: 'nightingale' | 'asclepius' | 'bb'): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master record not found.' };
+  master.attendingDoctorId = doctorId;
+  saveCafeteriaStateToDisk();
+  return { success: true, message: `Attending doctor updated to ${doctorId}.` };
+}
+
 export function drinkBurnSalve(discordId: string): { success: boolean; message: string } {
   const master = worldState.masters[discordId];
   if (!master) return { success: false, message: 'Master record not found.' };
@@ -1040,6 +1113,8 @@ export function drinkBurnSalve(discordId: string): { success: boolean; message: 
   master.burnStatus = 'none';
   if (master.currentHp >= master.maxHp) {
     master.isHospitalized = false;
+    master.activeRecoveryType = 'none';
+    master.bedRestStartedAt = undefined;
     master.statusText = 'Fully recovered with Burn Salve';
   }
 
@@ -1059,6 +1134,8 @@ export function instantRejuvenationSQ(discordId: string, costSq = 500): { succes
   master.currentHp = master.maxHp;
   master.isHospitalized = false;
   master.burnStatus = 'none';
+  master.activeRecoveryType = 'none';
+  master.bedRestStartedAt = undefined;
   master.fireResistanceUntil = Date.now() + 60 * 60 * 1000;
   master.statusText = 'Shielded with Fire Resistance';
 
@@ -1078,9 +1155,15 @@ export function bringFruitBasketToFriend(rescuerId: string, targetId: string): {
   if (!rescuer || !target) return { success: false, message: 'Master records not found.' };
 
   target.currentHp = Math.min(target.maxHp, target.currentHp + 35);
+  // If friend is undergoing bed rest, advance their rest timer by 30 minutes!
+  if (target.activeRecoveryType === 'bed_rest' && target.bedRestStartedAt) {
+    target.bedRestStartedAt -= 30 * 60 * 1000;
+  }
   if (target.currentHp >= target.maxHp) {
     target.isHospitalized = false;
     target.burnStatus = 'none';
+    target.activeRecoveryType = 'none';
+    target.bedRestStartedAt = undefined;
   }
 
   addCafeteriaActivity(`🤝 **BEDSIDE CARE!** Master **${rescuer.username}** presented a fresh Fruit Basket to **${target.username}** in the Infirmary (+35 HP, +50 FP)!`, 'infirmary');
@@ -1088,7 +1171,7 @@ export function bringFruitBasketToFriend(rescuerId: string, targetId: string): {
 
   return {
     success: true,
-    message: `🍎 **FRUIT BASKET DELIVERED!**\nYou presented a fresh basket of Holy Eden apples to **${target.username}**!\n• Restored **+35 HP** to ${target.username}\n• Granted **+50 Friend Points** to you!`
+    message: `🍎 **FRUIT BASKET DELIVERED!**\nYou presented a fresh basket of Holy Eden apples to **${target.username}**!\n• Restored **+35 HP** and advanced bed rest time by 30 minutes!\n• Granted **+50 Friend Points** to you!`
   };
 }
 

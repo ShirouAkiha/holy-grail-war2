@@ -299,9 +299,17 @@ export async function renderChaldeaNodeMapCanvas(
   return canvas.toBuffer('image/png');
 }
 
+export interface LocationCanvasOptions {
+  customDialogue?: string;
+  customSpeakerName?: string;
+  leftSpriteUrl?: string;
+  leftSpriteName?: string;
+}
+
 /**
- * 2. First-Person Visual Novel Viewport Stage (960x540)
- * Renders the room background, contracted Servant companion sprite on right,
+ * 2. Visual Novel Location Viewport Canvas (960x540)
+ * Renders full-bleed scenic room backdrop, ambient lighting, right-side contracted servant figure,
+ * optional left-side attending doctor NPC figure, active simmer pot status,
  * stationed Master tokens on top/left, and visual novel dialogue HUD at bottom.
  */
 export async function renderChaldeaLocationCanvas(
@@ -309,8 +317,12 @@ export async function renderChaldeaLocationCanvas(
   currentMaster: StationedMaster,
   roomMasters: StationedMaster[],
   activeStovePot?: StoveCookingPot,
-  customDialogue?: string
+  optionsOrDialogue?: string | LocationCanvasOptions
 ): Promise<Buffer> {
+  const options: LocationCanvasOptions = typeof optionsOrDialogue === 'string'
+    ? { customDialogue: optionsOrDialogue }
+    : (optionsOrDialogue || {});
+
   const canvasMod = getCanvasModule();
   const width = 960;
   const height = 540;
@@ -516,6 +528,82 @@ export async function renderChaldeaLocationCanvas(
     ctx.restore();
   }
 
+  // 3b. Left-Flank Attending Doctor / Room NPC Sprite (Visual Novel 2-Character Dialogue Scene)
+  if (options.leftSpriteUrl) {
+    const leftImg = await safeLoadImage(canvasMod, options.leftSpriteUrl);
+    if (leftImg && leftImg.width && leftImg.height) {
+      let isLeftMerged = false;
+      try {
+        if (typeof isAtlasMergedSprite === 'function') {
+          isLeftMerged = isAtlasMergedSprite(leftImg);
+        }
+      } catch {}
+
+      if (!isLeftMerged) {
+        isLeftMerged = Boolean(leftImg._isAtlasMerged) ||
+          (leftImg._sourceUrl && String(leftImg._sourceUrl).includes('CharaFigure')) ||
+          (leftImg.src && String(leftImg.src).includes('CharaFigure')) ||
+          Boolean(options.leftSpriteUrl && options.leftSpriteUrl.includes('CharaFigure'));
+      }
+
+      let sourceW = leftImg.width;
+      let sourceH = leftImg.height;
+      if (isLeftMerged) {
+        try {
+          if (typeof getAtlasFigureBounds === 'function') {
+            const bounds = getAtlasFigureBounds(leftImg);
+            sourceW = bounds.sw;
+            sourceH = bounds.sh;
+          }
+        } catch {}
+      }
+
+      const aspect = sourceW / sourceH;
+
+      const maxSpriteH = Math.round(height * 0.94);
+      const maxSpriteW = Math.round(width * 0.44);
+
+      let spriteW = maxSpriteW;
+      let spriteH = Math.round(spriteW / aspect);
+      if (spriteH > maxSpriteH) {
+        spriteH = maxSpriteH;
+        spriteW = Math.round(spriteH * aspect);
+      }
+
+      // Anchor to bottom edge and left flank
+      const spriteX = 24;
+      const spriteY = height - spriteH;
+
+      // Soft serene cyan/emerald medical aura behind left doctor
+      const haloX = spriteX + spriteW / 2;
+      const haloY = spriteY + spriteH / 2;
+      const haloRadius = Math.max(spriteW, spriteH) * 0.45;
+      const halo = ctx.createRadialGradient(haloX, haloY, 20, haloX, haloY, haloRadius);
+      halo.addColorStop(0, 'rgba(0, 229, 255, 0.28)');
+      halo.addColorStop(0.7, 'rgba(0, 229, 255, 0.08)');
+      halo.addColorStop(1, 'transparent');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(haloX, haloY, haloRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctx.shadowBlur = 24;
+      ctx.shadowOffsetY = 6;
+
+      if (isLeftMerged) {
+        drawServantBattleSprite(ctx, leftImg, spriteX, spriteY, spriteW, spriteH, {
+          fitMode: 'contain',
+          isAtlasMerged: true,
+        });
+      } else {
+        ctx.drawImage(leftImg, spriteX, spriteY, spriteW, spriteH);
+      }
+      ctx.restore();
+    }
+  }
+
   // 4. Stationed Masters HUD Banner (Top-Left)
   const otherMasters = roomMasters.filter(m => m.discordId !== currentMaster.discordId);
   const count = otherMasters.length;
@@ -689,15 +777,15 @@ export async function renderChaldeaLocationCanvas(
   ctx.fillRect(vnBoxX + vnBoxW - 24, vnBoxY + vnBoxH - 11, 16, 3);
   ctx.fillRect(vnBoxX + vnBoxW - 11, vnBoxY + vnBoxH - 19, 3, 16);
 
-  // Servant Speaker Nameplate Badge (30px Bold)
-  const speakerName = currentMaster.companionServantName || 'Contracted Companion';
+  // Servant / Doctor Speaker Nameplate Badge (30px Bold)
+  const speakerName = options.customSpeakerName || currentMaster.companionServantName || 'Contracted Companion';
   ctx.fillStyle = '#fbbf24';
   ctx.font = 'bold 30px sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText(`💬 ${speakerName}`, vnBoxX + 28, vnBoxY + 42);
 
-  // Servant Dialogue Text (32px Italic with multi-line word wrapping)
-  const rawDialogue = customDialogue || DEFAULT_ROOM_DIALOGUES[room.id] || `“Master, what are your orders for ${room.shortName}?”`;
+  // Dialogue Text (32px Italic with multi-line word wrapping)
+  const rawDialogue = options.customDialogue || DEFAULT_ROOM_DIALOGUES[room.id] || `“Master, what are your orders for ${room.shortName}?”`;
   const dialogueText = rawDialogue.startsWith('“') ? rawDialogue : `“${rawDialogue}”`;
 
   ctx.fillStyle = '#ffffff';

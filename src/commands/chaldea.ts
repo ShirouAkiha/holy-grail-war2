@@ -24,6 +24,7 @@ import {
   INGREDIENT_CATALOG, 
   RECIPES_CATALOG, 
   VISITING_PATRONS,
+  ATTENDING_DOCTORS,
   CafeteriaRoom 
 } from '../data/cafeteriaData';
 import { resolveAscensionSprite } from '../data/servantAscensions';
@@ -47,6 +48,8 @@ import {
   instantRepairRoomSQ,
   drinkBurnSalve,
   instantRejuvenationSQ,
+  startBedRest,
+  setAttendingDoctor,
   bringFruitBasketToFriend,
   performHeroRescue,
   StationedMaster
@@ -151,10 +154,30 @@ export async function buildChaldeaViewportResponse(
   const roomMasters = getRoomStationedMasters(room.id);
   const activePot = world.stovePots[0];
 
+  // Resolve attending doctor and custom dialogue if in Infirmary
+  let leftSpriteUrl: string | undefined = undefined;
+  let customSpeakerName: string | undefined = undefined;
+  let activeDialogue = customDialogue;
+
+  if (room.id === 'infirmary') {
+    const docId = master.attendingDoctorId || 'nightingale';
+    const doctor = ATTENDING_DOCTORS[docId] || ATTENDING_DOCTORS.nightingale;
+    leftSpriteUrl = doctor.spriteUrl;
+    customSpeakerName = doctor.name;
+    if (!activeDialogue) {
+      const quotes = doctor.iconicQuotes;
+      activeDialogue = quotes[Math.floor(Math.random() * quotes.length)];
+    }
+  }
+
   // 1. Generate Dual Canvases in parallel
   const [mapBuffer, viewportBuffer] = await Promise.all([
     renderChaldeaNodeMapCanvas(room.id, Object.values(world.masters)),
-    renderChaldeaLocationCanvas(room, master, roomMasters, activePot, customDialogue)
+    renderChaldeaLocationCanvas(room, master, roomMasters, activePot, {
+      customDialogue: activeDialogue,
+      customSpeakerName: customSpeakerName,
+      leftSpriteUrl: leftSpriteUrl
+    })
   ]);
 
   const mapAttachment = new AttachmentBuilder(mapBuffer, { name: 'chaldea_map.png' });
@@ -203,6 +226,22 @@ export async function buildChaldeaViewportResponse(
       }).join('\n');
     } else {
       stationDetails = `🍽️ Tables are set. Visiting patrons arrive periodically!`;
+    }
+  } else if (room.id === 'infirmary') {
+    const docId = master.attendingDoctorId || 'nightingale';
+    const doctor = ATTENDING_DOCTORS[docId] || ATTENDING_DOCTORS.nightingale;
+    if (master.isHospitalized || master.currentHp < master.maxHp) {
+      if (master.activeRecoveryType === 'bed_rest' && master.bedRestStartedAt) {
+        const elapsedMs = Math.max(0, Date.now() - master.bedRestStartedAt);
+        const elapsedMin = Math.floor(elapsedMs / 60000);
+        const remMin = Math.max(0, 60 - elapsedMin);
+        const percent = Math.min(100, Math.floor((elapsedMs / (60 * 60 * 1000)) * 100));
+        stationDetails = `🛏️ **BED REST IN PROGRESS:**\n• **Attending Doctor:** ${doctor.name} (${doctor.title})\n• **Rest Timer:** **${elapsedMin} / 60 minutes** elapsed (${percent}%)\n• **Vitals:** **${master.currentHp}/${master.maxHp} HP**\n• **Estimated Discharge:** **${remMin} minute(s)** remaining\n\n*Master is safely tucked in bed recovering.*`;
+      } else {
+        stationDetails = `⚠️ **INCAPACITATED / AWAITING TREATMENT:**\n• **Attending Doctor:** ${doctor.name} (${doctor.title})\n• **Current Health:** **${master.currentHp}/${master.maxHp} HP**\n• **Status:** ${master.burnStatus === 'fainted' ? '🔥 Unconscious / Suffocating' : '🔥 Singed / Injured'}\n\n🛑 **Action Required:** You will not recover automatically. Select a medical treatment option below to begin rehabilitation!`;
+      }
+    } else {
+      stationDetails = `🏥 **Infirmary Ward Clear:**\n• **Attending Doctor on Duty:** ${doctor.name} (${doctor.title})\n• **Your Vitals:** 100/100 HP (Healthy & Discharged)`;
     }
   } else if (room.availableIngredients.length > 0) {
     const ings = room.availableIngredients.map(id => INGREDIENT_CATALOG[id]).filter(Boolean);
@@ -280,8 +319,8 @@ export async function buildChaldeaViewportResponse(
     actionButtons.push(
       new ButtonBuilder()
         .setCustomId('chaldea_action_bed_rest')
-        .setLabel('🛏️ Bed Rest (Free 1 hr Recovery)')
-        .setStyle(ButtonStyle.Success),
+        .setLabel(master.activeRecoveryType === 'bed_rest' ? '🛏️ Bed Rest (1 hr in Progress)' : '🛏️ Bed Rest (Free 1 hr)')
+        .setStyle(master.activeRecoveryType === 'bed_rest' ? ButtonStyle.Success : ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('chaldea_action_drink_salve')
         .setLabel('🧪 Drink Burn Salve (Herbs)')
@@ -289,6 +328,10 @@ export async function buildChaldeaViewportResponse(
       new ButtonBuilder()
         .setCustomId('chaldea_action_rejuvenate_sq')
         .setLabel('💎 Rejuvenate (500 SQ)')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_switch_doctor')
+        .setLabel('🩺 Page Doctor')
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('chaldea_action_fruit_basket_select')
@@ -599,10 +642,41 @@ export async function handleChaldeaGlobalInteraction(
 
   // 1g. Button: Bed Rest in Infirmary
   if (interaction.isButton() && customId === 'chaldea_action_bed_rest') {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    await interaction.deferUpdate();
+    const result = startBedRest(discordId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
     await interaction.editReply({
-      content: `🛏️ **BED REST IN PROGRESS**\nNurse Nightingale has placed you in an Infirmary bed. You are passively recovering over **1 hour of Bed Rest** in real-time.\n• **Current Health:** ${master.currentHp}/${master.maxHp} HP\n• You may chat, inspect your inventory, or rest quietly while recovering.`
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({
+      flags: MessageFlags.Ephemeral,
+      content: result.message
+    });
+    return true;
+  }
+
+  // 1g-2. Button: Switch Attending Doctor in Infirmary
+  if (interaction.isButton() && customId === 'chaldea_action_switch_doctor') {
+    await interaction.deferUpdate();
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const docCycle: Array<'nightingale' | 'asclepius' | 'bb'> = ['nightingale', 'asclepius', 'bb'];
+    const currentDoc = master.attendingDoctorId || 'nightingale';
+    const nextIdx = (docCycle.indexOf(currentDoc) + 1) % docCycle.length;
+    const nextDocId = docCycle[nextIdx];
+    setAttendingDoctor(discordId, nextDocId);
+
+    const docObj = ATTENDING_DOCTORS[nextDocId];
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({
+      flags: MessageFlags.Ephemeral,
+      content: `🩺 **ATTENDING PHYSICIAN PAGED:** **${docObj.name}** (${docObj.title}) has taken charge of your bedside!`
     });
     return true;
   }
