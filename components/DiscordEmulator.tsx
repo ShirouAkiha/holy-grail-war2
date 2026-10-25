@@ -5651,6 +5651,109 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
+    // COMMAND: /chaldea, /impeach, !chaldea, !impeach
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/chaldea') || trimmed.startsWith('!chaldea') || trimmed.startsWith('/impeach') || trimmed.startsWith('!impeach')) {
+      if (trimmed.startsWith('/impeach') || trimmed.startsWith('!impeach')) {
+        addMessage({
+          id: getNextId('bot_impeach_hub'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🏛️ CHALDEA HIGH TRIBUNAL: VOTE OF NO CONFIDENCE',
+            description:
+              `Masters are rising up against the reigning Head Prefect's disciplinary reign of terror!\n\n` +
+              `• **Threshold:** **5 Impeach Votes** required to dethrone\n` +
+              `• **Consequences of Impeachment:** Dethroned prefect is stripped of office for 24h, loses 20% CMP, and automated security bots drag them straight into the Restroom stalls!\n` +
+              `• **Succession:** The #2 Ranked Master on the CMP leaderboard is immediately crowned Head Prefect.\n\n` +
+              `⚖️ *Cast your vote below or initiate impeachment via Discord bot:*`,
+            color: '#d97706',
+            footer: 'Chaldea High Tribunal • Democratic Anti-Tyranny Protocol'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_impeach_vote', label: '🗳️ Impeach & Dethrone (5 Votes Needed)', style: 'danger', emoji: '🗳️' },
+              { id: 'quick_support_vote', label: '🛡️ Support the Prefect', style: 'success', emoji: '🛡️' },
+              { id: 'quick_chaldea_rankings', label: '🏆 CMP Leaderboard', style: 'secondary', emoji: '📜' }
+            ]
+          }
+        });
+        return;
+      }
+
+      if (trimmed.includes('rank') || trimmed.includes('leaderboard') || trimmed.includes('top')) {
+        addMessage({
+          id: getNextId('bot_chaldea_rankings'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🏆 CHALDEA CAMPUS HIERARCHY — MERIT POINT RANKINGS (CMP)',
+            description:
+              `**Chaldea Merit Points (CMP) Leaderboard & Prefect Hierarchy:**\n\n` +
+              `👑 **Rank 1: Chaldea Head Prefect / Chief Overseer** *(Held by #1 Player)*\n` +
+              `• *Perks:* Exclusive **[⚖️ Disciplinary Action]** authority — Grab & Drag silly Masters anywhere, Toilet Dunk / Swirlie (-20 to -30 HP), and Lavatory Lockdown!\n\n` +
+              `🥈 **Rank 2: Head of Operations** (300+ CMP)\n` +
+              `🥉 **Rank 3: Sous Chef** (150+ CMP)\n` +
+              `🎖️ **Rank 4: Kitchen Hand** (50+ CMP)\n` +
+              `🔰 **Rank 5: Junior Master** (Default)\n\n` +
+              `📜 **How to Earn CMP:**\n` +
+              `• 🍽️ Serving dishes to hungry Servant patrons: **+15 CMP**\n` +
+              `• 🧯 Extinguishing blazing stoves & room hazards: **+25 CMP**\n` +
+              `• 🛠️ Repairing damaged flue vents & counters: **+25 CMP**\n` +
+              `• 🍎 Bringing a Fruit Basket to an injured friend: **+10 CMP**\n` +
+              `• 🔓 Picking / Busting Restroom door locks: **+15 CMP**\n` +
+              `• 🧼 Washing face in Chaldea Restrooms: **+5 CMP**\n\n` +
+              `👑 **Current Head Prefect:** **@${master.username}** (\`${(master as any).meritPoints || 120} CMP\`)\n` +
+              `*(Checks & Balances: If tyrannical, file a \`/impeach\` Vote of No Confidence!)*`,
+            color: '#f59e0b',
+            footer: 'Chaldea Merit Registry • Consequence Engine'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_chaldea_hub', label: '🍵 Open Chaldea Hub', style: 'primary', emoji: '🍵' },
+              { id: 'quick_chaldea_impeach', label: '🏛️ File Impeachment', style: 'danger', emoji: '🗳️' }
+            ]
+          }
+        });
+        return;
+      }
+
+      addMessage({
+        id: getNextId('bot_chaldea_hub_info'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🍵 CHALDEA CAFETERIA & CAMPUS HUB — VISUAL NOVEL MUD',
+          description:
+            `Welcome to the **Chaldea Campus Hub & Cafeteria** — a real-time visual novel cooking MUD!\n\n` +
+            `📍 **Connected Facilities:**\n` +
+            `• 🍽️ **Dining Hall & Counter:** Present cooked meals to visiting Heroic Spirits for Gemini AI reviews!\n` +
+            `• 🔪 **Prep & Cutting Stations:** Deposit ingredients into the community basin & chop recipe kits.\n` +
+            `• 🔥 **Commercial Stoves:** Simmer gourmet pots and stir for high quality ratings.\n` +
+            `• 🌿 **Hydroponics Greenhouse:** Harvest Sacred Herbs & craft healing Fruit Baskets.\n` +
+            `• 🏥 **Medical Infirmary:** Bed rest under Doctor Servants (Nightingale, Asclepius, BB, Paracelsus).\n` +
+            `• 🚽 **Chaldea Restrooms & Maintenance:** Wash face (+10 HP), mirror reflection check, and the infamous swirlie disciplinary stalls!\n\n` +
+            `👑 **Prefect Disciplinary Authority:**\n` +
+            `The #1 Ranked Master on the CMP leaderboard unlocks **[⚖️ Disciplinary Action]** to grab & drag silly players, dunk them in the toilet (-20 HP), or lock them in the lavatory!\n\n` +
+            `💡 *Execute in Discord bot via \`/chaldea hub\`, \`/chaldea rankings\`, and \`/impeach\`.*`,
+          color: '#10b981',
+          footer: 'Chaldea Facility Operations • Dual Canvas Viewport'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'quick_chaldea_rankings', label: '🏆 CMP Leaderboard', style: 'secondary', emoji: '👑' },
+            { id: 'quick_chaldea_impeach', label: '🏛️ High Tribunal', style: 'secondary', emoji: '⚖️' },
+            { id: 'quick_daily_claim', label: 'Claim Daily (30 SQ)', style: 'success', emoji: '💎' }
+          ]
+        }
+      });
+      return;
+    }
+
+    // ----------------------------------------------------
     // COMMAND: /raid, !raid (PvE Boss Raids)
     // ----------------------------------------------------
     if (trimmed.startsWith('/raid') || trimmed.startsWith('!raid')) {
@@ -12056,6 +12159,34 @@ export default function DiscordEmulator({
       handleCommand('/servant');
     } else if (btnId === 'quick_start_duel') {
       handleCommand('/duel');
+    } else if (btnId === 'quick_chaldea_hub' || btnId === 'chaldea_hub_view') {
+      handleCommand('/chaldea hub');
+    } else if (btnId === 'quick_chaldea_rankings' || btnId === 'chaldea_action_rankings') {
+      handleCommand('/chaldea rankings');
+    } else if (btnId === 'quick_chaldea_impeach' || btnId === 'chaldea_action_impeach_start') {
+      handleCommand('/impeach');
+    } else if (btnId === 'quick_impeach_vote') {
+      addMessage({
+        id: getNextId('bot_impeach_voted'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🗳️ VOTE RECORDED: IMPEACH',
+          description: `Master **${master.username}** has cast a vote to **IMPEACH & DETHRONE** the Head Prefect!\n• Current Tally: **1/5 Impeach votes needed**.\n• If passed, the Prefect will be locked in the Restroom stalls and docked 20% CMP!`,
+          color: '#ef4444'
+        }
+      });
+    } else if (btnId === 'quick_support_vote') {
+      addMessage({
+        id: getNextId('bot_support_voted'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🛡️ VOTE RECORDED: SUPPORT',
+          description: `Master **${master.username}** has voted to **SUPPORT** the reigning Head Prefect against the opposition!`,
+          color: '#10b981'
+        }
+      });
     } else if (btnId === 'quick_war_status') {
       handleCommand('/grailwar status');
     } else if (btnId === 'btn_hear_quote') {

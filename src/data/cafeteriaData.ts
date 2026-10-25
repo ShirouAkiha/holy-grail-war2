@@ -203,7 +203,7 @@ export const CAFETERIA_ROOMS: Record<string, CafeteriaRoom> = {
     shortName: 'Staff Lounge',
     description: 'Plush velvet couches, a low oak coffee table, and an antique record player. A cozy sanctuary where off-duty Masters rest, chat, and sip tea.',
     backgroundUrl: 'https://ella.janitorai.com/media-approved/CNCqmU0CcafjaBPgasMza.webp',
-    connections: ['dining_hall', 'greenhouse', 'hallway', 'infirmary'],
+    connections: ['dining_hall', 'greenhouse', 'hallway', 'infirmary', 'restrooms'],
     availableIngredients: ['matcha_tea_leaves', 'sweet_honey'],
     primaryActivityName: 'Lounge Sofas & Tea Table',
     primaryActionVerb: 'Relax & Socialize',
@@ -227,11 +227,23 @@ export const CAFETERIA_ROOMS: Record<string, CafeteriaRoom> = {
     shortName: 'Central Hallway',
     description: 'The polished sterile white corridor connecting Chaldea’s civilian quarters to the culinary wing. Digital navigation boards display campus notices.',
     backgroundUrl: 'https://ella.janitorai.com/media-approved/K7uctz34BM7ZBAx_aNL0S.webp',
-    connections: ['dining_hall', 'pantry', 'greenhouse', 'cold_storage', 'staff_lounge'],
+    connections: ['dining_hall', 'pantry', 'greenhouse', 'cold_storage', 'staff_lounge', 'restrooms'],
     availableIngredients: [],
     primaryActivityName: 'Directory Signpost',
     primaryActionVerb: 'Walk Through Corridor',
     ambientBgm: 'Footsteps & Distant Echoes'
+  },
+  restrooms: {
+    id: 'restrooms',
+    name: 'Chaldea Restrooms & Maintenance Wing',
+    shortName: 'Chaldea Restrooms',
+    description: 'Clean tiled lavatories, porcelain sinks, and gleaming mirrors. A quiet spot to freshen up—or the dreaded venue for Head Prefect disciplinary swirlies!',
+    backgroundUrl: 'https://ella.janitorai.com/media-approved/_u98uV5gHMCeqFzcQgJ_f.webp',
+    connections: ['hallway', 'staff_lounge'],
+    availableIngredients: [],
+    primaryActivityName: 'Porcelain Basins & Mirror Counter',
+    primaryActionVerb: 'Wash & Refresh',
+    ambientBgm: 'Echoing Tiles & Trickling Water'
   }
 };
 
@@ -953,5 +965,44 @@ export const ROOM_ENVIRONMENT_ACTIONS: Record<string, EnvironmentAction[]> = {
       description: 'Assist Head Nurse Nightingale in preparing antiseptic compresses.',
       effectMessage: 'You sterilized the medical compresses! Nurse Nightingale nod with ferocious approval.'
     }
+  ],
+  restrooms: [
+    {
+      id: 'wash_face',
+      name: 'Wash Face & Clean Soot',
+      emoji: '🧼',
+      description: 'Splash cold refreshing water on your face at the porcelain sink to clean away kitchen grease and soot stains.',
+      effectMessage: 'You splashed cold water on your face! Cleansed soot stains and restored +10 HP.'
+    },
+    {
+      id: 'check_reflection',
+      name: 'Check Mirror Reflection & CMP Rank',
+      emoji: '🪞',
+      description: 'Gaze into the gleaming mirror to inspect your uniform, discipline standing, and Chaldea Merit Points rank.',
+      effectMessage: 'You adjusted your uniform in the mirror with quiet confidence!'
+    },
+    {
+      id: 'break_door_lock',
+      name: 'Pick Restroom Door Lock',
+      emoji: '🔓',
+      description: 'Attempt to force or pick the bolt lock on the restroom door to rescue an imprisoned Master.',
+      effectMessage: 'You rattled and unlatched the exterior lock mechanism!'
+    }
   ]
 };
+
+export interface ChaldeaRankTier {
+  rank: number;
+  title: string;
+  minCMP: number;
+  emoji: string;
+  description: string;
+}
+
+export const CHALDEA_RANK_TIERS: ChaldeaRankTier[] = [
+  { rank: 1, title: 'Chaldea Head Prefect', minCMP: 300, emoji: '👑', description: 'Supreme authority on campus. Possesses disciplinary powers.' },
+  { rank: 2, title: 'Head of Operations', minCMP: 300, emoji: '🎖️', description: 'Senior overseer of cafeteria duties.' },
+  { rank: 3, title: 'Sous Chef', minCMP: 150, emoji: '👨‍🍳', description: 'Skilled culinary artisan and station supervisor.' },
+  { rank: 4, title: 'Kitchen Hand', minCMP: 50, emoji: '🔪', description: 'Reliable helper chopping ingredients and tending fires.' },
+  { rank: 5, title: 'Junior Master', minCMP: 0, emoji: '🌱', description: 'Novice apprentice exploring Chaldea facilities.' }
+];

@@ -198,6 +198,7 @@ export const commandAliasMap: Record<string, any> = {
   cook: chaldeaCommand,
   station: chaldeaCommand,
   fridge: chaldeaCommand,
+  impeach: chaldeaCommand,
   servants: servantsCommand,
   petrol: patrolCommand,
   board: grailwarCommand,

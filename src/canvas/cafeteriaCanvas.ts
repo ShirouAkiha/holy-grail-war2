@@ -20,7 +20,8 @@ const ROOM_COORDINATES: Record<string, NodeCoords> = {
   staff_lounge: { x: 370, y: 160, label: 'Staff Lounge' },
   greenhouse: { x: 370, y: 70, label: 'Greenhouse' },
   hallway: { x: 250, y: 250, label: 'Central Corridor' },
-  infirmary: { x: 370, y: 250, label: 'Infirmary' }
+  infirmary: { x: 370, y: 250, label: 'Infirmary' },
+  restrooms: { x: 250, y: 320, label: 'Restrooms' }
 };
 
 const DEFAULT_ROOM_DIALOGUES: Record<string, string> = {
@@ -32,7 +33,8 @@ const DEFAULT_ROOM_DIALOGUES: Record<string, string> = {
   cold_storage: '“Brrr! It’s freezing in cold storage! Let’s quickly grab the fresh meats and seafood.”',
   staff_lounge: '“Ah, a quiet moment in the staff lounge. Take a break and recharge your Mana, Master.”',
   hallway: '“The central corridor of Chaldea... Servants are bustling to and from the kitchen!”',
-  infirmary: '“Florence Nightingale: Amputation is the cleanest cure for thermal burns! Hold still, Master!”'
+  infirmary: '“Florence Nightingale: Amputation is the cleanest cure for thermal burns! Hold still, Master!”',
+  restrooms: '“Chaldea Restrooms & Maintenance... The gleaming mirrors offer a quiet moment to freshen up (unless the Prefect is lurking!).”'
 };
 
 function wrapCanvasText(ctx: any, text: string, maxWidth: number): string[] {

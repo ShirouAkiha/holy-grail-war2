@@ -26,6 +26,7 @@ import {
   VISITING_PATRONS,
   ATTENDING_DOCTORS,
   CHALDEA_SHOP_CATALOG,
+  CHALDEA_RANK_TIERS,
   CafeteriaRoom 
 } from '../data/cafeteriaData';
 import { resolveAscensionSprite } from '../data/servantAscensions';
@@ -56,6 +57,16 @@ import {
   purchaseChaldeaShopUpgrade,
   clearMasterNotifications,
   performHeroRescue,
+  getHeadPrefect,
+  getMasterCMPRank,
+  getChaldeaRankLeaderboard,
+  executeGrabAndDrag,
+  executeToiletDunk,
+  executeLavatoryLockdown,
+  breakRestroomLock,
+  washFaceInRestroom,
+  callImpeachmentVote,
+  castImpeachmentVote,
   StationedMaster
 } from '../engine/cafeteriaEngine';
 import { 
@@ -87,6 +98,7 @@ export const data = new SlashCommandBuilder()
             { name: 'Hydroponics & Sacred Greenhouse', value: 'greenhouse' },
             { name: 'Cold Storage & Deep Freezer', value: 'cold_storage' },
             { name: 'Staff Lounge & Relaxation Break Room', value: 'staff_lounge' },
+            { name: 'Chaldea Restrooms & Lavatories', value: 'restrooms' },
             { name: 'Central Hub Corridor', value: 'hallway' }
           )
       )
@@ -126,6 +138,14 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(sub =>
     sub.setName('fridge')
       .setDescription('Inspect the shared community pantry and prep basin')
+  )
+  .addSubcommand(sub =>
+    sub.setName('rankings')
+      .setDescription('View Chaldea Merit Points (CMP) leaderboard & Master Hierarchy')
+  )
+  .addSubcommand(sub =>
+    sub.setName('impeach')
+      .setDescription('Call a Vote of No Confidence against an abusive Head Prefect')
   );
 
 /**
@@ -277,13 +297,36 @@ export async function buildChaldeaViewportResponse(
     : '*No recent events recorded in this sector.*';
 
   // Format unread notifications / AFK hazard alert banner
+  // 5c. Master Rank & Prefect Hierarchy Status
+  const rankInfo = getMasterCMPRank(master.discordId);
+  const headPrefect = getHeadPrefect();
+  const isHeadPrefect = rankInfo.isHeadPrefect;
+  const rankBadge = isHeadPrefect 
+    ? '👑 **CHALDEA HEAD PREFECT** (Chief Overseer)' 
+    : `${rankInfo.emoji} **${rankInfo.title}** (Rank ${rankInfo.rank})`;
+
+  // Format unread notifications / AFK hazard alert / Discipline banners
   let notifBanner = '';
   const unreadNotifs = master.unreadNotifications || [];
+  
+  if (master.isLockedInRestroom && master.lockedUntil && Date.now() < master.lockedUntil) {
+    const remMins = Math.max(1, Math.ceil((master.lockedUntil - Date.now()) / 60000));
+    notifBanner += `🔒 **LAVATORY LOCKDOWN ACTIVE:** You are locked in the Chaldea Restroom stalls by Prefect Authority! (${remMins}m remaining). Sector movement is barred until the timer expires or a friend busts the lock!\n\n`;
+  } else if (world.restroomDoorLockedUntil && Date.now() < world.restroomDoorLockedUntil) {
+    const remDoorMins = Math.max(1, Math.ceil((world.restroomDoorLockedUntil - Date.now()) / 60000));
+    notifBanner += `🚪 **RESTROOM DEADBOLT BOLTED:** The exterior doors are locked shut! (${remDoorMins}m remaining). Masters in adjacent sectors can click \`[🔓 Pick Lock / Bust Door]\` to liberate trapped students!\n\n`;
+  }
+
+  if (world.activeImpeachment && Date.now() < world.activeImpeachment.expiresAt && world.activeImpeachment.status === 'active') {
+    const remImpMins = Math.max(1, Math.ceil((world.activeImpeachment.expiresAt - Date.now()) / 60000));
+    notifBanner += `🏛️ **CHALDEA HIGH TRIBUNAL: VOTE OF NO CONFIDENCE!**\n"Masters are rising up against Head Prefect @${world.activeImpeachment.targetUsername}'s reign of terror!"\n• **Impeach Votes:** **${world.activeImpeachment.impeachVotes.length}/5** to dethrone\n• **Support Votes:** **${world.activeImpeachment.supportVotes.length}**\n• **Time Remaining:** ${remImpMins} minute(s)\n\n`;
+  }
+
   if (roomHazard.stage >= 2 && master.isAfk) {
-    notifBanner = `🚨 **AFK HAZARD EMERGENCY WARNING:**\n⚠️ You are currently **AFK** in **${room.name}** during an active **${roomHazard.hazardType.replace('_', ' ').toUpperCase()}** (Stage ${roomHazard.stage})!\n• *Vitals:* **${master.currentHp}/${master.maxHp} HP** (${master.burnStatus === 'none' ? 'In Danger' : master.burnStatus})\n• *Action Required:* Click **[🧯 Extinguish Fire]** or **[🚪 Move Sector]** immediately!\n\n`;
+    notifBanner += `🚨 **AFK HAZARD EMERGENCY WARNING:**\n⚠️ You are currently **AFK** in **${room.name}** during an active **${roomHazard.hazardType.replace('_', ' ').toUpperCase()}** (Stage ${roomHazard.stage})!\n• *Vitals:* **${master.currentHp}/${master.maxHp} HP** (${master.burnStatus === 'none' ? 'In Danger' : master.burnStatus})\n• *Action Required:* Click **[🧯 Extinguish Fire]** or **[🚪 Move Sector]** immediately!\n\n`;
   } else if (unreadNotifs.length > 0) {
     const latestNotif = unreadNotifs[0];
-    notifBanner = `🚨 **UNREAD AFK PAGER ALERT (${unreadNotifs.length}):**\n**${latestNotif.title}** — *${latestNotif.message}*\n\n`;
+    notifBanner += `🚨 **UNREAD AFK PAGER ALERT (${unreadNotifs.length}):**\n**${latestNotif.title}** — *${latestNotif.message}*\n\n`;
   }
 
   const mapEmbed = new EmbedBuilder()
@@ -298,6 +341,7 @@ export async function buildChaldeaViewportResponse(
     .setTitle(`🍵 Chaldea Campus Hub — ${room.name}`)
     .setDescription(
       `${notifBanner}` +
+      `🎖️ **Master Standing:** ${rankBadge} • **Merit (CMP):** \`${rankInfo.cmp} pts\`\n` +
       `📍 **Current Location:** **${room.name}**\n` +
       `🎵 *${room.ambientBgm}*\n\n` +
       `${room.description}\n\n` +
@@ -328,6 +372,27 @@ export async function buildChaldeaViewportResponse(
   // 7. Interactive Buttons Row 1: Contextual Action Button Swap
   const actionButtons: ButtonBuilder[] = [];
 
+  // Head Prefect Authority Button (Only unlocked by #1 Ranked Master)
+  if (isHeadPrefect) {
+    actionButtons.push(
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_prefect_menu')
+        .setLabel('⚖️ Disciplinary Action')
+        .setStyle(ButtonStyle.Danger)
+    );
+  }
+
+  // Restroom Door Counterplay: Pick Lock / Bust Door
+  const isRestroomDoorLocked = Boolean(world.restroomDoorLockedUntil && Date.now() < world.restroomDoorLockedUntil);
+  if (isRestroomDoorLocked && ['restrooms', 'hallway', 'staff_lounge'].includes(room.id)) {
+    actionButtons.push(
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_bust_door')
+        .setLabel('🔓 Pick Lock / Bust Door')
+        .setStyle(ButtonStyle.Danger)
+    );
+  }
+
   if (room.id === 'infirmary') {
     // Infirmary Ward Mode: Recovery Actions
     actionButtons.push(
@@ -351,6 +416,18 @@ export async function buildChaldeaViewportResponse(
         .setCustomId('chaldea_action_fruit_basket_select')
         .setLabel('🤝 Bring Fruit Basket')
         .setStyle(ButtonStyle.Success)
+    );
+  } else if (room.id === 'restrooms') {
+    // Restrooms & Maintenance Mode Actions
+    actionButtons.push(
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_wash_face')
+        .setLabel('🧼 Wash Face (+10 HP)')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_check_reflection')
+        .setLabel('🪞 Check Reflection')
+        .setStyle(ButtonStyle.Secondary)
     );
   } else if (roomHazard.stage === 4) {
     // Structural Breakdown Mode: Only Repair / Instant Fix / Retreat available!
@@ -452,6 +529,20 @@ export async function buildChaldeaViewportResponse(
     }
   }
 
+  // Active High Tribunal Impeachment Voting Buttons
+  if (world.activeImpeachment && Date.now() < world.activeImpeachment.expiresAt && world.activeImpeachment.status === 'active') {
+    actionButtons.push(
+      new ButtonBuilder()
+        .setCustomId('chaldea_impeach_vote_impeach')
+        .setLabel(`🗳️ Impeach (${world.activeImpeachment.impeachVotes.length}/5)`)
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('chaldea_impeach_vote_support')
+        .setLabel(`🛡️ Support (${world.activeImpeachment.supportVotes.length})`)
+        .setStyle(ButtonStyle.Success)
+    );
+  }
+
   // Always available utility actions
   if (unreadNotifs.length > 0) {
     actionButtons.push(
@@ -468,8 +559,16 @@ export async function buildChaldeaViewportResponse(
       .setLabel('🛒 Chaldea Shop')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
+      .setCustomId('chaldea_action_rankings')
+      .setLabel('🏆 Rankings')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId('chaldea_action_station_modal')
       .setLabel('📌 AFK Status')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('chaldea_action_impeach_start')
+      .setLabel('🏛️ Impeach')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('chaldea_action_guide')
@@ -516,6 +615,59 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
 
   const sub = interaction.options.getSubcommand(false) || 'hub';
+
+  if (sub === 'rankings') {
+    const lb = getChaldeaRankLeaderboard();
+    const prefect = getHeadPrefect();
+    const desc = lb.map((m, idx) => {
+      const crown = m.isPrefect ? '👑 ' : `${idx + 1}. `;
+      return `${crown}${m.emoji} **${m.username}** — \`${m.cmp} CMP\` (${m.title})${m.isPrefect ? ' ⭐ **[Head Prefect]**' : ''}`;
+    }).join('\n') || '*No registered Masters yet. Cook, clean, or extinguish hazards to earn CMP!*';
+
+    const embed = new EmbedBuilder()
+      .setTitle('🏆 Chaldea Campus Hierarchy — Merit Point Rankings')
+      .setDescription(
+        `Welcome to the **Chaldea Master Discipline & Hierarchy Registry**!\n` +
+        `Masters earn **Chaldea Merit Points (CMP)** by performing proper facility activities:\n` +
+        `• 🍽️ Serving dishes to patrons: **+15 CMP**\n` +
+        `• 🧯 Extinguishing fires & hazards: **+25 CMP**\n` +
+        `• 🛠️ Repairing broken flues & counters: **+25 CMP**\n` +
+        `• 🍎 Gifting fruit baskets in Infirmary: **+10 CMP**\n` +
+        `• 🔓 Busting restroom padlocks: **+15 CMP**\n` +
+        `• 🧼 Washing face in restrooms: **+5 CMP**\n\n` +
+        `👑 **Reigning Head Prefect:** ${prefect ? `**@${prefect.username}** (\`${prefect.meritPoints || 0} CMP\`)` : '*Position Vacant*'}\n\n` +
+        `📜 **Master Leaderboard:**\n${desc}\n\n` +
+        `⚖️ *The #1 Ranked Master wields Disciplinary Authority (Grab & Drag, Toilet Dunk, Lavatory Lockdown). To check tyranny, Masters can initiate a \`/chaldea impeach\` Vote of No Confidence!*`
+      )
+      .setColor(0xd4af37)
+      .setFooter({ text: 'Chaldea Discipline Hierarchy • Impeachment threshold: 5 votes to dethrone' });
+
+    await interaction.editReply({ embeds: [embed] });
+    return;
+  }
+
+  if (sub === 'impeach') {
+    const res = callImpeachmentVote(interaction.user.id);
+    const vote = res.activeVote;
+    const embed = new EmbedBuilder()
+      .setTitle('🏛️ Chaldea High Tribunal — Vote of No Confidence')
+      .setDescription(res.message)
+      .setColor(0xd97706);
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('chaldea_impeach_vote_impeach')
+        .setLabel(`🗳️ Impeach & Dethrone (${vote?.impeachVotes?.length || 1}/5)`)
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('chaldea_impeach_vote_support')
+        .setLabel(`🛡️ Support Prefect (${vote?.supportVotes?.length || 0})`)
+        .setStyle(ButtonStyle.Success)
+    );
+
+    await interaction.editReply({ embeds: [embed], components: [row] });
+    return;
+  }
 
   if (sub === 'move') {
     const target = interaction.options.getString('room', true);
@@ -1253,6 +1405,311 @@ export async function handleChaldeaGlobalInteraction(
       flags: MessageFlags.Ephemeral,
       embeds: [guideEmbed]
     });
+    return true;
+  }
+
+  // 12. Button: Wash Face in Restroom
+  if (interaction.isButton() && customId === 'chaldea_action_wash_face') {
+    await interaction.deferUpdate();
+    const res = washFaceInRestroom(discordId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 13. Button: Check Reflection in Mirror
+  if (interaction.isButton() && customId === 'chaldea_action_check_reflection') {
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const rank = getMasterCMPRank(discordId);
+    const prefect = getHeadPrefect();
+    const isPrefect = Boolean(prefect && prefect.discordId === discordId);
+    const embed = new EmbedBuilder()
+      .setTitle(`🪞 Porcelain Mirror — ${master.username}'s Reflection`)
+      .setDescription(
+        `You gaze into the fogged restroom mirror over the porcelain sink:\n\n` +
+        `• **Standing:** ${rank.emoji} **${rank.title}** (Tier ${rank.rank})\n` +
+        `• **Chaldea Merit Points (CMP):** \`${rank.cmp} pts\`\n` +
+        `• **Status:** ${isPrefect ? '👑 **CHALDEA HEAD PREFECT** (Chief Overseer)' : 'Active Campus Student'}\n` +
+        `• **Health:** \`${master.currentHp}/${master.maxHp} HP\`\n` +
+        `• **Toilet Dunks Endured:** \`${master.swirliesReceived || 0} swirlies\`\n` +
+        `• **Times Impeached:** \`${master.timesImpeached || 0}\`\n\n` +
+        `*Maintain discipline, perform facility duties, and keep your honor unblemished!*`
+      )
+      .setColor(0x06b6d4)
+      .setFooter({ text: 'Chaldea Facility Mirror • Hygiene & Honor' });
+
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      embeds: [embed]
+    });
+    return true;
+  }
+
+  // 14. Button: Pick Lock / Bust Restroom Door
+  if (interaction.isButton() && customId === 'chaldea_action_bust_door') {
+    await interaction.deferUpdate();
+    const res = breakRestroomLock(discordId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 15. Button: View CMP Rankings
+  if (interaction.isButton() && customId === 'chaldea_action_rankings') {
+    const lb = getChaldeaRankLeaderboard();
+    const prefect = getHeadPrefect();
+    const desc = lb.map((m, idx) => {
+      const crown = m.isPrefect ? '👑 ' : `${idx + 1}. `;
+      return `${crown}${m.emoji} **${m.username}** — \`${m.cmp} CMP\` (${m.title})${m.isPrefect ? ' ⭐ **[Head Prefect]**' : ''}`;
+    }).join('\n') || '*No registered Masters yet.*';
+
+    const embed = new EmbedBuilder()
+      .setTitle('🏆 Chaldea Campus Hierarchy — Merit Point Rankings')
+      .setDescription(
+        `👑 **Reigning Head Prefect:** ${prefect ? `**@${prefect.username}** (\`${prefect.meritPoints || 0} CMP\`)` : '*Position Vacant*'}\n\n` +
+        `📜 **Master Leaderboard:**\n${desc}\n\n` +
+        `⚖️ *The #1 Ranked Master holds Disciplinary Authority. If tyrannical abuse occurs, Masters can file a Vote of No Confidence with \`/chaldea impeach\` or the Impeach button!*`
+      )
+      .setColor(0xd4af37)
+      .setFooter({ text: 'Chaldea Discipline Hierarchy • Impeachment threshold: 5 votes' });
+
+    await interaction.reply({ flags: MessageFlags.Ephemeral, embeds: [embed] });
+    return true;
+  }
+
+  // 16. Button: Start / Sponsor Impeachment
+  if (interaction.isButton() && customId === 'chaldea_action_impeach_start') {
+    await interaction.deferUpdate();
+    const res = callImpeachmentVote(discordId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 17. Button: Cast Impeachment Vote (Impeach or Support)
+  if (interaction.isButton() && (customId === 'chaldea_impeach_vote_impeach' || customId === 'chaldea_impeach_vote_support')) {
+    await interaction.deferUpdate();
+    const voteType = customId === 'chaldea_impeach_vote_impeach' ? 'impeach' : 'support';
+    const res = castImpeachmentVote(discordId, voteType);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 18. Button: Open Head Prefect Disciplinary Menu
+  if (interaction.isButton() && customId === 'chaldea_action_prefect_menu') {
+    const currentPrefect = getHeadPrefect();
+    if (!currentPrefect || currentPrefect.discordId !== discordId) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: '❌ **UNAUTHORIZED:** Only the **#1 Ranked Chaldea Head Prefect** holds Prefect Disciplinary Authority!'
+      });
+      return true;
+    }
+
+    const world = getCafeteriaWorldSnapshot();
+    const otherMasters = Object.values(world.masters).filter(m => m.discordId !== discordId);
+
+    if (otherMasters.length === 0) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: 'There are currently no other Masters stationed in Chaldea to discipline!'
+      });
+      return true;
+    }
+
+    const select = new StringSelectMenuBuilder()
+      .setCustomId('chaldea_select_discipline_target')
+      .setPlaceholder('Select an idle, hazard-causing, or silly Master to discipline...');
+
+    for (const m of otherMasters.slice(0, 25)) {
+      const loc = CAFETERIA_ROOMS[m.currentRoomId]?.shortName || m.currentRoomId;
+      select.addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel(`⚖️ ${m.username} (in ${loc})`)
+          .setValue(m.discordId)
+          .setDescription(`HP: ${m.currentHp}/${m.maxHp} • Status: ${m.statusText.slice(0, 40)}`)
+      );
+    }
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      content: '👑 **HEAD PREFECT DISCIPLINARY TRIBUNAL:**\nChoose a Master to administer corrective action:',
+      components: [row]
+    });
+    return true;
+  }
+
+  // 19. Select: Discipline Target Chosen
+  if (interaction.isStringSelectMenu() && customId === 'chaldea_select_discipline_target') {
+    await interaction.deferUpdate();
+    const targetId = interaction.values[0];
+    const world = getCafeteriaWorldSnapshot();
+    const target = world.masters[targetId];
+
+    if (!target) {
+      await interaction.followUp({ flags: MessageFlags.Ephemeral, content: 'Target Master no longer found.' });
+      return true;
+    }
+
+    const targetRoom = CAFETERIA_ROOMS[target.currentRoomId]?.name || target.currentRoomId;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`👑 Prefect Authority: Select Punishment for @${target.username}`)
+      .setDescription(
+        `**Target:** **@${target.username}**\n` +
+        `• **Location:** ${targetRoom}\n` +
+        `• **Current Vitals:** **${target.currentHp}/${target.maxHp} HP**\n` +
+        `• **Behavior / Status:** *"${target.statusText}"*\n\n` +
+        `Choose disciplinary measure:\n` +
+        `• 🤼 **Grab & Drag:** Seize target by the collar and forcibly march them to another sector (e.g. Restrooms).\n` +
+        `• 🚽 **Swirlie / Porcelain Dunk:** Flush target's face in the toilet (-20 to -30 direct HP, KO to Infirmary if HP reaches 0).\n` +
+        `• 🔒 **Lavatory Lockdown:** Bolt the restroom doors for 5, 10, or 20 minutes.`
+      )
+      .setColor(0xef4444);
+
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`chaldea_discipline_grab_select:${targetId}`)
+        .setLabel('🤼 Grab & Drag to Room...')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`chaldea_discipline_dunk:${targetId}`)
+        .setLabel('🚽 Toilet Dunk (-20 HP)')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`chaldea_discipline_lock:${targetId}:5`)
+        .setLabel('🔒 Lock in Restroom (5 min)')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(`chaldea_discipline_lock:${targetId}:10`)
+        .setLabel('🔒 Lock (10 min)')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(`chaldea_discipline_lock:${targetId}:20`)
+        .setLabel('🔒 Lock (20 min)')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    await interaction.followUp({
+      flags: MessageFlags.Ephemeral,
+      embeds: [embed],
+      components: [row1, row2]
+    });
+    return true;
+  }
+
+  // 20. Button: Grab & Drag Room Selector
+  if (interaction.isButton() && customId.startsWith('chaldea_discipline_grab_select:')) {
+    const targetId = customId.replace('chaldea_discipline_grab_select:', '');
+    const world = getCafeteriaWorldSnapshot();
+    const target = world.masters[targetId];
+
+    const select = new StringSelectMenuBuilder()
+      .setCustomId(`chaldea_discipline_grab_execute:${targetId}`)
+      .setPlaceholder(`Select destination room to drag ${target ? target.username : 'target'}...`);
+
+    select.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🚽 Chaldea Restrooms (Discipline Sector)')
+        .setValue('restrooms')
+        .setDescription('Seize and drag straight to the toilet stalls!'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🚪 Central Hub Corridor')
+        .setValue('hallway')
+        .setDescription('March out of workstation into the open hallway'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('☕ Staff Lounge & Break Room')
+        .setValue('staff_lounge')
+        .setDescription('Escort to detention/reflection in the lounge'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🍽️ Dining Hall & Serving Counter')
+        .setValue('dining_hall')
+        .setDescription('Force back to public dining area'),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🏥 Medical Infirmary')
+        .setValue('infirmary')
+        .setDescription('Drag straight to hospital ward beds')
+    );
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      content: `🤼 **Choose destination sector to drag @${target ? target.username : 'target'}:**`,
+      components: [row]
+    });
+    return true;
+  }
+
+  // 21. Select: Execute Grab & Drag
+  if (interaction.isStringSelectMenu() && customId.startsWith('chaldea_discipline_grab_execute:')) {
+    await interaction.deferUpdate();
+    const targetId = customId.replace('chaldea_discipline_grab_execute:', '');
+    const destRoomId = interaction.values[0];
+    const res = executeGrabAndDrag(discordId, targetId, destRoomId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 22. Button: Execute Toilet Dunk / Swirlie
+  if (interaction.isButton() && customId.startsWith('chaldea_discipline_dunk:')) {
+    await interaction.deferUpdate();
+    const targetId = customId.replace('chaldea_discipline_dunk:', '');
+    const res = executeToiletDunk(discordId, targetId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 23. Button: Execute Lavatory Lockdown
+  if (interaction.isButton() && customId.startsWith('chaldea_discipline_lock:')) {
+    await interaction.deferUpdate();
+    const parts = customId.split(':');
+    const targetId = parts[1];
+    const mins = parseInt(parts[2], 10) || 5;
+    const res = executeLavatoryLockdown(discordId, targetId, mins);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
     return true;
   }
 

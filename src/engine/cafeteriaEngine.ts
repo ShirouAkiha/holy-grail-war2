@@ -10,6 +10,8 @@ import {
   VISITING_PATRONS, 
   ATTENDING_DOCTORS,
   CHALDEA_SHOP_CATALOG,
+  CHALDEA_RANK_TIERS,
+  ChaldeaRankTier,
   CafeteriaRoom, 
   Ingredient, 
   Recipe, 
@@ -65,6 +67,12 @@ export interface StationedMaster {
     message: string;
     type: 'hazard' | 'rescue' | 'gift' | 'system';
   }>;
+  meritPoints?: number;
+  disciplinaryBlacklistUntil?: number;
+  isLockedInRestroom?: boolean;
+  lockedUntil?: number;
+  swirliesReceived?: number;
+  timesImpeached?: number;
 }
 
 export interface StoveCookingPot {
@@ -138,6 +146,17 @@ export interface CafeteriaWorldState {
   roomForageCooldowns: Record<string, Record<string, number>>; // roomId -> ingredientId -> timestamp
   sharedFridgeVault: Record<string, number>; // ingredientId/dishId -> count
   roomHazards: Record<string, RoomHazard>;
+  restroomDoorLockedUntil?: number;
+  activeImpeachment?: {
+    targetDiscordId: string;
+    targetUsername: string;
+    sponsors: string[];
+    impeachVotes: string[];
+    supportVotes: string[];
+    startedAt: number;
+    expiresAt: number;
+    status: 'active' | 'passed' | 'failed';
+  };
 }
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
@@ -153,7 +172,9 @@ let worldState: CafeteriaWorldState = {
   recentActivityFeed: [],
   roomForageCooldowns: {},
   sharedFridgeVault: {},
-  roomHazards: {}
+  roomHazards: {},
+  restroomDoorLockedUntil: undefined,
+  activeImpeachment: undefined
 };
 
 function ensureDirectories() {
@@ -183,7 +204,9 @@ function loadCafeteriaStateFromDisk() {
             recentActivityFeed: parsed.recentActivityFeed || [],
             roomForageCooldowns: parsed.roomForageCooldowns || {},
             sharedFridgeVault: parsed.sharedFridgeVault || {},
-            roomHazards: parsed.roomHazards || {}
+            roomHazards: parsed.roomHazards || {},
+            restroomDoorLockedUntil: parsed.restroomDoorLockedUntil,
+            activeImpeachment: parsed.activeImpeachment
           };
           return;
         }
@@ -204,7 +227,9 @@ function loadCafeteriaStateFromDisk() {
             recentActivityFeed: parsed.recentActivityFeed || [],
             roomForageCooldowns: parsed.roomForageCooldowns || {},
             sharedFridgeVault: parsed.sharedFridgeVault || {},
-            roomHazards: parsed.roomHazards || {}
+            roomHazards: parsed.roomHazards || {},
+            restroomDoorLockedUntil: parsed.restroomDoorLockedUntil,
+            activeImpeachment: parsed.activeImpeachment
           };
           return;
         }
@@ -304,7 +329,10 @@ export function getOrCreateStationedMaster(
       facilityUpgrades: { extraStoves: 0, extraPrepCounters: 0, hydroponicLamps: 0 },
       dailyGiftsSent: {},
       fruitBasketsCount: 0,
-      unreadNotifications: []
+      unreadNotifications: [],
+      meritPoints: 0,
+      swirliesReceived: 0,
+      timesImpeached: 0
     };
     worldState.masters[discordId] = master;
     addCafeteriaActivity(`👤 Master **${username}** arrived at the **Dining Hall**.`, 'dining_hall');
@@ -321,6 +349,9 @@ export function getOrCreateStationedMaster(
     if (!master.facilityUpgrades) master.facilityUpgrades = { extraStoves: 0, extraPrepCounters: 0, hydroponicLamps: 0 };
     if (!master.dailyGiftsSent) master.dailyGiftsSent = {};
     if (!master.unreadNotifications) master.unreadNotifications = [];
+    if (typeof master.meritPoints !== 'number') master.meritPoints = 0;
+    if (typeof master.swirliesReceived !== 'number') master.swirliesReceived = 0;
+    if (typeof master.timesImpeached !== 'number') master.timesImpeached = 0;
 
     // Update live profile info
     master.username = username;
@@ -343,6 +374,15 @@ export function moveMasterRoom(discordId: string, targetRoomId: string): { succe
     return {
       success: false,
       message: '🏥 **HOSPITALIZED (RESTRICTED):** Head Nurse Nightingale and Asclepius will not permit you to leave the Infirmary until your recovery is complete! Select a recovery option in the Infirmary.'
+    };
+  }
+
+  // Lavatory lockdown check: cannot leave the Restrooms if locked inside
+  if (master.isLockedInRestroom && master.lockedUntil && Date.now() < master.lockedUntil && master.currentRoomId === 'restrooms' && targetRoomId !== 'restrooms') {
+    const remMin = Math.max(1, Math.ceil((master.lockedUntil - Date.now()) / 60000));
+    return {
+      success: false,
+      message: `🔒 **LAVATORY LOCKDOWN (RESTRICTED):** The heavy bolt lock on the restroom door has been sealed by the Head Prefect! You cannot leave for another **${remMin} minute(s)**. Ask a fellow Master in the hallway or staff lounge to pick the lock!`
     };
   }
 
@@ -795,12 +835,15 @@ export function serveDishToPatron(
     matchingOrder.servedBy = master.username;
   }
 
-  addCafeteriaActivity(`⭐ **${master.username}** served **${dish.recipeEmoji} ${dish.recipeName}** to **${patron.name}**! Rating: ${'★'.repeat(stars)} (${stars}/5 Stars)`, 'dining_hall');
+  // Award +15 Chaldea Merit Points (CMP)
+  master.meritPoints = (master.meritPoints || 0) + 15;
+
+  addCafeteriaActivity(`⭐ **${master.username}** served **${dish.recipeEmoji} ${dish.recipeName}** to **${patron.name}**! Rating: ${'★'.repeat(stars)} (${stars}/5 Stars) (+15 CMP)`, 'dining_hall');
   saveCafeteriaStateToDisk();
 
   return {
     success: true,
-    message: `✨ **Meal Presented to ${patron.name}!**\n${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} (**${stars} / 5 Stars**)\n\n${aiCritiqueText || `“${patron.fallbackPraiseQuotes[0]}”`}\n\n🎁 **Rewards Granted to Team:**\n• **+${sqReward} Saint Quartz Shard(s)**\n• **+${fpReward} Friend Points**\n${awardedBuff ? `• **Community Buff:** ${awardedBuff.title} (*${awardedBuff.description}*)` : ''}`,
+    message: `✨ **Meal Presented to ${patron.name}!**\n${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} (**${stars} / 5 Stars**)\n\n${aiCritiqueText || `“${patron.fallbackPraiseQuotes[0]}”`}\n\n🎁 **Rewards Granted to Team:**\n• **+${sqReward} Saint Quartz Shard(s)**\n• **+${fpReward} Friend Points**\n• **+15 Chaldea Merit Points (CMP)**\n${awardedBuff ? `• **Community Buff:** ${awardedBuff.title} (*${awardedBuff.description}*)` : ''}`,
     rewards: {
       sqShards: sqReward,
       friendPoints: fpReward,
@@ -1036,18 +1079,19 @@ export function extinguishRoomHazard(discordId: string, roomId: string): { succe
   const originName = hazard.originMasterName ? `@${hazard.originMasterName}` : 'a neglectful cook';
   hazard.stage = 1;
   hazard.extinguishedBy = master.username;
+  master.meritPoints = (master.meritPoints || 0) + 25;
 
   if (roomId === 'kitchen_stove') {
     worldState.stovePots = worldState.stovePots.filter(p => p.status !== 'burnt');
   }
 
-  const broadcastMsg = `🚨 **HEROIC FIRST RESPONDER!** Master **${master.username}** grabbed the fire extinguisher and extinguished the ${hazard.hazardType.replace('_', ' ')} in **${roomId}**! The room was saved from ${originName}'s smoking dish!`;
+  const broadcastMsg = `🚨 **HEROIC FIRST RESPONDER!** Master **${master.username}** grabbed the fire extinguisher and extinguished the ${hazard.hazardType.replace('_', ' ')} in **${roomId}**! (+25 CMP)`;
   addCafeteriaActivity(broadcastMsg, roomId);
   saveCafeteriaStateToDisk();
 
   return {
     success: true,
-    message: `🧯 **HAZARD EXTINGUISHED!**\nYou swiftly deployed the CO2 extinguisher, dousing the flames and venting the smoke!\n\n🎁 **Heroic Honors Granted:**\n• **+200 Friend Points**\n• **Karma Title:** *Chaldea First Responder*`
+    message: `🧯 **HAZARD EXTINGUISHED!**\nYou swiftly deployed the CO2 extinguisher, dousing the flames and venting the smoke!\n\n🎁 **Heroic Honors Granted:**\n• **+200 Friend Points**\n• **+25 Chaldea Merit Points (CMP)**\n• **Karma Title:** *Chaldea First Responder*`
   };
 }
 
@@ -1067,16 +1111,17 @@ export function repairRoomStructuralDamage(discordId: string, roomId: string): {
   if (current >= req) {
     hazard.stage = 1;
     hazard.repairsContributed = 0;
+    master.meritPoints = (master.meritPoints || 0) + 25;
     if (roomId === 'kitchen_stove') {
       worldState.stovePots = worldState.stovePots.filter(p => p.status !== 'burnt');
     }
 
-    addCafeteriaActivity(`🛠️ **ROOM RESTORED!** Master **${master.username}** finished repairing the flues in **${roomId}**! Structural integrity restored.`, roomId);
+    addCafeteriaActivity(`🛠️ **ROOM RESTORED!** Master **${master.username}** finished repairing the flues in **${roomId}**! (+25 CMP)`, roomId);
     saveCafeteriaStateToDisk();
 
     return {
       success: true,
-      message: `🛠️ **FINAL REPAIR COMPLETE!** (${current}/${req})\nYou replaced the scorched ventilation flues and recalibrated safety controls! **${roomId} is now fully operational!**\n\n🎁 **Rewards Granted:** +250 Friend Points!`,
+      message: `🛠️ **FINAL REPAIR COMPLETE!** (${current}/${req})\nYou replaced the scorched ventilation flues and recalibrated safety controls! **${roomId} is now fully operational!**\n\n🎁 **Rewards Granted:** +250 Friend Points & +25 CMP!`,
       fullyRepaired: true
     };
   } else {
@@ -1335,6 +1380,7 @@ export function bringFruitBasketToFriend(rescuerId: string, targetId: string): {
 
   rescuer.friendPoints = (rescuer.friendPoints || 0) + rescuerFp;
   target.friendPoints = (target.friendPoints || 0) + targetFp;
+  rescuer.meritPoints = (rescuer.meritPoints || 0) + 10;
 
   // Track daily gift limit
   rescuer.dailyGiftsSent[targetId] = {
@@ -1343,12 +1389,12 @@ export function bringFruitBasketToFriend(rescuerId: string, targetId: string): {
   };
 
   const paracelsusNote = isParacelsusActive ? ' 🧪 *(Paracelsus Perk: 1.5x FP Multiplier Active!)*' : '';
-  addCafeteriaActivity(`🍎 **@${rescuer.username}** brought a fresh fruit basket to **@${target.username}**'s bedside in the Infirmary! Recovery time reduced by 25%!`, 'infirmary');
+  addCafeteriaActivity(`🍎 **@${rescuer.username}** brought a fresh fruit basket to **@${target.username}**'s bedside in the Infirmary! Recovery time reduced by 25%! (+10 CMP)`, 'infirmary');
   saveCafeteriaStateToDisk();
 
   return {
     success: true,
-    message: `🍎 **FRUIT BASKET DELIVERED TO ${target.username.toUpperCase()}!**\nYou presented a fresh Hydroponic Fruit Basket to **${target.username}** at their bedside!${timeReducedText}\n\n🎁 **Friend Points Awarded:**\n• You: **+${rescuerFp} FP** (Total: ${rescuer.friendPoints} FP)\n• ${target.username}: **+${targetFp} FP**\n• Daily Limit: **${giftsToday + 1} / 2 baskets** delivered to ${target.username} today.${paracelsusNote}`
+    message: `🍎 **FRUIT BASKET DELIVERED TO ${target.username.toUpperCase()}!**\nYou presented a fresh Hydroponic Fruit Basket to **${target.username}** at their bedside!${timeReducedText}\n\n🎁 **Friend Points & Merit Awarded:**\n• You: **+${rescuerFp} FP** & **+10 CMP** (Total: ${rescuer.friendPoints} FP, ${rescuer.meritPoints} CMP)\n• ${target.username}: **+${targetFp} FP**\n• Daily Limit: **${giftsToday + 1} / 2 baskets** delivered to ${target.username} today.${paracelsusNote}`
   };
 }
 
@@ -1421,4 +1467,362 @@ export function clearMasterNotifications(discordId: string): { success: boolean;
   master.unreadNotifications = [];
   saveCafeteriaStateToDisk();
   return { success: true, message: '🔔 Unread notifications cleared.' };
+}
+
+export function getHeadPrefect(): StationedMaster | null {
+  const now = Date.now();
+  const eligible = Object.values(worldState.masters).filter(m => {
+    return !m.disciplinaryBlacklistUntil || now >= m.disciplinaryBlacklistUntil;
+  });
+  if (eligible.length === 0) return null;
+  eligible.sort((a, b) => (b.meritPoints || 0) - (a.meritPoints || 0));
+  return eligible[0];
+}
+
+export function getMasterCMPRank(discordId: string): { rank: number; title: string; emoji: string; cmp: number; isHeadPrefect: boolean } {
+  const master = worldState.masters[discordId];
+  const cmp = master ? (master.meritPoints || 0) : 0;
+  const prefect = getHeadPrefect();
+  const isHeadPrefect = Boolean(prefect && prefect.discordId === discordId);
+
+  if (isHeadPrefect) {
+    const tier = CHALDEA_RANK_TIERS[0]; // Rank 1: Head Prefect
+    return { rank: 1, title: tier.title, emoji: tier.emoji, cmp, isHeadPrefect: true };
+  }
+
+  if (cmp >= 300) {
+    const tier = CHALDEA_RANK_TIERS[1]; // Rank 2
+    return { rank: 2, title: tier.title, emoji: tier.emoji, cmp, isHeadPrefect: false };
+  } else if (cmp >= 150) {
+    const tier = CHALDEA_RANK_TIERS[2]; // Rank 3
+    return { rank: 3, title: tier.title, emoji: tier.emoji, cmp, isHeadPrefect: false };
+  } else if (cmp >= 50) {
+    const tier = CHALDEA_RANK_TIERS[3]; // Rank 4
+    return { rank: 4, title: tier.title, emoji: tier.emoji, cmp, isHeadPrefect: false };
+  } else {
+    const tier = CHALDEA_RANK_TIERS[4]; // Rank 5
+    return { rank: 5, title: tier.title, emoji: tier.emoji, cmp, isHeadPrefect: false };
+  }
+}
+
+export function getChaldeaRankLeaderboard(): Array<{ discordId: string; username: string; cmp: number; rank: number; title: string; emoji: string; isPrefect: boolean }> {
+  const masters = Object.values(worldState.masters);
+  const prefect = getHeadPrefect();
+  const sorted = [...masters].sort((a, b) => (b.meritPoints || 0) - (a.meritPoints || 0));
+
+  return sorted.map((m) => {
+    const isPrefect = Boolean(prefect && prefect.discordId === m.discordId);
+    const info = getMasterCMPRank(m.discordId);
+    return {
+      discordId: m.discordId,
+      username: m.username,
+      cmp: m.meritPoints || 0,
+      rank: info.rank,
+      title: info.title,
+      emoji: info.emoji,
+      isPrefect
+    };
+  });
+}
+
+export function executeGrabAndDrag(prefectId: string, targetId: string, destRoomId: string): { success: boolean; message: string } {
+  const prefect = worldState.masters[prefectId];
+  const target = worldState.masters[targetId];
+
+  if (!prefect || !target) return { success: false, message: 'Master record not found.' };
+
+  const currentPrefect = getHeadPrefect();
+  if (!currentPrefect || currentPrefect.discordId !== prefectId) {
+    return { success: false, message: '❌ **UNAUTHORIZED:** Only the **#1 Ranked Chaldea Head Prefect** holds disciplinary authority to grab and drag other Masters!' };
+  }
+
+  if (targetId === prefectId) {
+    return { success: false, message: 'You cannot drag yourself!' };
+  }
+
+  const destRoom = CAFETERIA_ROOMS[destRoomId];
+  if (!destRoom) return { success: false, message: 'Destination room does not exist.' };
+
+  const fromRoom = CAFETERIA_ROOMS[target.currentRoomId] || CAFETERIA_ROOMS.dining_hall;
+  target.currentRoomId = destRoomId;
+  target.lastMovedAt = Date.now();
+  target.isAfk = false;
+  target.statusText = `🚨 Dragged to ${destRoom.shortName} by Head Prefect`;
+
+  // Move prefect alongside victim so they stay together
+  prefect.currentRoomId = destRoomId;
+  prefect.lastMovedAt = Date.now();
+  prefect.statusText = `👑 Disciplining @${target.username}`;
+
+  addCafeteriaActivity(`🚨 👑 **Head Prefect @${prefect.username}** seized **@${target.username}** by the collar in *${fromRoom.shortName}* and dragged them kicking and screaming to **${destRoom.name}**!`, destRoomId);
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🤼 **PREFECT DISCIPLINE EXECUTED:**\nYou seized **@${target.username}** by the collar and dragged them straight to **${destRoom.name}**!\n\n*Broadcasted to campus activity logs.*`
+  };
+}
+
+export function executeToiletDunk(prefectId: string, targetId: string): { success: boolean; message: string; targetFainted: boolean } {
+  const prefect = worldState.masters[prefectId];
+  const target = worldState.masters[targetId];
+
+  if (!prefect || !target) return { success: false, message: 'Master record not found.', targetFainted: false };
+
+  const currentPrefect = getHeadPrefect();
+  if (!currentPrefect || currentPrefect.discordId !== prefectId) {
+    return { success: false, message: '❌ **UNAUTHORIZED:** Only the **#1 Ranked Chaldea Head Prefect** holds swirlie disciplinary authority!', targetFainted: false };
+  }
+
+  if (prefect.currentRoomId !== 'restrooms' || target.currentRoomId !== 'restrooms') {
+    return {
+      success: false,
+      message: `❌ **LOCATION REQUIREMENT:** Both you and **@${target.username}** must be inside the **Chaldea Restrooms** (\`/move restrooms\`) to perform a porcelain swirlie punishment! (Use \`[🤼 Grab & Drag]\` to drag them here first!)`,
+      targetFainted: false
+    };
+  }
+
+  const dmg = Math.floor(Math.random() * 11) + 20; // 20–30 direct HP damage
+  target.currentHp = Math.max(0, target.currentHp - dmg);
+  target.swirliesReceived = (target.swirliesReceived || 0) + 1;
+
+  let fainted = false;
+  if (target.currentHp <= 0) {
+    fainted = true;
+    target.currentRoomId = 'infirmary';
+    target.isHospitalized = true;
+    target.hospitalizedAt = Date.now();
+    target.burnStatus = 'fainted';
+    target.activeRecoveryType = 'none';
+    target.statusText = '💀 Concussed from Extreme Swirlie Turbulence';
+
+    addCafeteriaActivity(`💀 **@${target.username}** lost consciousness from extreme porcelain swirlie turbulence administered by **Head Prefect @${prefect.username}**! Medical bots have escorted them to the Infirmary!`, 'restrooms');
+    saveCafeteriaStateToDisk();
+
+    return {
+      success: true,
+      message: `🚽 **THE PORCELAIN PUNISHMENT (KO!):**\nYou forcefully dunked **@${target.username}**'s head into the swirling porcelain waters (-${dmg} HP)!\n\n💀 **TARGET COLLAPSED!** The swirlie turbulence was so severe that **@${target.username}** lost consciousness and was stretcher-escorted to the Infirmary!`,
+      targetFainted: true
+    };
+  }
+
+  target.statusText = 'Drenched and humiliated from a toilet dunk';
+  addCafeteriaActivity(`🚽 👑 **Head Prefect @${prefect.username}** dunked **@${target.username}**'s head into the toilet for disciplinary correction (-${dmg} HP)!`, 'restrooms');
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🚽 **THE PORCELAIN PUNISHMENT DELIVERED!**\nYou pushed **@${target.username}** into the stall and flushed the swirlie mechanism!\n• Damage Dealt: **-${dmg} HP** (Target HP: **${target.currentHp}/${target.maxHp}**)\n• Target is soaking wet and thoroughly disciplined!`,
+    targetFainted: false
+  };
+}
+
+export function executeLavatoryLockdown(prefectId: string, targetId: string, durationMinutes = 5): { success: boolean; message: string } {
+  const prefect = worldState.masters[prefectId];
+  const target = worldState.masters[targetId];
+
+  if (!prefect || !target) return { success: false, message: 'Master record not found.' };
+
+  const currentPrefect = getHeadPrefect();
+  if (!currentPrefect || currentPrefect.discordId !== prefectId) {
+    return { success: false, message: '❌ **UNAUTHORIZED:** Only the **#1 Ranked Chaldea Head Prefect** can declare a Lavatory Lockdown!' };
+  }
+
+  if (target.currentRoomId !== 'restrooms') {
+    return {
+      success: false,
+      message: `❌ **@${target.username}** is not in the Chaldea Restrooms! Use \`[🤼 Grab & Drag]\` to bring them here first.`
+    };
+  }
+
+  const durationMs = durationMinutes * 60 * 1000;
+  const lockExpires = Date.now() + durationMs;
+
+  target.isLockedInRestroom = true;
+  target.lockedUntil = lockExpires;
+  worldState.restroomDoorLockedUntil = Math.max(worldState.restroomDoorLockedUntil || 0, lockExpires);
+
+  addCafeteriaActivity(`🔒 👑 **Head Prefect @${prefect.username}** bolted the exterior padlock on the Restroom doors, trapping **@${target.username}** inside for ${durationMinutes} minutes!`, 'restrooms');
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🔒 **LAVATORY LOCKDOWN ACTIVE!**\nYou slammed the heavy reinforced door shut and turned the deadbolt lock!\n• Target: **@${target.username}**\n• Duration: **${durationMinutes} minutes**\n• Victim cannot leave unless a sympathetic friend picks the lock from the corridor!`
+  };
+}
+
+export function breakRestroomLock(rescuerId: string): { success: boolean; message: string } {
+  const rescuer = worldState.masters[rescuerId];
+  if (!rescuer) return { success: false, message: 'Master record not found.' };
+
+  const now = Date.now();
+  const isLocked = Boolean(worldState.restroomDoorLockedUntil && now < worldState.restroomDoorLockedUntil);
+
+  if (!isLocked) {
+    return { success: false, message: 'The Chaldea Restroom door is not currently locked!' };
+  }
+
+  // Free all locked masters
+  let freedCount = 0;
+  for (const m of Object.values(worldState.masters)) {
+    if (m.currentRoomId === 'restrooms' && m.isLockedInRestroom) {
+      m.isLockedInRestroom = false;
+      m.lockedUntil = undefined;
+      freedCount += 1;
+    }
+  }
+
+  worldState.restroomDoorLockedUntil = undefined;
+  rescuer.meritPoints = (rescuer.meritPoints || 0) + 15;
+  rescuer.friendPoints = (rescuer.friendPoints || 0) + 100;
+
+  addCafeteriaActivity(`🔓 **LOCK PICKED / BUSTED!** Master **@${rescuer.username}** forced open the restroom padlock with a crowbar, liberating ${freedCount} trapped Master(s)! (+15 CMP, +100 FP)`, 'restrooms');
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🔓 **RESTROOM LOCK SUCCESSFULLY BUSTED!**\nYou jammed a crowbar into the deadbolt and snapped the prefect's padlock open!\n• Freed: **${freedCount} trapped Master(s)**\n• Rewards: **+15 CMP** & **+100 Friend Points**!`
+  };
+}
+
+export function washFaceInRestroom(discordId: string): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master record not found.' };
+
+  if (master.currentRoomId !== 'restrooms') {
+    return { success: false, message: 'You must be in the **Chaldea Restrooms** (`/move restrooms`) to wash your face!' };
+  }
+
+  master.burnStatus = 'none';
+  master.currentHp = Math.min(master.maxHp, master.currentHp + 10);
+  master.meritPoints = (master.meritPoints || 0) + 5;
+  master.lastActivityAt = Date.now();
+  master.statusText = 'Freshened up at the porcelain sinks';
+
+  addCafeteriaActivity(`🧼 **${master.username}** washed soot and grime off their face at the restroom porcelain basin (+10 HP, +5 CMP)!`, 'restrooms');
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🧼 **FACE WASHED & REFRESHED!**\nYou splashed chilled aromatic water onto your cheeks!\n• Restored **+10 HP** (Current HP: ${master.currentHp}/${master.maxHp})\n• Cleared soot and burn stains!\n• **+5 Chaldea Merit Points (CMP)** earned.`
+  };
+}
+
+export function callImpeachmentVote(sponsorId: string): { success: boolean; message: string; activeVote?: any } {
+  const sponsor = worldState.masters[sponsorId];
+  if (!sponsor) return { success: false, message: 'Master record not found.' };
+
+  const prefect = getHeadPrefect();
+  if (!prefect) {
+    return { success: false, message: 'There is currently no reigning Head Prefect to impeach! Earn Merit Points to claim the seat.' };
+  }
+
+  if (sponsorId === prefect.discordId) {
+    return { success: false, message: 'You cannot call a vote of no confidence against yourself!' };
+  }
+
+  const now = Date.now();
+  // Check if existing active vote
+  if (worldState.activeImpeachment && now < worldState.activeImpeachment.expiresAt && worldState.activeImpeachment.status === 'active') {
+    if (!worldState.activeImpeachment.sponsors.includes(sponsorId)) {
+      worldState.activeImpeachment.sponsors.push(sponsorId);
+    }
+    if (!worldState.activeImpeachment.impeachVotes.includes(sponsorId)) {
+      worldState.activeImpeachment.impeachVotes.push(sponsorId);
+    }
+
+    const currentSponsors = worldState.activeImpeachment.sponsors.length;
+    addCafeteriaActivity(`🏛️ **@${sponsor.username}** joined as a sponsor for the Vote of No Confidence against Head Prefect @${prefect.username}! (${currentSponsors}/3 sponsors needed to formalize)`, 'hallway');
+    saveCafeteriaStateToDisk();
+
+    return {
+      success: true,
+      message: `🏛️ **SPONSOR RECORDED!** (${currentSponsors}/3 sponsors)\nYou co-sponsored the Vote of No Confidence against **@${prefect.username}**! Current Impeach Votes: **${worldState.activeImpeachment.impeachVotes.length}/5** needed.`,
+      activeVote: worldState.activeImpeachment
+    };
+  }
+
+  // Start new petition
+  worldState.activeImpeachment = {
+    targetDiscordId: prefect.discordId,
+    targetUsername: prefect.username,
+    sponsors: [sponsorId],
+    impeachVotes: [sponsorId],
+    supportVotes: [],
+    startedAt: now,
+    expiresAt: now + 15 * 60 * 1000, // 15 minute voting window
+    status: 'active'
+  };
+
+  addCafeteriaActivity(`🏛️ **CHALDEA HIGH TRIBUNAL PETITION:** Master **@${sponsor.username}** filed a Vote of No Confidence against Head Prefect **@${prefect.username}**! (1/3 sponsors)`, 'hallway');
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🏛️ **VOTE OF NO CONFIDENCE PETITION FILED!**\nYou initiated an impeachment proceeding against reigning Head Prefect **@${prefect.username}**!\n• Sponsors: **1 / 3 Masters needed** to formalize tribunal\n• Impeach Threshold: **5 Votes to Dethrone**\n• Voting Window: **15 minutes**`,
+    activeVote: worldState.activeImpeachment
+  };
+}
+
+export function castImpeachmentVote(voterId: string, voteType: 'impeach' | 'support'): { success: boolean; message: string; passed?: boolean } {
+  const voter = worldState.masters[voterId];
+  if (!voter) return { success: false, message: 'Master record not found.' };
+
+  const now = Date.now();
+  const vote = worldState.activeImpeachment;
+
+  if (!vote || now >= vote.expiresAt || vote.status !== 'active') {
+    return { success: false, message: 'There is currently no active Vote of No Confidence election. Use `/impeach` to petition one!' };
+  }
+
+  // Remove existing vote if any
+  vote.impeachVotes = vote.impeachVotes.filter(id => id !== voterId);
+  vote.supportVotes = vote.supportVotes.filter(id => id !== voterId);
+
+  if (voteType === 'impeach') {
+    vote.impeachVotes.push(voterId);
+  } else {
+    vote.supportVotes.push(voterId);
+  }
+
+  // Check if threshold reached: 5 impeach votes to dethrone
+  if (vote.impeachVotes.length >= 5) {
+    vote.status = 'passed';
+    const prefect = worldState.masters[vote.targetDiscordId];
+    if (prefect) {
+      // Dock 20% CMP
+      const lostCMP = Math.floor((prefect.meritPoints || 0) * 0.2);
+      prefect.meritPoints = Math.max(0, (prefect.meritPoints || 0) - lostCMP);
+      // 24 hour blacklist from reclaiming Rank 1
+      prefect.disciplinaryBlacklistUntil = now + 24 * 60 * 60 * 1000;
+      prefect.timesImpeached = (prefect.timesImpeached || 0) + 1;
+
+      // Automated security bots escort ex-prefect to restroom stalls!
+      prefect.currentRoomId = 'restrooms';
+      prefect.isLockedInRestroom = true;
+      prefect.lockedUntil = now + 5 * 60 * 1000;
+      worldState.restroomDoorLockedUntil = Math.max(worldState.restroomDoorLockedUntil || 0, prefect.lockedUntil);
+      prefect.statusText = 'Dethroned & escorted to stalls by Security Bots';
+    }
+
+    const newPrefect = getHeadPrefect();
+    const newPrefectName = newPrefect ? `@${newPrefect.username}` : 'the next eligible Master';
+
+    addCafeteriaActivity(`⚖️ **IMPEACHMENT PASSED!** Head Prefect **@${vote.targetUsername}** was DETHRONED by vote of the student body (5/5 votes)! Docked 20% CMP and locked in the restroom stalls! ${newPrefectName} is promoted to Head Prefect!`, 'hallway');
+    saveCafeteriaStateToDisk();
+
+    return {
+      success: true,
+      message: `⚖️ **IMPEACHMENT RESOLUTION PASSED! (5/5 VOTES)**\nThe student body has officially stripped **@${vote.targetUsername}** of their Head Prefect authority!\n• **Penalties:** -20% CMP & 24-hour lockout from Rank 1\n• **Security Bot Action:** Automated bots have locked the dethroned prefect in the Restroom stalls!\n• **Succession:** ${newPrefectName} is now crowned **👑 Chaldea Head Prefect**!`,
+      passed: true
+    };
+  }
+
+  addCafeteriaActivity(`🗳️ **@${voter.username}** voted **${voteType.toUpperCase()}** in the High Tribunal election against @${vote.targetUsername} (${vote.impeachVotes.length}/5 impeach votes).`, 'hallway');
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🗳️ **VOTE RECORDED (${voteType.toUpperCase()})!**\n• Current Impeach Votes: **${vote.impeachVotes.length} / 5 needed to dethrone**\n• Current Support Votes: **${vote.supportVotes.length}**\n• Time Remaining: **${Math.ceil((vote.expiresAt - now) / 60000)} minute(s)**`
+  };
 }
