@@ -290,13 +290,15 @@ export async function buildChaldeaViewportResponse(
     ? world.activeCommunityBuffs.map(b => `✨ **${b.title}**: ${b.description}`).join('\n')
     : 'None active (Serve dishes to patrons to unlock buffs!)';
 
-  // 5b. Room Event Log (Top 5 room-isolated activity entries with relative Discord timestamps)
-  const roomActivities = (world.recentActivityFeed || []).filter(a => a.roomId === room.id).slice(0, 5);
+  // 5b. Room Event Log (Top 6 room-isolated + campus-wide global broadcast activity entries)
+  const roomActivities = (world.recentActivityFeed || [])
+    .filter(a => !a.roomId || a.roomId === 'global' || a.roomId === 'all' || a.roomId === room.id)
+    .slice(0, 6);
   const roomEventsSummary = roomActivities.length > 0
     ? roomActivities.map(a => `• <t:${Math.floor(a.timestamp / 1000)}:R> ${a.text}`).join('\n')
     : '*No recent events recorded in this sector.*';
 
-  // Format unread notifications / AFK hazard alert banner
+  // Format unread notifications / AFK hazard alert / Discipline banners
   // 5c. Master Rank & Prefect Hierarchy Status
   const rankInfo = getMasterCMPRank(master.discordId);
   const headPrefect = getHeadPrefect();
@@ -305,9 +307,19 @@ export async function buildChaldeaViewportResponse(
     ? '👑 **CHALDEA HEAD PREFECT** (Chief Overseer)' 
     : `${rankInfo.emoji} **${rankInfo.title}** (Rank ${rankInfo.rank})`;
 
-  // Format unread notifications / AFK hazard alert / Discipline banners
+  // Format unread notifications / AFK hazard alert / Discipline / Campus Hazard banners
   let notifBanner = '';
   const unreadNotifs = master.unreadNotifications || [];
+
+  // Campus-wide hazard alert if another room is on fire or broken down
+  const activeEmergencyHazards = Object.entries(world.roomHazards || {}).filter(([rId, h]) => rId !== room.id && h.stage >= 3);
+  if (activeEmergencyHazards.length > 0) {
+    const hazardList = activeEmergencyHazards.map(([rId, h]) => {
+      const rName = CAFETERIA_ROOMS[rId]?.shortName || rId;
+      return h.stage === 4 ? `💥 **${rName}** (Breakdown)` : `🔥 **${rName}** (On Fire!)`;
+    }).join(' • ');
+    notifBanner += `🚨 **CAMPUS EMERGENCY HAZARD ALERT:** Active hazard raging in ${hazardList}! Click \`[🚪 Move Sector]\` to assist!\n\n`;
+  }
   
   if (master.isLockedInRestroom && master.lockedUntil && Date.now() < master.lockedUntil) {
     const remMins = Math.max(1, Math.ceil((master.lockedUntil - Date.now()) / 60000));

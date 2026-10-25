@@ -883,10 +883,10 @@ export function tickCafeteriaWorld(): void {
   for (const [rId, h] of Object.entries(worldState.roomHazards)) {
     if (h.stage === 2 && now >= h.stage3At) {
       h.stage = 3; // Hazard Flare (On Fire)
-      addCafeteriaActivity(`🔥 **FIRE ALERT!** The unattended smoke in **${rId}** has ignited into a **Hazard Flare**! Action needed!`, rId);
+      addCafeteriaActivity(`🔥 **FIRE ALERT!** The unattended smoke in **${rId}** has ignited into a **Hazard Flare**! Action needed!`, 'global');
     } else if (h.stage === 3 && now >= h.stage4At) {
       h.stage = 4; // Structural Breakdown (Room Locked)
-      addCafeteriaActivity(`💥 **CRITICAL LOCKDOWN!** Severe structural damage in **${rId}**! All room activities suspended until repaired.`, rId);
+      addCafeteriaActivity(`💥 **CRITICAL LOCKDOWN!** Severe structural damage in **${rId}**! All room activities suspended until repaired.`, 'global');
     }
   }
 
@@ -1086,7 +1086,7 @@ export function extinguishRoomHazard(discordId: string, roomId: string): { succe
   }
 
   const broadcastMsg = `🚨 **HEROIC FIRST RESPONDER!** Master **${master.username}** grabbed the fire extinguisher and extinguished the ${hazard.hazardType.replace('_', ' ')} in **${roomId}**! (+25 CMP)`;
-  addCafeteriaActivity(broadcastMsg, roomId);
+  addCafeteriaActivity(broadcastMsg, 'global');
   saveCafeteriaStateToDisk();
 
   return {
@@ -1116,7 +1116,7 @@ export function repairRoomStructuralDamage(discordId: string, roomId: string): {
       worldState.stovePots = worldState.stovePots.filter(p => p.status !== 'burnt');
     }
 
-    addCafeteriaActivity(`🛠️ **ROOM RESTORED!** Master **${master.username}** finished repairing the flues in **${roomId}**! (+25 CMP)`, roomId);
+    addCafeteriaActivity(`🛠️ **ROOM RESTORED!** Master **${master.username}** finished repairing the flues in **${roomId}**! (+25 CMP)`, 'global');
     saveCafeteriaStateToDisk();
 
     return {
@@ -1148,7 +1148,7 @@ export function instantRepairRoomSQ(discordId: string, roomId: string, costSq = 
     worldState.stovePots = worldState.stovePots.filter(p => p.status !== 'burnt');
   }
 
-  addCafeteriaActivity(`💎 **INSTANT RESTORATION!** Master **${master.username}** spent **${costSq} Saint Quartz** to summon Caster water magic, instantly repairing **${roomId}**!`, roomId);
+  addCafeteriaActivity(`💎 **INSTANT RESTORATION!** Master **${master.username}** spent **${costSq} Saint Quartz** to summon Caster water magic, instantly repairing **${roomId}**!`, 'global');
   saveCafeteriaStateToDisk();
 
   return {
@@ -1554,7 +1554,7 @@ export function executeGrabAndDrag(prefectId: string, targetId: string, destRoom
   prefect.lastMovedAt = Date.now();
   prefect.statusText = `👑 Disciplining @${target.username}`;
 
-  addCafeteriaActivity(`🚨 👑 **Head Prefect @${prefect.username}** seized **@${target.username}** by the collar in *${fromRoom.shortName}* and dragged them kicking and screaming to **${destRoom.name}**!`, destRoomId);
+  addCafeteriaActivity(`🚨 👑 **Head Prefect @${prefect.username}** seized **@${target.username}** by the collar in *${fromRoom.shortName}* and dragged them kicking and screaming to **${destRoom.name}**!`, 'global');
   saveCafeteriaStateToDisk();
 
   return {
@@ -1596,7 +1596,7 @@ export function executeToiletDunk(prefectId: string, targetId: string): { succes
     target.activeRecoveryType = 'none';
     target.statusText = '💀 Concussed from Extreme Swirlie Turbulence';
 
-    addCafeteriaActivity(`💀 **@${target.username}** lost consciousness from extreme porcelain swirlie turbulence administered by **Head Prefect @${prefect.username}**! Medical bots have escorted them to the Infirmary!`, 'restrooms');
+    addCafeteriaActivity(`💀 **@${target.username}** lost consciousness from extreme porcelain swirlie turbulence administered by **Head Prefect @${prefect.username}**! Medical bots have escorted them to the Infirmary!`, 'global');
     saveCafeteriaStateToDisk();
 
     return {
@@ -1607,7 +1607,7 @@ export function executeToiletDunk(prefectId: string, targetId: string): { succes
   }
 
   target.statusText = 'Drenched and humiliated from a toilet dunk';
-  addCafeteriaActivity(`🚽 👑 **Head Prefect @${prefect.username}** dunked **@${target.username}**'s head into the toilet for disciplinary correction (-${dmg} HP)!`, 'restrooms');
+  addCafeteriaActivity(`🚽 👑 **Head Prefect @${prefect.username}** dunked **@${target.username}**'s head into the toilet for disciplinary correction (-${dmg} HP)!`, 'global');
   saveCafeteriaStateToDisk();
 
   return {
@@ -1642,7 +1642,7 @@ export function executeLavatoryLockdown(prefectId: string, targetId: string, dur
   target.lockedUntil = lockExpires;
   worldState.restroomDoorLockedUntil = Math.max(worldState.restroomDoorLockedUntil || 0, lockExpires);
 
-  addCafeteriaActivity(`🔒 👑 **Head Prefect @${prefect.username}** bolted the exterior padlock on the Restroom doors, trapping **@${target.username}** inside for ${durationMinutes} minutes!`, 'restrooms');
+  addCafeteriaActivity(`🔒 👑 **Head Prefect @${prefect.username}** bolted the exterior padlock on the Restroom doors, trapping **@${target.username}** inside for ${durationMinutes} minutes!`, 'global');
   saveCafeteriaStateToDisk();
 
   return {
@@ -1676,7 +1676,7 @@ export function breakRestroomLock(rescuerId: string): { success: boolean; messag
   rescuer.meritPoints = (rescuer.meritPoints || 0) + 15;
   rescuer.friendPoints = (rescuer.friendPoints || 0) + 100;
 
-  addCafeteriaActivity(`🔓 **LOCK PICKED / BUSTED!** Master **@${rescuer.username}** forced open the restroom padlock with a crowbar, liberating ${freedCount} trapped Master(s)! (+15 CMP, +100 FP)`, 'restrooms');
+  addCafeteriaActivity(`🔓 **LOCK PICKED / BUSTED!** Master **@${rescuer.username}** forced open the restroom padlock with a crowbar, liberating ${freedCount} trapped Master(s)! (+15 CMP, +100 FP)`, 'global');
   saveCafeteriaStateToDisk();
 
   return {
@@ -1732,7 +1732,7 @@ export function callImpeachmentVote(sponsorId: string): { success: boolean; mess
     }
 
     const currentSponsors = worldState.activeImpeachment.sponsors.length;
-    addCafeteriaActivity(`🏛️ **@${sponsor.username}** joined as a sponsor for the Vote of No Confidence against Head Prefect @${prefect.username}! (${currentSponsors}/3 sponsors needed to formalize)`, 'hallway');
+    addCafeteriaActivity(`🏛️ **@${sponsor.username}** joined as a sponsor for the Vote of No Confidence against Head Prefect @${prefect.username}! (${currentSponsors}/3 sponsors needed to formalize)`, 'global');
     saveCafeteriaStateToDisk();
 
     return {
@@ -1754,7 +1754,7 @@ export function callImpeachmentVote(sponsorId: string): { success: boolean; mess
     status: 'active'
   };
 
-  addCafeteriaActivity(`🏛️ **CHALDEA HIGH TRIBUNAL PETITION:** Master **@${sponsor.username}** filed a Vote of No Confidence against Head Prefect **@${prefect.username}**! (1/3 sponsors)`, 'hallway');
+  addCafeteriaActivity(`🏛️ **CHALDEA HIGH TRIBUNAL PETITION:** Master **@${sponsor.username}** filed a Vote of No Confidence against Head Prefect **@${prefect.username}**! (1/3 sponsors)`, 'global');
   saveCafeteriaStateToDisk();
 
   return {
@@ -1808,7 +1808,7 @@ export function castImpeachmentVote(voterId: string, voteType: 'impeach' | 'supp
     const newPrefect = getHeadPrefect();
     const newPrefectName = newPrefect ? `@${newPrefect.username}` : 'the next eligible Master';
 
-    addCafeteriaActivity(`⚖️ **IMPEACHMENT PASSED!** Head Prefect **@${vote.targetUsername}** was DETHRONED by vote of the student body (5/5 votes)! Docked 20% CMP and locked in the restroom stalls! ${newPrefectName} is promoted to Head Prefect!`, 'hallway');
+    addCafeteriaActivity(`⚖️ **IMPEACHMENT PASSED!** Head Prefect **@${vote.targetUsername}** was DETHRONED by vote of the student body (5/5 votes)! Docked 20% CMP and locked in the restroom stalls! ${newPrefectName} is promoted to Head Prefect!`, 'global');
     saveCafeteriaStateToDisk();
 
     return {
@@ -1818,7 +1818,7 @@ export function castImpeachmentVote(voterId: string, voteType: 'impeach' | 'supp
     };
   }
 
-  addCafeteriaActivity(`🗳️ **@${voter.username}** voted **${voteType.toUpperCase()}** in the High Tribunal election against @${vote.targetUsername} (${vote.impeachVotes.length}/5 impeach votes).`, 'hallway');
+  addCafeteriaActivity(`🗳️ **@${voter.username}** voted **${voteType.toUpperCase()}** in the High Tribunal election against @${vote.targetUsername} (${vote.impeachVotes.length}/5 impeach votes).`, 'global');
   saveCafeteriaStateToDisk();
 
   return {
