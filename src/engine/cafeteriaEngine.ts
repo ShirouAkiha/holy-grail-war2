@@ -37,6 +37,12 @@ export interface StationedMaster {
   };
   totalDishesCooked: number;
   totalDishesServed: number;
+  currentHp: number;
+  maxHp: number;
+  isHospitalized: boolean;
+  hospitalizedAt?: number;
+  burnStatus?: 'none' | 'singed' | 'fainted';
+  fireResistanceUntil?: number;
 }
 
 export interface StoveCookingPot {
@@ -265,12 +271,22 @@ export function getOrCreateStationedMaster(
         chaldean_carrot: 1
       },
       totalDishesCooked: 0,
-      totalDishesServed: 0
+      totalDishesServed: 0,
+      currentHp: 100,
+      maxHp: 100,
+      isHospitalized: false,
+      burnStatus: 'none'
     };
     worldState.masters[discordId] = master;
     addCafeteriaActivity(`👤 Master **${username}** arrived at the **Dining Hall**.`, 'dining_hall');
     saveCafeteriaStateToDisk();
   } else {
+    // Ensure default HP fields exist for loaded records
+    if (typeof master.currentHp !== 'number') master.currentHp = 100;
+    if (typeof master.maxHp !== 'number') master.maxHp = 100;
+    if (typeof master.isHospitalized !== 'boolean') master.isHospitalized = false;
+    if (!master.burnStatus) master.burnStatus = 'none';
+
     // Update live profile info
     master.username = username;
     if (avatarUrl) master.avatarUrl = avatarUrl;
@@ -784,6 +800,45 @@ export function tickCafeteriaWorld(): void {
     }
   }
 
+  // 1c. Health Exposure & Passive Recovery Tick Engine
+  for (const m of Object.values(worldState.masters)) {
+    if (typeof m.currentHp !== 'number') m.currentHp = 100;
+    if (typeof m.maxHp !== 'number') m.maxHp = 100;
+
+    const roomHazard = worldState.roomHazards[m.currentRoomId];
+    const isFireResistant = Boolean(m.fireResistanceUntil && now < m.fireResistanceUntil);
+
+    if (roomHazard && roomHazard.stage >= 3 && !isFireResistant && !m.isHospitalized) {
+      const dmg = roomHazard.stage === 4 ? 20 : 10;
+      m.currentHp = Math.max(0, m.currentHp - dmg);
+      m.burnStatus = m.currentHp <= 0 ? 'fainted' : 'singed';
+      m.statusText = m.currentHp <= 0 ? '🔥 COLLAPSED IN SMOKE' : '🔥 COUGHING IN SMOKE';
+
+      if (m.currentHp <= 0) {
+        m.currentRoomId = 'infirmary';
+        m.isHospitalized = true;
+        m.hospitalizedAt = now;
+        m.statusText = '🏥 Admitted in Infirmary Bed';
+        addCafeteriaActivity(`🏥 **MEDICAL WARD ADMISSION REPORT:** Master **${m.username}** collapsed from severe smoke inhalation in ${roomHazard.roomId}! Stretchered to the Infirmary under Nurse Nightingale's care.`, 'infirmary');
+      }
+    } else if (m.isHospitalized || m.currentRoomId === 'infirmary') {
+      const lastTick = m.lastActivityAt || now;
+      const elapsedMin = Math.max(1, Math.floor((now - lastTick) / 60000));
+      if (m.currentHp < m.maxHp && elapsedMin >= 1) {
+        // 1 hour (60 minutes) full recovery time = ~1.67 HP per minute
+        const hpGain = Math.max(1, Math.floor(elapsedMin * (100 / 60)));
+        m.currentHp = Math.min(m.maxHp, m.currentHp + hpGain);
+        m.lastActivityAt = now;
+        if (m.currentHp >= m.maxHp) {
+          m.isHospitalized = false;
+          m.burnStatus = 'none';
+          m.statusText = 'Resting quietly in Infirmary';
+          addCafeteriaActivity(`✨ **DISCHARGE APPROVED:** Master **${m.username}** made a full recovery after 1 hour of bed rest in the Infirmary!`, 'infirmary');
+        }
+      }
+    }
+  }
+
   // 2. Mark inactive masters as AFK (>2 minutes without action)
   for (const m of Object.values(worldState.masters)) {
     if (!m.isAfk && now - m.lastActivityAt > 2 * 60 * 1000) {
@@ -964,5 +1019,96 @@ export function instantRepairRoomSQ(discordId: string, roomId: string, costSq = 
   return {
     success: true,
     message: `💎 **INSTANT REPAIR SUCCESSFUL!**\nYou expended **${costSq} Saint Quartz** to weave an arcana restorative spell. All soot and structural damage in **${roomId}** have been erased instantly!`
+  };
+}
+
+export function drinkBurnSalve(discordId: string): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master record not found.' };
+
+  const inv = master.inventory || {};
+  const herbKey = inv['chaldean_carrot'] ? 'chaldean_carrot' : inv['miyama_rice'] ? 'miyama_rice' : Object.keys(inv)[0];
+
+  if (!herbKey || (inv[herbKey] || 0) < 1) {
+    return { success: false, message: '❌ You do not have any gathered herbs or produce in your apron to brew a burn salve! Harvest produce in the Greenhouse or Pantry.' };
+  }
+
+  inv[herbKey] -= 1;
+  if (inv[herbKey] <= 0) delete inv[herbKey];
+
+  master.currentHp = Math.min(master.maxHp, master.currentHp + 50);
+  master.burnStatus = 'none';
+  if (master.currentHp >= master.maxHp) {
+    master.isHospitalized = false;
+    master.statusText = 'Fully recovered with Burn Salve';
+  }
+
+  addCafeteriaActivity(`🧪 **${master.username}** drank a freshly brewed herbal burn salve in the Infirmary (+50 HP)!`, 'infirmary');
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🧪 **HERBAL BURN SALVE CONSUMED!**\nYou drank a soothing herbal decoction brewed by Asclepius.\n• Restored **+50 HP** (Current HP: ${master.currentHp}/${master.maxHp})\n• Cleared Burn & Singed status!`
+  };
+}
+
+export function instantRejuvenationSQ(discordId: string, costSq = 500): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master record not found.' };
+
+  master.currentHp = master.maxHp;
+  master.isHospitalized = false;
+  master.burnStatus = 'none';
+  master.fireResistanceUntil = Date.now() + 60 * 60 * 1000;
+  master.statusText = 'Shielded with Fire Resistance';
+
+  addCafeteriaActivity(`💎 **DIVINE REJUVENATION!** Master **${master.username}** expended **${costSq} Saint Quartz** for instant restoration and 1-hour Fire Resistance!`, 'infirmary');
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `💎 **INSTANT REJUVENATION SUCCESSFUL!**\nAsclepius and Paracelsus administered divine stasis rejuvenation.\n• **HP Fully Restored** (100/100)\n• **Discharged from Infirmary**\n• **Buff Unlocked:** 🔥 *Fire Resistance* (Immune to smoke & burn damage for 1 hour!)`
+  };
+}
+
+export function bringFruitBasketToFriend(rescuerId: string, targetId: string): { success: boolean; message: string } {
+  const rescuer = worldState.masters[rescuerId];
+  const target = worldState.masters[targetId];
+
+  if (!rescuer || !target) return { success: false, message: 'Master records not found.' };
+
+  target.currentHp = Math.min(target.maxHp, target.currentHp + 35);
+  if (target.currentHp >= target.maxHp) {
+    target.isHospitalized = false;
+    target.burnStatus = 'none';
+  }
+
+  addCafeteriaActivity(`🤝 **BEDSIDE CARE!** Master **${rescuer.username}** presented a fresh Fruit Basket to **${target.username}** in the Infirmary (+35 HP, +50 FP)!`, 'infirmary');
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🍎 **FRUIT BASKET DELIVERED!**\nYou presented a fresh basket of Holy Eden apples to **${target.username}**!\n• Restored **+35 HP** to ${target.username}\n• Granted **+50 Friend Points** to you!`
+  };
+}
+
+export function performHeroRescue(rescuerId: string, targetId: string): { success: boolean; message: string } {
+  const rescuer = worldState.masters[rescuerId];
+  const target = worldState.masters[targetId];
+
+  if (!rescuer || !target) return { success: false, message: 'Master records not found.' };
+
+  const currentRoom = rescuer.currentRoomId;
+  target.currentRoomId = 'infirmary';
+  target.isHospitalized = true;
+  target.hospitalizedAt = Date.now();
+  target.statusText = '🏥 Admitted in Infirmary (Rescued)';
+
+  addCafeteriaActivity(`🚑 **HEROIC RESCUE!** Master **${rescuer.username}** dashed through the flames and dragged unconscious **${target.username}** out of ${currentRoom} to the Infirmary!`, currentRoom);
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🚑 **HEROIC RESCUE EXECUTED!**\nYou fearlessly threw open the burning door, lifted **${target.username}** over your shoulder, and carried them out of the inferno to the Infirmary!\n\n🎁 **Heroic Rewards Granted:**\n• **+100 Friend Points**\n• **Karma:** *Lawful Good Hero*`
   };
 }

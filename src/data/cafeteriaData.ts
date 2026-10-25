@@ -138,11 +138,23 @@ export const CAFETERIA_ROOMS: Record<string, CafeteriaRoom> = {
     shortName: 'Staff Lounge',
     description: 'Plush velvet couches, a low oak coffee table, and an antique record player. A cozy sanctuary where off-duty Masters rest, chat, and sip tea.',
     backgroundUrl: 'https://ella.janitorai.com/media-approved/CNCqmU0CcafjaBPgasMza.webp',
-    connections: ['dining_hall', 'greenhouse', 'hallway'],
+    connections: ['dining_hall', 'greenhouse', 'hallway', 'infirmary'],
     availableIngredients: ['matcha_tea_leaves', 'sweet_honey'],
     primaryActivityName: 'Lounge Sofas & Tea Table',
     primaryActionVerb: 'Relax & Socialize',
     ambientBgm: 'Mellow Coffeehouse Jazz'
+  },
+  infirmary: {
+    id: 'infirmary',
+    name: 'Chaldea Medical Ward & Infirmary',
+    shortName: 'Infirmary',
+    description: 'The quiet sanctuary of Chaldea’s medical wing. Here Head Nurse Florence Nightingale, Asclepius, and Paracelsus attend to injured Masters with relentless devotion.',
+    backgroundUrl: 'https://ella.janitorai.com/media-approved/XDmyTzNWI_uXspXLTgs1w.webp',
+    connections: ['staff_lounge'],
+    availableIngredients: [],
+    primaryActivityName: 'Infirmary Beds & Medical Counter',
+    primaryActionVerb: 'Recover & Receive Treatment',
+    ambientBgm: 'Sterile Monitors & Quiet Resting Echoes'
   },
   hallway: {
     id: 'hallway',
@@ -667,6 +679,18 @@ export const ROOM_NPCS: Record<string, RoomNpc> = {
       'Keep an eye on room activity logs to see where other Masters are cooking!',
       'You can ping fellow Masters to request assistance at the stoves.'
     ]
+  },
+  infirmary: {
+    id: 'nightingale_npc',
+    name: 'Florence Nightingale',
+    title: 'Head Nurse of Chaldea',
+    avatarUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/f/f3/Nightingale1.png',
+    dialogueIntro: '“Amputation is the cleanest cure for minor thermal burns. Hold still, Master!”',
+    tips: [
+      'Hospitalized Masters recover passively over time (10% HP per minute).',
+      'Drinking Burn Salve brewed from Sacred Greenhouse herbs clears burns instantly!',
+      'Visiting friends can click [Bring Fruit Basket] to cut your bed rest time in half.'
+    ]
   }
 };
 
@@ -790,6 +814,15 @@ export const ROOM_ENVIRONMENT_ACTIONS: Record<string, EnvironmentAction[]> = {
       emoji: '📌',
       description: 'Read notes posted by kitchen staff and fellow Masters.',
       effectMessage: 'Notice Board reads: "Beni-enma rates today\'s Udon broth 5 Stars! Artoria is extra hungry."'
+    }
+  ],
+  infirmary: [
+    {
+      id: 'sanitize_bandages',
+      name: 'Sterilize Medical Bandages & Salves',
+      emoji: '🩺',
+      description: 'Assist Head Nurse Nightingale in preparing antiseptic compresses.',
+      effectMessage: 'You sterilized the medical compresses! Nurse Nightingale nod with ferocious approval.'
     }
   ]
 };

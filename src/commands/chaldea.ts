@@ -45,6 +45,10 @@ import {
   extinguishRoomHazard,
   repairRoomStructuralDamage,
   instantRepairRoomSQ,
+  drinkBurnSalve,
+  instantRejuvenationSQ,
+  bringFruitBasketToFriend,
+  performHeroRescue,
   StationedMaster
 } from '../engine/cafeteriaEngine';
 import { 
@@ -271,7 +275,27 @@ export async function buildChaldeaViewportResponse(
   // 7. Interactive Buttons Row 1: Contextual Action Button Swap
   const actionButtons: ButtonBuilder[] = [];
 
-  if (roomHazard.stage === 4) {
+  if (room.id === 'infirmary') {
+    // Infirmary Ward Mode: Recovery Actions
+    actionButtons.push(
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_bed_rest')
+        .setLabel('🛏️ Bed Rest (Free 1 hr Recovery)')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_drink_salve')
+        .setLabel('🧪 Drink Burn Salve (Herbs)')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_rejuvenate_sq')
+        .setLabel('💎 Rejuvenate (500 SQ)')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_fruit_basket_select')
+        .setLabel('🤝 Bring Fruit Basket')
+        .setStyle(ButtonStyle.Success)
+    );
+  } else if (roomHazard.stage === 4) {
     // Structural Breakdown Mode: Only Repair / Instant Fix / Retreat available!
     actionButtons.push(
       new ButtonBuilder()
@@ -304,6 +328,17 @@ export async function buildChaldeaViewportResponse(
             .setStyle(ButtonStyle.Secondary)
         );
       }
+    }
+
+    // Check if hero rescue button should be added (if other masters in room are coughing or fainted)
+    const rescuableFriends = roomMasters.filter(m => m.discordId !== master.discordId && (m.currentHp < m.maxHp || m.burnStatus === 'singed' || m.burnStatus === 'fainted'));
+    if (rescuableFriends.length > 0 && roomHazard.stage >= 3) {
+      actionButtons.push(
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_rescue_select')
+          .setLabel('🚑 Drag Friend to Safety')
+          .setStyle(ButtonStyle.Success)
+      );
     }
 
     if (room.availableIngredients.length > 0) {
@@ -559,6 +594,156 @@ export async function handleChaldeaGlobalInteraction(
       components: payload.components,
       files: payload.files
     });
+    return true;
+  }
+
+  // 1g. Button: Bed Rest in Infirmary
+  if (interaction.isButton() && customId === 'chaldea_action_bed_rest') {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    await interaction.editReply({
+      content: `🛏️ **BED REST IN PROGRESS**\nNurse Nightingale has placed you in an Infirmary bed. You are passively recovering over **1 hour of Bed Rest** in real-time.\n• **Current Health:** ${master.currentHp}/${master.maxHp} HP\n• You may chat, inspect your inventory, or rest quietly while recovering.`
+    });
+    return true;
+  }
+
+  // 1h. Button: Drink Burn Salve
+  if (interaction.isButton() && customId === 'chaldea_action_drink_salve') {
+    await interaction.deferUpdate();
+    const res = drinkBurnSalve(discordId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 1i. Button: Instant Rejuvenation (500 SQ)
+  if (interaction.isButton() && customId === 'chaldea_action_rejuvenate_sq') {
+    await interaction.deferUpdate();
+    const dbMaster = await getMaster(discordId);
+    const costSq = 500;
+    if (!dbMaster || (dbMaster.saintQuartz || 0) < costSq) {
+      await interaction.followUp({
+        flags: MessageFlags.Ephemeral,
+        content: `❌ You need at least **${costSq} Saint Quartz** for divine stasis rejuvenation! You currently have **${dbMaster?.saintQuartz || 0} SQ**.\n*Use [🧪 Drink Burn Salve] or [🛏️ Bed Rest] to recover for free!*`
+      });
+      return true;
+    }
+
+    dbMaster.saintQuartz -= costSq;
+    await saveMaster(dbMaster);
+
+    instantRejuvenationSQ(discordId, costSq);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    return true;
+  }
+
+  // 1j. Button: Bring Fruit Basket Select
+  if (interaction.isButton() && customId === 'chaldea_action_fruit_basket_select') {
+    const world = getCafeteriaWorldSnapshot();
+    const roomMasters = getRoomStationedMasters('infirmary').filter(m => m.discordId !== discordId);
+
+    if (roomMasters.length === 0) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: 'There are currently no other hospitalized friends in the Infirmary beds!'
+      });
+      return true;
+    }
+
+    const select = new StringSelectMenuBuilder()
+      .setCustomId('chaldea_action_fruit_basket_execute')
+      .setPlaceholder('Select a hospitalized friend to present a Fruit Basket...');
+
+    for (const friend of roomMasters.slice(0, 25)) {
+      select.addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel(`🍎 ${friend.username} (${friend.currentHp}/${friend.maxHp} HP)`)
+          .setValue(friend.discordId)
+          .setDescription(`Hospitalized in Infirmary • Cut recovery time`)
+      );
+    }
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      content: '🍎 **Select a hospitalized friend to visit with a Fruit Basket:**',
+      components: [row]
+    });
+    return true;
+  }
+
+  // 1k. Execute Fruit Basket Delivery
+  if (interaction.isStringSelectMenu() && customId === 'chaldea_action_fruit_basket_execute') {
+    await interaction.deferUpdate();
+    const targetId = interaction.values[0];
+    const res = bringFruitBasketToFriend(discordId, targetId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 1l. Button: Hero Rescue Select
+  if (interaction.isButton() && customId === 'chaldea_action_rescue_select') {
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const roomMasters = getRoomStationedMasters(master.currentRoomId).filter(m => m.discordId !== discordId && (m.currentHp < m.maxHp || m.burnStatus === 'singed' || m.burnStatus === 'fainted'));
+
+    if (roomMasters.length === 0) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: 'There are no coughing or fainted friends in this room needing rescue!'
+      });
+      return true;
+    }
+
+    const select = new StringSelectMenuBuilder()
+      .setCustomId('chaldea_action_rescue_execute')
+      .setPlaceholder('Select an unconscious friend to drag to safety...');
+
+    for (const friend of roomMasters.slice(0, 25)) {
+      select.addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel(`🚑 Rescue ${friend.username} (${friend.statusText})`)
+          .setValue(friend.discordId)
+          .setDescription(`Drag out of flames to Infirmary • Earn +100 FP`)
+      );
+    }
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      content: '🚑 **Select an endangered friend to drag out of the flames:**',
+      components: [row]
+    });
+    return true;
+  }
+
+  // 1m. Execute Hero Rescue
+  if (interaction.isStringSelectMenu() && customId === 'chaldea_action_rescue_execute') {
+    await interaction.deferUpdate();
+    const targetId = interaction.values[0];
+    const res = performHeroRescue(discordId, targetId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
     return true;
   }
 
