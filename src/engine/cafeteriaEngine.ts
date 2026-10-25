@@ -57,6 +57,14 @@ export interface StationedMaster {
   };
   dailyGiftsSent?: Record<string, { count: number; lastGiftDate: string }>;
   fruitBasketsCount?: number;
+  lastHazardNotifiedAt?: number;
+  unreadNotifications?: Array<{
+    id: string;
+    timestamp: number;
+    title: string;
+    message: string;
+    type: 'hazard' | 'rescue' | 'gift' | 'system';
+  }>;
 }
 
 export interface StoveCookingPot {
@@ -295,7 +303,8 @@ export function getOrCreateStationedMaster(
       friendPoints: 500,
       facilityUpgrades: { extraStoves: 0, extraPrepCounters: 0, hydroponicLamps: 0 },
       dailyGiftsSent: {},
-      fruitBasketsCount: 0
+      fruitBasketsCount: 0,
+      unreadNotifications: []
     };
     worldState.masters[discordId] = master;
     addCafeteriaActivity(`👤 Master **${username}** arrived at the **Dining Hall**.`, 'dining_hall');
@@ -311,6 +320,7 @@ export function getOrCreateStationedMaster(
     if (typeof master.friendPoints !== 'number') master.friendPoints = 500;
     if (!master.facilityUpgrades) master.facilityUpgrades = { extraStoves: 0, extraPrepCounters: 0, hydroponicLamps: 0 };
     if (!master.dailyGiftsSent) master.dailyGiftsSent = {};
+    if (!master.unreadNotifications) master.unreadNotifications = [];
 
     // Update live profile info
     master.username = username;
@@ -845,20 +855,54 @@ export function tickCafeteriaWorld(): void {
     const roomHazard = worldState.roomHazards[m.currentRoomId];
     const isFireResistant = Boolean(m.fireResistanceUntil && now < m.fireResistanceUntil);
 
-    if (roomHazard && roomHazard.stage >= 3 && !isFireResistant && !m.isHospitalized) {
-      const dmg = roomHazard.stage === 4 ? 20 : 10;
-      m.currentHp = Math.max(0, m.currentHp - dmg);
-      m.burnStatus = m.currentHp <= 0 ? 'fainted' : 'singed';
-      m.statusText = m.currentHp <= 0 ? '🔥 COLLAPSED IN SMOKE' : '🔥 COUGHING IN SMOKE';
+    if (roomHazard && roomHazard.stage >= 2 && !m.isHospitalized) {
+      // AFK / Active Hazard Pager Notification System
+      if (!m.lastHazardNotifiedAt || now - m.lastHazardNotifiedAt > 60000) {
+        m.lastHazardNotifiedAt = now;
+        if (!m.unreadNotifications) m.unreadNotifications = [];
+        const roomObj = CAFETERIA_ROOMS[m.currentRoomId];
+        const roomName = roomObj ? roomObj.shortName : m.currentRoomId;
+        const isEmergency = roomHazard.stage >= 3;
 
-      if (m.currentHp <= 0) {
-        m.currentRoomId = 'infirmary';
-        m.isHospitalized = true;
-        m.hospitalizedAt = now;
-        m.activeRecoveryType = 'none';
-        m.bedRestStartedAt = undefined;
-        m.statusText = '🏥 Admitted in Infirmary (Awaiting Treatment)';
-        addCafeteriaActivity(`🏥 **MEDICAL WARD ADMISSION REPORT:** Master **${m.username}** collapsed from severe smoke inhalation in ${roomHazard.roomId}! Stretchered to the Infirmary under Nurse Nightingale's care.`, 'infirmary');
+        m.unreadNotifications.unshift({
+          id: `notif_hz_${now}_${Math.random().toString(36).substring(2, 6)}`,
+          timestamp: now,
+          title: isEmergency ? `🔥 EMERGENCY HAZARD: ${roomName}` : `💨 SMOKE WARNING: ${roomName}`,
+          message: isEmergency
+            ? `🔥 FIRE RAGING IN ${roomName}! You are taking active smoke/flame damage (${m.currentHp}/${m.maxHp} HP)! Return to Chaldea Hub immediately to extinguish or move!`
+            : `💨 Thick smoke is filling ${roomName}! Extinguish the flame before it flares into an inferno!`,
+          type: 'hazard'
+        });
+        if (m.unreadNotifications.length > 10) m.unreadNotifications.pop();
+
+        addCafeteriaActivity(`🚨 **AFK HAZARD PAGER:** Paging @${m.username}! Stationed in **${roomName}** during an active **${roomHazard.hazardType.replace('_', ' ').toUpperCase()}** hazard! Alert dispatched!`, m.currentRoomId);
+      }
+
+      if (roomHazard.stage >= 3 && !isFireResistant) {
+        const dmg = roomHazard.stage === 4 ? 20 : 10;
+        m.currentHp = Math.max(0, m.currentHp - dmg);
+        m.burnStatus = m.currentHp <= 0 ? 'fainted' : 'singed';
+        m.statusText = m.currentHp <= 0 ? '🔥 COLLAPSED IN SMOKE' : '🔥 COUGHING IN SMOKE';
+
+        if (m.currentHp <= 0) {
+          m.currentRoomId = 'infirmary';
+          m.isHospitalized = true;
+          m.hospitalizedAt = now;
+          m.activeRecoveryType = 'none';
+          m.bedRestStartedAt = undefined;
+          m.statusText = '🏥 Admitted in Infirmary (Awaiting Treatment)';
+
+          if (!m.unreadNotifications) m.unreadNotifications = [];
+          m.unreadNotifications.unshift({
+            id: `notif_col_${now}`,
+            timestamp: now,
+            title: `🏥 MEDICAL WARD ADMISSION`,
+            message: `🚨 You collapsed from severe smoke inhalation in ${roomHazard.roomId}! Stretchered to the Infirmary under Nurse Nightingale's care. Select bed rest to recover.`,
+            type: 'hazard'
+          });
+
+          addCafeteriaActivity(`🏥 **MEDICAL WARD ADMISSION REPORT:** Master **${m.username}** collapsed from severe smoke inhalation in ${roomHazard.roomId}! Stretchered to the Infirmary under Nurse Nightingale's care.`, 'infirmary');
+        }
       }
     } else if (m.isHospitalized || m.currentRoomId === 'infirmary') {
       // Automatic recovery is DISABLED.
@@ -1369,4 +1413,12 @@ export function purchaseChaldeaShopUpgrade(discordId: string, itemId: string): {
     success: true,
     message: `🛒 **CHALDEA SHOP UPGRADE SUCCESSFUL!**\nYou purchased **${shopItem.name} (Level ${currentLvl + 1}/${shopItem.maxLevel})**!\n• **Bonus Applied:** ${shopItem.perLevelBonus}\n• **Cost:** -${costFP} FP (Remaining: **${master.friendPoints} FP**)`
   };
+}
+
+export function clearMasterNotifications(discordId: string): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master record not found.' };
+  master.unreadNotifications = [];
+  saveCafeteriaStateToDisk();
+  return { success: true, message: '🔔 Unread notifications cleared.' };
 }

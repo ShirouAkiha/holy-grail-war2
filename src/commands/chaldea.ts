@@ -54,6 +54,7 @@ import {
   bringFruitBasketToFriend,
   craftFruitBasket,
   purchaseChaldeaShopUpgrade,
+  clearMasterNotifications,
   performHeroRescue,
   StationedMaster
 } from '../engine/cafeteriaEngine';
@@ -275,7 +276,16 @@ export async function buildChaldeaViewportResponse(
     ? roomActivities.map(a => `• <t:${Math.floor(a.timestamp / 1000)}:R> ${a.text}`).join('\n')
     : '*No recent events recorded in this sector.*';
 
-  // 6. Assemble Dual Embed Stack
+  // Format unread notifications / AFK hazard alert banner
+  let notifBanner = '';
+  const unreadNotifs = master.unreadNotifications || [];
+  if (roomHazard.stage >= 2 && master.isAfk) {
+    notifBanner = `🚨 **AFK HAZARD EMERGENCY WARNING:**\n⚠️ You are currently **AFK** in **${room.name}** during an active **${roomHazard.hazardType.replace('_', ' ').toUpperCase()}** (Stage ${roomHazard.stage})!\n• *Vitals:* **${master.currentHp}/${master.maxHp} HP** (${master.burnStatus === 'none' ? 'In Danger' : master.burnStatus})\n• *Action Required:* Click **[🧯 Extinguish Fire]** or **[🚪 Move Sector]** immediately!\n\n`;
+  } else if (unreadNotifs.length > 0) {
+    const latestNotif = unreadNotifs[0];
+    notifBanner = `🚨 **UNREAD AFK PAGER ALERT (${unreadNotifs.length}):**\n**${latestNotif.title}** — *${latestNotif.message}*\n\n`;
+  }
+
   const mapEmbed = new EmbedBuilder()
     .setTitle('🗺️ Chaldea Campus Hub — Facility Node Map')
     .setDescription(
@@ -287,6 +297,7 @@ export async function buildChaldeaViewportResponse(
   const roomEmbed = new EmbedBuilder()
     .setTitle(`🍵 Chaldea Campus Hub — ${room.name}`)
     .setDescription(
+      `${notifBanner}` +
       `📍 **Current Location:** **${room.name}**\n` +
       `🎵 *${room.ambientBgm}*\n\n` +
       `${room.description}\n\n` +
@@ -442,6 +453,15 @@ export async function buildChaldeaViewportResponse(
   }
 
   // Always available utility actions
+  if (unreadNotifs.length > 0) {
+    actionButtons.push(
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_clear_notifs')
+        .setLabel(`🔔 Clear Alerts (${unreadNotifs.length})`)
+        .setStyle(ButtonStyle.Danger)
+    );
+  }
+
   actionButtons.push(
     new ButtonBuilder()
       .setCustomId('chaldea_action_shop_open')
@@ -928,6 +948,19 @@ export async function handleChaldeaGlobalInteraction(
       files: payload.files
     });
     await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 2e. Button: Clear Unread Notifications
+  if (interaction.isButton() && customId === 'chaldea_action_clear_notifs') {
+    await interaction.deferUpdate();
+    clearMasterNotifications(discordId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
     return true;
   }
 
