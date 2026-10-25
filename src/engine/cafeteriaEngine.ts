@@ -84,6 +84,22 @@ export interface CafeteriaBuff {
   expiresAt: number;
 }
 
+export interface RoomHazard {
+  roomId: string;
+  stage: 1 | 2 | 3 | 4; // 1: Stable/Simmering, 2: Neglected/Smoke, 3: Hazard Flare, 4: Structural Breakdown
+  hazardType: 'grease_fire' | 'mana_leak' | 'spore_overgrowth' | 'arcane_overload';
+  originMasterId?: string;
+  originMasterName?: string;
+  sourceDishName?: string;
+  startedAt: number;
+  stage2At: number;
+  stage3At: number;
+  stage4At: number;
+  extinguishedBy?: string;
+  repairsContributed: number; // Labor effort clicks (0 / 3)
+  requiredRepairs: number;    // e.g. 3
+}
+
 export interface CafeteriaWorldState {
   masters: Record<string, StationedMaster>;
   sharedPrepBasin: SharedPrepBasinItem[];
@@ -93,6 +109,7 @@ export interface CafeteriaWorldState {
   recentActivityFeed: Array<{ timestamp: number; text: string; roomId: string }>;
   roomForageCooldowns: Record<string, Record<string, number>>; // roomId -> ingredientId -> timestamp
   sharedFridgeVault: Record<string, number>; // ingredientId/dishId -> count
+  roomHazards: Record<string, RoomHazard>;
 }
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
@@ -107,7 +124,8 @@ let worldState: CafeteriaWorldState = {
   activeCommunityBuffs: [],
   recentActivityFeed: [],
   roomForageCooldowns: {},
-  sharedFridgeVault: {}
+  sharedFridgeVault: {},
+  roomHazards: {}
 };
 
 function ensureDirectories() {
@@ -136,7 +154,8 @@ function loadCafeteriaStateFromDisk() {
             activeCommunityBuffs: parsed.activeCommunityBuffs || [],
             recentActivityFeed: parsed.recentActivityFeed || [],
             roomForageCooldowns: parsed.roomForageCooldowns || {},
-            sharedFridgeVault: parsed.sharedFridgeVault || {}
+            sharedFridgeVault: parsed.sharedFridgeVault || {},
+            roomHazards: parsed.roomHazards || {}
           };
           return;
         }
@@ -156,7 +175,8 @@ function loadCafeteriaStateFromDisk() {
             activeCommunityBuffs: parsed.activeCommunityBuffs || [],
             recentActivityFeed: parsed.recentActivityFeed || [],
             roomForageCooldowns: parsed.roomForageCooldowns || {},
-            sharedFridgeVault: parsed.sharedFridgeVault || {}
+            sharedFridgeVault: parsed.sharedFridgeVault || {},
+            roomHazards: parsed.roomHazards || {}
           };
           return;
         }
@@ -729,7 +749,7 @@ export function serveDishToPatron(
 export function tickCafeteriaWorld(): void {
   const now = Date.now();
 
-  // 1. Update stove pots
+  // 1. Update stove pots & trigger Stage 2 hazard for neglected pots
   for (const pot of worldState.stovePots) {
     if (pot.status === 'simmering' && now >= pot.readyAt) {
       pot.status = 'ready';
@@ -737,6 +757,30 @@ export function tickCafeteriaWorld(): void {
     } else if (pot.status === 'ready' && now >= pot.burnsAt) {
       pot.status = 'burnt';
       addCafeteriaActivity(`💨 **Smoke billowing!** The **${pot.recipeEmoji} ${pot.recipeName}** was left on the flame too long and burned!`, 'kitchen_stove');
+
+      // Trigger/update kitchen_stove hazard timing
+      const h = getRoomHazard('kitchen_stove');
+      if (h.stage === 1) {
+        h.stage = 2; // Neglected / Smoke
+        h.originMasterId = pot.startedByDiscordId;
+        h.originMasterName = pot.startedByUsername;
+        h.sourceDishName = pot.recipeName;
+        h.startedAt = now;
+        h.stage2At = now;
+        h.stage3At = now + 5 * 60 * 1000;  // Flare after 5 min
+        h.stage4At = now + 15 * 60 * 1000; // Breakdown after 15 min
+      }
+    }
+  }
+
+  // 1b. Evaluate background real-time room hazards based on timestamps
+  for (const [rId, h] of Object.entries(worldState.roomHazards)) {
+    if (h.stage === 2 && now >= h.stage3At) {
+      h.stage = 3; // Hazard Flare (On Fire)
+      addCafeteriaActivity(`🔥 **FIRE ALERT!** The unattended smoke in **${rId}** has ignited into a **Hazard Flare**! Action needed!`, rId);
+    } else if (h.stage === 3 && now >= h.stage4At) {
+      h.stage = 4; // Structural Breakdown (Room Locked)
+      addCafeteriaActivity(`💥 **CRITICAL LOCKDOWN!** Severe structural damage in **${rId}**! All room activities suspended until repaired.`, rId);
     }
   }
 
@@ -789,4 +833,136 @@ export function getCafeteriaWorldSnapshot() {
 
 export function getRoomStationedMasters(roomId: string): StationedMaster[] {
   return Object.values(worldState.masters).filter(m => m.currentRoomId === roomId);
+}
+
+export function getRoomHazard(roomId: string): RoomHazard {
+  if (!worldState.roomHazards[roomId]) {
+    worldState.roomHazards[roomId] = {
+      roomId,
+      stage: 1,
+      hazardType: roomId === 'kitchen_stove' ? 'grease_fire' : roomId === 'greenhouse' ? 'spore_overgrowth' : 'mana_leak',
+      startedAt: Date.now(),
+      stage2At: Date.now() + 1000 * 60 * 60 * 24,
+      stage3At: Date.now() + 1000 * 60 * 60 * 24,
+      stage4At: Date.now() + 1000 * 60 * 60 * 24,
+      repairsContributed: 0,
+      requiredRepairs: 3
+    };
+  }
+  return worldState.roomHazards[roomId];
+}
+
+export function dumpBurntPot(discordId: string, potId?: string): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master not found.' };
+
+  const pot = potId ? worldState.stovePots.find(p => p.id === potId) : worldState.stovePots.find(p => p.status === 'burnt');
+  if (!pot) return { success: false, message: 'No burnt pots found on the stoves.' };
+
+  worldState.stovePots = worldState.stovePots.filter(p => p.id !== pot.id);
+
+  const remainingBurnt = worldState.stovePots.some(p => p.status === 'burnt');
+  if (!remainingBurnt && worldState.roomHazards['kitchen_stove']?.stage === 2) {
+    worldState.roomHazards['kitchen_stove'].stage = 1;
+  }
+
+  addCafeteriaActivity(`🗑️ **${master.username}** scraped the burnt **${pot.recipeEmoji} ${pot.recipeName}** into the waste bin and scrubbed the pot clean.`, 'kitchen_stove');
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🗑️ **Scraped & Discarded!**\nYou dumped the burnt **${pot.recipeEmoji} ${pot.recipeName}** into the disposal unit and wiped down the range.`
+  };
+}
+
+export function extinguishRoomHazard(discordId: string, roomId: string): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master not found.' };
+
+  const hazard = getRoomHazard(roomId);
+  if (hazard.stage < 2) {
+    return { success: false, message: 'The room is currently clear of active fires or hazards!' };
+  }
+
+  if (hazard.stage === 4) {
+    return { success: false, message: 'The hazard has already collapsed into Structural Breakdown! Use [🛠️ Repair Flues] or [💎 Instant Fix] to restore the room.' };
+  }
+
+  const originName = hazard.originMasterName ? `@${hazard.originMasterName}` : 'a neglectful cook';
+  hazard.stage = 1;
+  hazard.extinguishedBy = master.username;
+
+  if (roomId === 'kitchen_stove') {
+    worldState.stovePots = worldState.stovePots.filter(p => p.status !== 'burnt');
+  }
+
+  const broadcastMsg = `🚨 **HEROIC FIRST RESPONDER!** Master **${master.username}** grabbed the fire extinguisher and extinguished the ${hazard.hazardType.replace('_', ' ')} in **${roomId}**! The room was saved from ${originName}'s smoking dish!`;
+  addCafeteriaActivity(broadcastMsg, roomId);
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🧯 **HAZARD EXTINGUISHED!**\nYou swiftly deployed the CO2 extinguisher, dousing the flames and venting the smoke!\n\n🎁 **Heroic Honors Granted:**\n• **+200 Friend Points**\n• **Karma Title:** *Chaldea First Responder*`
+  };
+}
+
+export function repairRoomStructuralDamage(discordId: string, roomId: string): { success: boolean; message: string; fullyRepaired: boolean } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master not found.', fullyRepaired: false };
+
+  const hazard = getRoomHazard(roomId);
+  if (hazard.stage !== 4) {
+    return { success: false, message: 'This room does not currently suffer from structural breakdown.', fullyRepaired: false };
+  }
+
+  hazard.repairsContributed += 1;
+  const current = hazard.repairsContributed;
+  const req = hazard.requiredRepairs || 3;
+
+  if (current >= req) {
+    hazard.stage = 1;
+    hazard.repairsContributed = 0;
+    if (roomId === 'kitchen_stove') {
+      worldState.stovePots = worldState.stovePots.filter(p => p.status !== 'burnt');
+    }
+
+    addCafeteriaActivity(`🛠️ **ROOM RESTORED!** Master **${master.username}** finished repairing the flues in **${roomId}**! Structural integrity restored.`, roomId);
+    saveCafeteriaStateToDisk();
+
+    return {
+      success: true,
+      message: `🛠️ **FINAL REPAIR COMPLETE!** (${current}/${req})\nYou replaced the scorched ventilation flues and recalibrated safety controls! **${roomId} is now fully operational!**\n\n🎁 **Rewards Granted:** +250 Friend Points!`,
+      fullyRepaired: true
+    };
+  } else {
+    addCafeteriaActivity(`🔧 **${master.username}** performed repair work on the damaged flues in **${roomId}** (${current}/${req}).`, roomId);
+    saveCafeteriaStateToDisk();
+
+    return {
+      success: true,
+      message: `🔧 **Repair Progress Applied!** (${current}/${req})\nYou scrubbed scorched soot and replaced a heat baffle! **${req - current} more repair effort action(s)** needed to fully restore the room.`,
+      fullyRepaired: false
+    };
+  }
+}
+
+export function instantRepairRoomSQ(discordId: string, roomId: string, costSq = 5): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) return { success: false, message: 'Master not found.' };
+
+  const hazard = getRoomHazard(roomId);
+  hazard.stage = 1;
+  hazard.repairsContributed = 0;
+
+  if (roomId === 'kitchen_stove') {
+    worldState.stovePots = worldState.stovePots.filter(p => p.status !== 'burnt');
+  }
+
+  addCafeteriaActivity(`💎 **INSTANT RESTORATION!** Master **${master.username}** spent **${costSq} Saint Quartz** to summon Caster water magic, instantly repairing **${roomId}**!`, roomId);
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `💎 **INSTANT REPAIR SUCCESSFUL!**\nYou expended **${costSq} Saint Quartz** to weave an arcana restorative spell. All soot and structural damage in **${roomId}** have been erased instantly!`
+  };
 }

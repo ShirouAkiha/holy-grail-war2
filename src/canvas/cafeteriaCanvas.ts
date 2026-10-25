@@ -1,6 +1,6 @@
 import { getCanvasModule } from './canvasLoader';
 import { CAFETERIA_ROOMS, CafeteriaRoom } from '../data/cafeteriaData';
-import { StationedMaster, StoveCookingPot } from '../engine/cafeteriaEngine';
+import { StationedMaster, StoveCookingPot, getRoomHazard, RoomHazard } from '../engine/cafeteriaEngine';
 import { drawServantBattleSprite, isAtlasMergedSprite, getAtlasFigureBounds } from './renderer';
 import { getLocalMediaDiskPath, saveLocalMediaBuffer } from '../utils/localMedia';
 import path from 'path';
@@ -341,6 +341,87 @@ export async function renderChaldeaLocationCanvas(
   bottomGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
   ctx.fillStyle = bottomGrad;
   ctx.fillRect(0, height - 200, width, 200);
+
+  // 2b. Environmental Consequence Engine Hazard Visual Overlay
+  const hazard = getRoomHazard(room.id);
+  if (hazard && hazard.stage > 1) {
+    if (hazard.stage === 2) {
+      // Stage 2: Drifting Grey Smoke Layer
+      ctx.save();
+      const smokeGrad = ctx.createLinearGradient(0, 0, width, height);
+      smokeGrad.addColorStop(0, 'rgba(100, 116, 139, 0.45)');
+      smokeGrad.addColorStop(0.5, 'rgba(71, 85, 105, 0.35)');
+      smokeGrad.addColorStop(1, 'rgba(15, 23, 42, 0.55)');
+      ctx.fillStyle = smokeGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      // Warning pill ribbon at top right
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.9)';
+      ctx.beginPath();
+      ctx.roundRect(width - 240, 16, 220, 32, 16);
+      ctx.fill();
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚠️ SMOKE / NEGLECTED', width - 130, 37);
+      ctx.restore();
+    } else if (hazard.stage === 3) {
+      // Stage 3: Fiery Flare & Flame Overlay
+      ctx.save();
+      const fireGrad = ctx.createRadialGradient(width / 2, height / 2, 50, width / 2, height / 2, width / 2);
+      fireGrad.addColorStop(0, 'rgba(249, 115, 22, 0.25)');
+      fireGrad.addColorStop(0.7, 'rgba(239, 68, 68, 0.45)');
+      fireGrad.addColorStop(1, 'rgba(153, 27, 27, 0.7)');
+      ctx.fillStyle = fireGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      // Procedural flames along bottom
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.35)';
+      ctx.beginPath();
+      for (let x = 0; x < width; x += 40) {
+        ctx.lineTo(x + 20, height - 180 - Math.random() * 40);
+        ctx.lineTo(x + 40, height - 120);
+      }
+      ctx.lineTo(width, height);
+      ctx.lineTo(0, height);
+      ctx.closePath();
+      ctx.fill();
+
+      // Fiery alert ribbon
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.95)';
+      ctx.beginPath();
+      ctx.roundRect(width - 260, 16, 240, 32, 16);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🔥 HAZARD FLARE / ON FIRE!', width - 140, 37);
+      ctx.restore();
+    } else if (hazard.stage === 4) {
+      // Stage 4: Scorched Dark Red Breakdown Layer
+      ctx.save();
+      const scorchedGrad = ctx.createRadialGradient(width / 2, height / 2, 80, width / 2, height / 2, width * 0.6);
+      scorchedGrad.addColorStop(0, 'rgba(24, 24, 27, 0.85)');
+      scorchedGrad.addColorStop(0.6, 'rgba(69, 10, 10, 0.92)');
+      scorchedGrad.addColorStop(1, 'rgba(0, 0, 0, 0.98)');
+      ctx.fillStyle = scorchedGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      // Critical Lockdown ribbon
+      ctx.fillStyle = 'rgba(153, 27, 27, 0.95)';
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(width - 320, 16, 300, 34, 17);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('💥 STRUCTURAL BREAKDOWN / LOCKDOWN', width - 170, 38);
+      ctx.restore();
+    }
+  }
 
   // 3. Contracted Servant Sprite (Flank Right - Visual Novel Character Cutout with Multi-Tier Fallback)
   const candidateUrls = [

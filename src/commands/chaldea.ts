@@ -40,6 +40,11 @@ import {
   serveDishToPatron, 
   getCafeteriaWorldSnapshot, 
   getRoomStationedMasters,
+  getRoomHazard,
+  dumpBurntPot,
+  extinguishRoomHazard,
+  repairRoomStructuralDamage,
+  instantRepairRoomSQ,
   StationedMaster
 } from '../engine/cafeteriaEngine';
 import { 
@@ -47,7 +52,7 @@ import {
   renderChaldeaLocationCanvas 
 } from '../canvas/cafeteriaCanvas';
 import { generatePatronFoodReview } from '../services/patronAi';
-import { getMaster } from '../database/service';
+import { getMaster, saveMaster } from '../database/service';
 
 export const data = new SlashCommandBuilder()
   .setName('chaldea')
@@ -158,9 +163,17 @@ export async function buildChaldeaViewportResponse(
     return `• ${isSelf ? '👉 **' : '**'}${m.username}${isSelf ? ' (You)**' : '**'} [${m.companionServantName}]: *"${m.statusText}"* ${m.isAfk ? '💤' : '⚡'}`;
   }).join('\n');
 
-  // 3. Format Workstation Status
+  // 3. Format Workstation Status & Consequence Engine Hazard Checks
+  const roomHazard = getRoomHazard(room.id);
   let stationDetails = `*${room.primaryActivityName} is quiet.*`;
-  if (room.id === 'kitchen_prep') {
+
+  if (roomHazard.stage === 4) {
+    stationDetails = `💥 **CRITICAL STRUCTURAL BREAKDOWN (LOCKDOWN):**\nThis room has suffered severe soot and structural damage due to an unaddressed hazard! **All standard cooking and foraging interactions are disabled** until the room is repaired.\n\n*Progress:* **${roomHazard.repairsContributed}/${roomHazard.requiredRepairs || 3} Repair Actions** completed.`;
+  } else if (roomHazard.stage === 3) {
+    stationDetails = `🔥 **HAZARD FLARE (ON FIRE!):**\nAn active fire is raging in **${room.name}**! Heat and dense smoke are filling the station. Quick action is needed!`;
+  } else if (roomHazard.stage === 2) {
+    stationDetails = `⚠️ **SMOKE / NEGLECTED:**\nA pot or activity was left unmonitored and is billowing thick grey smoke! Scrape or extinguish it before it flares into a blaze.`;
+  } else if (room.id === 'kitchen_prep') {
     if (world.sharedPrepBasin.length > 0) {
       const basinList = world.sharedPrepBasin.map(b => `${b.emoji} **${b.ingredientName}** x${b.count} *(by ${b.depositedBy})*`).join(', ');
       stationDetails = `📦 **Shared Prep Basin:** ${basinList}\n*Use \`[🔪 Chop & Prep]\` to assemble a recipe kit!*`;
@@ -171,7 +184,7 @@ export async function buildChaldeaViewportResponse(
     if (world.stovePots.length > 0) {
       stationDetails = world.stovePots.map((p, idx) => {
         const remSec = Math.max(0, Math.ceil((p.readyAt - Date.now()) / 1000));
-        const status = p.status === 'ready' ? '🟢 **READY TO PLATE!**' : p.status === 'burnt' ? '⚫ **BURNT**' : `🟡 Simmering (${remSec}s left)`;
+        const status = p.status === 'ready' ? '🟢 **READY TO PLATE!**' : p.status === 'burnt' ? '⚫ **BURNT (BURNT SLUDGE)**' : `🟡 Simmering (${remSec}s left)`;
         return `🔥 **Range #${idx + 1}:** ${p.recipeEmoji} **${p.recipeName}** — ${status} (Stirs: ${p.stirCount}, Quality: ${p.qualityScore}/100)`;
       }).join('\n');
     } else {
@@ -217,16 +230,14 @@ export async function buildChaldeaViewportResponse(
     : '*No recent events recorded in this sector.*';
 
   // 6. Assemble Dual Embed Stack
-  // Top Banner Embed: Full-width Chaldea Facility Node Map (stacked cleanly above room viewport)
   const mapEmbed = new EmbedBuilder()
     .setTitle('🗺️ Chaldea Campus Hub — Facility Node Map')
     .setDescription(
       `📍 **Current Sector:** **${room.name}** • 👥 **Stationed Here:** ${roomMasters.length} Master${roomMasters.length === 1 ? '' : 's'} • 🌐 **Online Masters:** ${Object.keys(world.masters).length}`
     )
-    .setColor(0x00e5ff)
+    .setColor(roomHazard.stage === 4 ? 0x991b1b : roomHazard.stage === 3 ? 0xef4444 : roomHazard.stage === 2 ? 0xf59e0b : 0x00e5ff)
     .setImage('attachment://chaldea_map.png');
 
-  // Bottom Room Viewport Embed: Cinematic Visual Novel Scene, Activity, Inventory & Buffs
   const roomEmbed = new EmbedBuilder()
     .setTitle(`🍵 Chaldea Campus Hub — ${room.name}`)
     .setDescription(
@@ -238,7 +249,7 @@ export async function buildChaldeaViewportResponse(
       (platedStr ? `\n\n${platedStr}` : '') +
       `\n\n📜 **Recent Room Activity:**\n${roomEventsSummary}`
     )
-    .setColor(0xd4af37)
+    .setColor(roomHazard.stage === 4 ? 0x991b1b : roomHazard.stage === 3 ? 0xef4444 : roomHazard.stage === 2 ? 0xf59e0b : 0xd4af37)
     .setImage('attachment://chaldea_viewport.png')
     .addFields(
       {
@@ -253,63 +264,98 @@ export async function buildChaldeaViewportResponse(
       }
     )
     .setFooter({
-      text: `Chaldea Cafeteria MUD • Today's Menu in Chaldea • Asynchronous Co-Op`
+      text: `Chaldea Cafeteria MUD • Consequence Engine • Real-time Co-Op`
     })
     .setTimestamp();
 
-  // 7. Interactive Buttons Row 1: Station Actions
+  // 7. Interactive Buttons Row 1: Contextual Action Button Swap
   const actionButtons: ButtonBuilder[] = [];
 
-  // Room-specific primary action
-  if (room.availableIngredients.length > 0) {
+  if (roomHazard.stage === 4) {
+    // Structural Breakdown Mode: Only Repair / Instant Fix / Retreat available!
     actionButtons.push(
       new ButtonBuilder()
-        .setCustomId('chaldea_action_forage')
-        .setLabel('🌾 Gather / Harvest')
-        .setStyle(ButtonStyle.Success)
+        .setCustomId('chaldea_action_repair_manual')
+        .setLabel(`🛠️ Repair Flues (Free ${roomHazard.repairsContributed}/${roomHazard.requiredRepairs || 3})`)
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_repair_sq')
+        .setLabel('💎 Instant Fix (5 SQ)')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('chaldea_action_retreat')
+        .setLabel('🚪 Retreat to Corridor')
+        .setStyle(ButtonStyle.Danger)
     );
-  }
+  } else {
+    // Active Hazard / Normal Room Actions
+    if (roomHazard.stage >= 2 || (room.id === 'kitchen_stove' && world.stovePots.some(p => p.status === 'burnt'))) {
+      actionButtons.push(
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_extinguish')
+          .setLabel('🧯 Extinguish Fire')
+          .setStyle(ButtonStyle.Danger)
+      );
+      if (world.stovePots.some(p => p.status === 'burnt')) {
+        actionButtons.push(
+          new ButtonBuilder()
+            .setCustomId('chaldea_action_dump_pot')
+            .setLabel('🗑️ Dump Burnt Sludge')
+            .setStyle(ButtonStyle.Secondary)
+        );
+      }
+    }
 
-  if (room.id === 'kitchen_prep') {
-    actionButtons.push(
-      new ButtonBuilder()
-        .setCustomId('chaldea_action_deposit')
-        .setLabel('📦 Deposit to Basin')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('chaldea_action_prep_select')
-        .setLabel('🔪 Chop & Prep Recipe')
-        .setStyle(ButtonStyle.Success)
-    );
-  } else if (room.id === 'kitchen_stove') {
-    actionButtons.push(
-      new ButtonBuilder()
-        .setCustomId('chaldea_action_cook_select')
-        .setLabel('🔥 Start Cooking')
-        .setStyle(ButtonStyle.Danger),
-      new ButtonBuilder()
-        .setCustomId('chaldea_action_stir')
-        .setLabel('🥄 Stir Pot')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('chaldea_action_plate')
-        .setLabel('🍽️ Plate Dish')
-        .setStyle(ButtonStyle.Success)
-    );
-  } else if (room.id === 'dining_hall') {
-    actionButtons.push(
-      new ButtonBuilder()
-        .setCustomId('chaldea_action_serve_select')
-        .setLabel('⭐ Present to Patron')
-        .setStyle(ButtonStyle.Success)
-    );
+    if (room.availableIngredients.length > 0) {
+      actionButtons.push(
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_forage')
+          .setLabel('🌾 Gather / Harvest')
+          .setStyle(ButtonStyle.Success)
+      );
+    }
+
+    if (room.id === 'kitchen_prep') {
+      actionButtons.push(
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_deposit')
+          .setLabel('📦 Deposit to Basin')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_prep_select')
+          .setLabel('🔪 Chop & Prep Recipe')
+          .setStyle(ButtonStyle.Success)
+      );
+    } else if (room.id === 'kitchen_stove') {
+      actionButtons.push(
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_cook_select')
+          .setLabel('🔥 Start Cooking')
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_stir')
+          .setLabel('🥄 Stir Pot')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_plate')
+          .setLabel('🍽️ Plate Dish')
+          .setStyle(ButtonStyle.Success)
+      );
+    } else if (room.id === 'dining_hall') {
+      actionButtons.push(
+        new ButtonBuilder()
+          .setCustomId('chaldea_action_serve_select')
+          .setLabel('⭐ Present to Patron')
+          .setStyle(ButtonStyle.Success)
+      );
+    }
   }
 
   // Always available utility actions
   actionButtons.push(
     new ButtonBuilder()
       .setCustomId('chaldea_action_station_modal')
-      .setLabel('📌 Set AFK Status')
+      .setLabel('📌 AFK Status')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('chaldea_action_guide')
@@ -425,6 +471,88 @@ export async function handleChaldeaGlobalInteraction(
     await interaction.deferUpdate();
     const targetRoom = interaction.values[0];
     moveMasterRoom(discordId, targetRoom);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    return true;
+  }
+
+  // 1b. Button: Dump Burnt Sludge
+  if (interaction.isButton() && customId === 'chaldea_action_dump_pot') {
+    await interaction.deferUpdate();
+    dumpBurntPot(discordId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    return true;
+  }
+
+  // 1c. Button: Extinguish Fire
+  if (interaction.isButton() && customId === 'chaldea_action_extinguish') {
+    await interaction.deferUpdate();
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    extinguishRoomHazard(discordId, master.currentRoomId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    return true;
+  }
+
+  // 1d. Button: Manual Repair (Free Effort Clicks)
+  if (interaction.isButton() && customId === 'chaldea_action_repair_manual') {
+    await interaction.deferUpdate();
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    repairRoomStructuralDamage(discordId, master.currentRoomId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    return true;
+  }
+
+  // 1e. Button: Instant Fix (Spendable Saint Quartz)
+  if (interaction.isButton() && customId === 'chaldea_action_repair_sq') {
+    await interaction.deferUpdate();
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const dbMaster = await getMaster(discordId);
+    const costSq = 5;
+
+    if (!dbMaster || (dbMaster.saintQuartz || 0) < costSq) {
+      await interaction.followUp({
+        flags: MessageFlags.Ephemeral,
+        content: `❌ You need at least **${costSq} Saint Quartz** (earned from raids, duels, and achievements) for instant restoration! You currently have **${dbMaster?.saintQuartz || 0} SQ**.\n*Use [🛠️ Repair Flues] for free manual repair instead!*`
+      });
+      return true;
+    }
+
+    dbMaster.saintQuartz -= costSq;
+    await saveMaster(dbMaster);
+
+    instantRepairRoomSQ(discordId, master.currentRoomId, costSq);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    return true;
+  }
+
+  // 1f. Button: Retreat to Corridor
+  if (interaction.isButton() && customId === 'chaldea_action_retreat') {
+    await interaction.deferUpdate();
+    moveMasterRoom(discordId, 'hallway');
     const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
     await interaction.editReply({
       embeds: payload.embeds,
