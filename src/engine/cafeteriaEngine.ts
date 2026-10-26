@@ -77,6 +77,7 @@ export interface StationedMaster {
 
 export interface StoveCookingPot {
   id: string;
+  rangeIndex: number;
   recipeId: string;
   recipeName: string;
   recipeEmoji: string;
@@ -85,6 +86,7 @@ export interface StoveCookingPot {
   startedAt: number;
   durationSeconds: number;
   readyAt: number;
+  cookPriorityUntil: number; // 60s exclusive plating window for the cook
   burnsAt: number;
   stirCount: number;
   lastStirredAt: number;
@@ -597,7 +599,15 @@ export function chopAndPrepBasin(discordId: string, recipeId: string): { success
   };
 }
 
-export function startStoveCooking(discordId: string, recipeId: string): { success: boolean; message: string; pot?: StoveCookingPot } {
+export function getStoveCapacity(master?: StationedMaster): number {
+  return 4 + ((master?.facilityUpgrades?.extraStoves || 0) * 2);
+}
+
+export function startStoveCooking(
+  discordId: string, 
+  recipeId: string, 
+  targetRangeIndex?: number
+): { success: boolean; message: string; pot?: StoveCookingPot } {
   const master = worldState.masters[discordId];
   if (!master) return { success: false, message: 'Master not found.' };
 
@@ -607,6 +617,45 @@ export function startStoveCooking(discordId: string, recipeId: string): { succes
 
   const recipe = RECIPES_CATALOG[recipeId];
   if (!recipe) return { success: false, message: 'Recipe not found.' };
+
+  const maxStovePots = getStoveCapacity(master);
+  const occupiedRanges = new Map<number, StoveCookingPot>();
+  for (const pot of worldState.stovePots) {
+    if (typeof pot.rangeIndex === 'number') {
+      occupiedRanges.set(pot.rangeIndex, pot);
+    }
+  }
+
+  let selectedRange: number;
+  if (typeof targetRangeIndex === 'number' && targetRangeIndex > 0) {
+    if (targetRangeIndex > maxStovePots) {
+      return { success: false, message: `❌ Range #${targetRangeIndex} is not available! Your facility currently has **${maxStovePots} active stove ranges**.` };
+    }
+    if (occupiedRanges.has(targetRangeIndex)) {
+      const existing = occupiedRanges.get(targetRangeIndex)!;
+      return {
+        success: false,
+        message: `❌ **Range #${targetRangeIndex} is already occupied!**\nCurrently simmering: ${existing.recipeEmoji} **${existing.recipeName}** *(by @${existing.startedByUsername})*.\nChoose an idle range or stir the current pot!`
+      };
+    }
+    selectedRange = targetRangeIndex;
+  } else {
+    // Automatically find lowest available range slot
+    let freeSlot = -1;
+    for (let r = 1; r <= maxStovePots; r++) {
+      if (!occupiedRanges.has(r)) {
+        freeSlot = r;
+        break;
+      }
+    }
+    if (freeSlot === -1) {
+      return {
+        success: false,
+        message: `All ${maxStovePots} commercial stove ranges are currently occupied! Stir, plate, or dump one of the existing pots first, or visit the Chaldea Shop to upgrade stove capacity.`
+      };
+    }
+    selectedRange = freeSlot;
+  }
 
   const preppedKey = `prepped_${recipe.id}`;
   const preppedAvailable = worldState.sharedFridgeVault[preppedKey] || 0;
@@ -638,16 +687,12 @@ export function startStoveCooking(discordId: string, recipeId: string): { succes
     if (worldState.sharedFridgeVault[preppedKey] <= 0) delete worldState.sharedFridgeVault[preppedKey];
   }
 
-  // Maximum active pots simultaneously on the stove line (scales with Chaldea Shop stove capacity upgrade)
-  const maxStovePots = 4 + ((master.facilityUpgrades?.extraStoves || 0) * 2);
-  if (worldState.stovePots.length >= maxStovePots) {
-    return { success: false, message: `All ${maxStovePots} stove ranges are currently occupied! Stir or plate one of the existing pots first, or visit the Chaldea Shop to upgrade stove capacity.` };
-  }
-
   const now = Date.now();
   const cookSec = recipe.cookTimeSeconds || 60;
+  const readyTimestamp = now + cookSec * 1000;
   const pot: StoveCookingPot = {
     id: `pot_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    rangeIndex: selectedRange,
     recipeId: recipe.id,
     recipeName: recipe.name,
     recipeEmoji: recipe.emoji,
@@ -655,8 +700,9 @@ export function startStoveCooking(discordId: string, recipeId: string): { succes
     startedByUsername: master.username,
     startedAt: now,
     durationSeconds: cookSec,
-    readyAt: now + cookSec * 1000,
-    burnsAt: now + (cookSec + 90) * 1000, // Burns 90 seconds after ready if neglected
+    readyAt: readyTimestamp,
+    cookPriorityUntil: readyTimestamp + 60 * 1000, // 60s exclusive plating window for the cook
+    burnsAt: readyTimestamp + 90 * 1000, // Burns 90 seconds after ready if neglected
     stirCount: 0,
     lastStirredAt: now,
     stirredBy: [master.username],
@@ -666,19 +712,19 @@ export function startStoveCooking(discordId: string, recipeId: string): { succes
 
   worldState.stovePots.push(pot);
   master.lastActivityAt = now;
-  master.statusText = `Stirring ${recipe.name} on the stove`;
+  master.statusText = `Simmering ${recipe.name} on Range #${selectedRange}`;
 
-  addCafeteriaActivity(`🔥 **${master.username}** lit the gas range and began simmering **${recipe.emoji} ${recipe.name}**! (Ready in ${Math.round(cookSec / 60)}m)`, 'kitchen_stove');
+  addCafeteriaActivity(`🔥 **${master.username}** ignited **Stove Range #${selectedRange}** and began simmering **${recipe.emoji} ${recipe.name}**! (Ready in ${Math.round(cookSec / 60)}m)`, 'kitchen_stove');
   saveCafeteriaStateToDisk();
 
   return {
     success: true,
-    message: `🔥 **Flame ignited!**\n**${recipe.emoji} ${recipe.name}** is now simmering on Stove Range #${worldState.stovePots.length}!\n• **Cook Time:** ${cookSec} seconds\n• **Tip:** Visit the stove to [Stir Pot] to increase its culinary quality score!`,
+    message: `🔥 **Commercial Range #${selectedRange} Ignited!**\n**${recipe.emoji} ${recipe.name}** is now simmering on **Stove Station #${selectedRange}**!\n• **Cook Time:** ${cookSec} seconds\n• **Anti-Theft Protection:** You hold exclusive plating rights for 60s once cooked!\n• **Tip:** Visit the station to [Stir Range #${selectedRange}] to boost culinary quality!`,
     pot
   };
 }
 
-export function stirStovePot(discordId: string, potId?: string): { success: boolean; message: string; pot?: StoveCookingPot } {
+export function stirStovePot(discordId: string, target?: string | number): { success: boolean; message: string; pot?: StoveCookingPot } {
   const master = worldState.masters[discordId];
   if (!master) return { success: false, message: 'Master not found.' };
 
@@ -689,28 +735,49 @@ export function stirStovePot(discordId: string, potId?: string): { success: bool
   tickCafeteriaWorld();
 
   if (worldState.stovePots.length === 0) {
-    return { success: false, message: 'There are currently no active pots on the stove! Use `[Start Recipe]` to begin one.' };
+    return { success: false, message: 'There are currently no active pots on the stoves! Use `[Start Recipe]` to ignite a range.' };
   }
 
-  const targetPot = potId ? worldState.stovePots.find(p => p.id === potId) : worldState.stovePots[0];
-  if (!targetPot) return { success: false, message: 'Cooking pot not found.' };
+  let targetPot: StoveCookingPot | undefined;
+  if (typeof target === 'number') {
+    targetPot = worldState.stovePots.find(p => p.rangeIndex === target);
+  } else if (typeof target === 'string') {
+    const parsedRange = parseInt(target, 10);
+    if (!isNaN(parsedRange)) {
+      targetPot = worldState.stovePots.find(p => p.rangeIndex === parsedRange);
+    } else {
+      targetPot = worldState.stovePots.find(p => p.id === target);
+    }
+  }
+
+  if (!targetPot) {
+    targetPot = worldState.stovePots.find(p => p.status === 'simmering') || worldState.stovePots[0];
+  }
+
+  if (!targetPot) return { success: false, message: 'Cooking pot not found on the ranges.' };
 
   if (targetPot.status === 'burnt') {
-    return { success: false, message: `⚠️ This **${targetPot.recipeName}** unfortunately burned! It must be cleared from the stove.` };
+    return { success: false, message: `⚠️ The **${targetPot.recipeName}** on Range #${targetPot.rangeIndex} burned! Use \`[Dump Burnt Sludge]\` to clear the range.` };
   }
 
   targetPot.stirCount += 1;
   targetPot.lastStirredAt = Date.now();
   targetPot.burnsAt += 30 * 1000; // Stirring extends burn window by 30 seconds
+  if (targetPot.status === 'simmering') {
+    targetPot.cookPriorityUntil += 15 * 1000;
+  }
   targetPot.qualityScore = Math.min(100, targetPot.qualityScore + 6);
   if (!targetPot.stirredBy.includes(master.username)) {
     targetPot.stirredBy.push(master.username);
   }
 
   master.lastActivityAt = Date.now();
-  master.statusText = `Tending ${targetPot.recipeName}`;
+  master.statusText = `Stirring ${targetPot.recipeName} on Range #${targetPot.rangeIndex}`;
 
-  addCafeteriaActivity(`🥄 **${master.username}** stirred the simmering **${targetPot.recipeEmoji} ${targetPot.recipeName}** (Quality: ${targetPot.qualityScore}/100)!`, 'kitchen_stove');
+  const isStarter = targetPot.startedByDiscordId === master.discordId;
+  const helperNote = isStarter ? '' : ` (Helping @${targetPot.startedByUsername}! Added as co-cook)`;
+
+  addCafeteriaActivity(`🥄 **${master.username}** stirred **${targetPot.recipeEmoji} ${targetPot.recipeName}** on Range #${targetPot.rangeIndex} (Quality: ${targetPot.qualityScore}/100)${helperNote}!`, 'kitchen_stove');
   saveCafeteriaStateToDisk();
 
   const now = Date.now();
@@ -719,12 +786,12 @@ export function stirStovePot(discordId: string, potId?: string): { success: bool
 
   return {
     success: true,
-    message: `🥄 **Pot stirred with precision!**\n**${targetPot.recipeEmoji} ${targetPot.recipeName}**\n• Status: ${statusNote}\n• Culinary Quality: **${targetPot.qualityScore}/100**\n• Stir Count: **${targetPot.stirCount}**\n• Cooks Involved: ${targetPot.stirredBy.join(', ')}`,
+    message: `🥄 **Range #${targetPot.rangeIndex} Stirred with Precision!**\n**${targetPot.recipeEmoji} ${targetPot.recipeName}**\n• Status: ${statusNote}\n• Culinary Quality: **${targetPot.qualityScore}/100**\n• Stir Count: **${targetPot.stirCount}**\n• Master Cooks Involved: ${targetPot.stirredBy.join(', ')}`,
     pot: targetPot
   };
 }
 
-export function plateFinishedDish(discordId: string, potId?: string): { success: boolean; message: string; recipe?: Recipe } {
+export function plateFinishedDish(discordId: string, target?: string | number): { success: boolean; message: string; recipe?: Recipe } {
   const master = worldState.masters[discordId];
   if (!master) return { success: false, message: 'Master not found.' };
 
@@ -732,33 +799,71 @@ export function plateFinishedDish(discordId: string, potId?: string): { success:
     return { success: false, message: 'You must be at the **Stoves** or **Dining Hall** to plate finished dishes!' };
   }
 
+  // Anti-loophole: Only 1 plated dish carried in apron at any time
+  if (master.activePlatedDish) {
+    return {
+      success: false,
+      message: `❌ **Hands are full!** You are already carrying **${master.activePlatedDish.recipeEmoji} ${master.activePlatedDish.recipeName}**!\nDeliver this meal to a visiting patron in the Dining Hall (\`/move dining_hall\`) before plating another dish.`
+    };
+  }
+
   tickCafeteriaWorld();
 
-  const targetPot = potId 
-    ? worldState.stovePots.find(p => p.id === potId)
-    : worldState.stovePots.find(p => p.status === 'ready');
+  let targetPot: StoveCookingPot | undefined;
+  if (typeof target === 'number') {
+    targetPot = worldState.stovePots.find(p => p.rangeIndex === target);
+  } else if (typeof target === 'string') {
+    const parsedRange = parseInt(target, 10);
+    if (!isNaN(parsedRange)) {
+      targetPot = worldState.stovePots.find(p => p.rangeIndex === parsedRange);
+    } else {
+      targetPot = worldState.stovePots.find(p => p.id === target);
+    }
+  }
 
   if (!targetPot) {
-    const simmeringPot = worldState.stovePots[0];
-    if (simmeringPot && simmeringPot.status === 'simmering') {
+    targetPot = worldState.stovePots.find(p => p.status === 'ready');
+  }
+
+  if (!targetPot) {
+    const simmeringPot = worldState.stovePots.find(p => p.status === 'simmering');
+    if (simmeringPot) {
       const waitSec = Math.ceil((simmeringPot.readyAt - Date.now()) / 1000);
-      return { success: false, message: `⏳ **${simmeringPot.recipeName}** is still simmering! **${waitSec}s remaining** before it is ready to plate.` };
+      return { success: false, message: `⏳ **${simmeringPot.recipeName}** on Range #${simmeringPot.rangeIndex} is still simmering! **${waitSec}s remaining** before it is ready to plate.` };
     }
-    return { success: false, message: 'There are no dishes ready to plate on the stoves.' };
+    return { success: false, message: 'There are no dishes currently ready to plate on the stove ranges.' };
   }
 
   if (targetPot.status === 'burnt') {
     // Discard burnt pot
-    worldState.stovePots = worldState.stovePots.filter(p => p.id !== targetPot.id);
+    const rangeNum = targetPot.rangeIndex;
+    worldState.stovePots = worldState.stovePots.filter(p => p.id !== targetPot!.id);
     saveCafeteriaStateToDisk();
-    return { success: false, message: `🗑️ The burnt **${targetPot.recipeName}** was scraped into the waste bin and the pan was cleaned.` };
+    return { success: false, message: `🗑️ The burnt **${targetPot.recipeName}** on Range #${rangeNum} was scraped into the waste bin and the range was cleaned.` };
+  }
+
+  if (targetPot.status !== 'ready') {
+    const waitSec = Math.max(1, Math.ceil((targetPot.readyAt - Date.now()) / 1000));
+    return { success: false, message: `⏳ **${targetPot.recipeName}** on Range #${targetPot.rangeIndex} is still simmering! **${waitSec}s remaining**.` };
+  }
+
+  // Anti-loophole: 60-Second Cook Priority Lock
+  const now = Date.now();
+  if (now < targetPot.cookPriorityUntil && targetPot.startedByDiscordId !== discordId) {
+    const remPrioritySec = Math.max(1, Math.ceil((targetPot.cookPriorityUntil - now) / 1000));
+    return {
+      success: false,
+      message: `⏳ **COOK PRIORITY LOCK (ANTI-THEFT):**\nMaster **@${targetPot.startedByUsername}** prepared this dish and holds exclusive plating rights for **${remPrioritySec} more second(s)**!\n\n*(Community plating unlocks automatically after 60 seconds to prevent kitchen line bottlenecks).*`
+    };
   }
 
   const recipe = RECIPES_CATALOG[targetPot.recipeId];
   if (!recipe) return { success: false, message: 'Recipe reference missing.' };
 
+  const freedRange = targetPot.rangeIndex;
+
   // Remove from stove pots
-  worldState.stovePots = worldState.stovePots.filter(p => p.id !== targetPot.id);
+  worldState.stovePots = worldState.stovePots.filter(p => p.id !== targetPot!.id);
 
   // Set as master's active plated dish
   master.activePlatedDish = {
@@ -766,19 +871,19 @@ export function plateFinishedDish(discordId: string, potId?: string): { success:
     recipeName: targetPot.recipeName,
     recipeEmoji: targetPot.recipeEmoji,
     qualityScore: targetPot.qualityScore,
-    platedAt: Date.now(),
+    platedAt: now,
     cooksInvolved: targetPot.stirredBy
   };
   master.totalDishesCooked += 1;
-  master.lastActivityAt = Date.now();
+  master.lastActivityAt = now;
   master.statusText = `Carrying fresh ${targetPot.recipeName} to Dining Hall`;
 
-  addCafeteriaActivity(`🍽️ **${master.username}** plated a steaming order of **${targetPot.recipeEmoji} ${targetPot.recipeName}** (Quality: ${targetPot.qualityScore}/100)!`, 'kitchen_stove');
+  addCafeteriaActivity(`🍽️ **${master.username}** plated steaming **${targetPot.recipeEmoji} ${targetPot.recipeName}** from Range #${freedRange} (Quality: ${targetPot.qualityScore}/100)! Range #${freedRange} is now open!`, 'kitchen_stove');
   saveCafeteriaStateToDisk();
 
   return {
     success: true,
-    message: `🍽️ **Dish plated to perfection!**\nYou are now carrying **${targetPot.recipeEmoji} ${targetPot.recipeName}**!\n• Quality: **${targetPot.qualityScore}/100**\n• Cooks: ${targetPot.stirredBy.join(', ')}\n\n*Head to the **Dining Hall** (/move dining_hall) to serve it to visiting Servant patrons!*`,
+    message: `🍽️ **Dish Plated from Range #${freedRange}!**\nYou are now carrying **${targetPot.recipeEmoji} ${targetPot.recipeName}**!\n• Range Station: **#${freedRange} (Now Free)**\n• Quality: **${targetPot.qualityScore}/100**\n• Master Cooks: ${targetPot.stirredBy.join(', ')}\n\n*Head to the **Dining Hall** (/move dining_hall) to present it to visiting Servant patrons!*`,
     recipe
   };
 }
@@ -1064,26 +1169,42 @@ export function getRoomHazard(roomId: string): RoomHazard {
   return worldState.roomHazards[roomId];
 }
 
-export function dumpBurntPot(discordId: string, potId?: string): { success: boolean; message: string } {
+export function dumpBurntPot(discordId: string, target?: string | number): { success: boolean; message: string } {
   const master = worldState.masters[discordId];
   if (!master) return { success: false, message: 'Master not found.' };
 
-  const pot = potId ? worldState.stovePots.find(p => p.id === potId) : worldState.stovePots.find(p => p.status === 'burnt');
+  let pot: StoveCookingPot | undefined;
+  if (typeof target === 'number') {
+    pot = worldState.stovePots.find(p => p.rangeIndex === target);
+  } else if (typeof target === 'string') {
+    const parsedRange = parseInt(target, 10);
+    if (!isNaN(parsedRange)) {
+      pot = worldState.stovePots.find(p => p.rangeIndex === parsedRange);
+    } else {
+      pot = worldState.stovePots.find(p => p.id === target);
+    }
+  }
+
+  if (!pot) {
+    pot = worldState.stovePots.find(p => p.status === 'burnt');
+  }
+
   if (!pot) return { success: false, message: 'No burnt pots found on the stoves.' };
 
-  worldState.stovePots = worldState.stovePots.filter(p => p.id !== pot.id);
+  const freedRange = pot.rangeIndex;
+  worldState.stovePots = worldState.stovePots.filter(p => p.id !== pot!.id);
 
   const remainingBurnt = worldState.stovePots.some(p => p.status === 'burnt');
   if (!remainingBurnt && worldState.roomHazards['kitchen_stove']?.stage === 2) {
     worldState.roomHazards['kitchen_stove'].stage = 1;
   }
 
-  addCafeteriaActivity(`🗑️ **${master.username}** scraped the burnt **${pot.recipeEmoji} ${pot.recipeName}** into the waste bin and scrubbed the pot clean.`, 'kitchen_stove');
+  addCafeteriaActivity(`🗑️ **${master.username}** scraped the burnt **${pot.recipeEmoji} ${pot.recipeName}** from Range #${freedRange} into the waste bin and scrubbed the burner clean.`, 'kitchen_stove');
   saveCafeteriaStateToDisk();
 
   return {
     success: true,
-    message: `🗑️ **Scraped & Discarded!**\nYou dumped the burnt **${pot.recipeEmoji} ${pot.recipeName}** into the disposal unit and wiped down the range.`
+    message: `🗑️ **Scraped & Discarded!**\nYou dumped the burnt **${pot.recipeEmoji} ${pot.recipeName}** from Range #${freedRange} into the disposal unit and wiped down the range.`
   };
 }
 

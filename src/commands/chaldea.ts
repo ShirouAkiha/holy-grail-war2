@@ -45,6 +45,7 @@ import {
   getRoomStationedMasters,
   getRoomHazard,
   dumpBurntPot,
+  getStoveCapacity,
   extinguishRoomHazard,
   repairRoomStructuralDamage,
   instantRepairRoomSQ,
@@ -200,7 +201,9 @@ export async function buildChaldeaViewportResponse(
     renderChaldeaLocationCanvas(room, master, roomMasters, activePot, {
       customDialogue: activeDialogue,
       customSpeakerName: customSpeakerName,
-      leftSpriteUrl: leftSpriteUrl
+      leftSpriteUrl: leftSpriteUrl,
+      allStovePots: world.stovePots,
+      stoveCapacity: getStoveCapacity(master)
     })
   ]);
 
@@ -232,15 +235,28 @@ export async function buildChaldeaViewportResponse(
       stationDetails = `📦 **Shared Prep Basin:** Empty.\n*Deposit gathered produce here so anyone can prepare dishes!*`;
     }
   } else if (room.id === 'kitchen_stove') {
-    if (world.stovePots.length > 0) {
-      stationDetails = world.stovePots.map((p, idx) => {
-        const remSec = Math.max(0, Math.ceil((p.readyAt - Date.now()) / 1000));
-        const status = p.status === 'ready' ? '🟢 **READY TO PLATE!**' : p.status === 'burnt' ? '⚫ **BURNT (BURNT SLUDGE)**' : `🟡 Simmering (${remSec}s left)`;
-        return `🔥 **Range #${idx + 1}:** ${p.recipeEmoji} **${p.recipeName}** — ${status} (Stirs: ${p.stirCount}, Quality: ${p.qualityScore}/100)`;
-      }).join('\n');
-    } else {
-      stationDetails = `🔥 **Stoves & Ovens:** All ranges idle.\n*Have a prepped kit ready to light the flame!*`;
+    const maxRanges = getStoveCapacity(master);
+    const rangeLines: string[] = [];
+    const now = Date.now();
+    for (let r = 1; r <= maxRanges; r++) {
+      const p = world.stovePots.find(pot => pot.rangeIndex === r);
+      if (!p) {
+        rangeLines.push(`• **Range #${r}:** ⚪ *Idle Burner Grate (Ready for prepped kit)*`);
+      } else if (p.status === 'burnt') {
+        rangeLines.push(`• **Range #${r}:** ⚫ **BURNT SLUDGE!** ${p.recipeEmoji} **${p.recipeName}** *(by @${p.startedByUsername})* — Needs Scraped & Dumped!`);
+      } else if (p.status === 'ready') {
+        const hasPriority = now < p.cookPriorityUntil;
+        const remPrio = Math.max(1, Math.ceil((p.cookPriorityUntil - now) / 1000));
+        const lockNote = hasPriority
+          ? (p.startedByDiscordId === master.discordId ? ` [🔒 Your Priority: ${remPrio}s]` : ` [🔒 Cook Priority: @${p.startedByUsername} (${remPrio}s)]`)
+          : ` [🔓 Open to Anyone to Plate!]`;
+        rangeLines.push(`• **Range #${r}:** 🟢 **READY TO PLATE!** ${p.recipeEmoji} **${p.recipeName}** (Quality: ${p.qualityScore}/100)${lockNote}`);
+      } else {
+        const remSec = Math.max(0, Math.ceil((p.readyAt - now) / 1000));
+        rangeLines.push(`• **Range #${r}:** 🟡 **SIMMERING (${remSec}s)** ${p.recipeEmoji} **${p.recipeName}** *(by @${p.startedByUsername})* — Stirs: ${p.stirCount}, Q: ${p.qualityScore}/100`);
+      }
     }
+    stationDetails = `🔥 **Commercial Stove Ranges (${maxRanges} Stations):**\n${rangeLines.join('\n')}`;
   } else if (room.id === 'dining_hall') {
     if (world.activePatronOrders.length > 0) {
       const moodEmojis: Record<string, string> = {
@@ -528,16 +544,35 @@ export async function buildChaldeaViewportResponse(
         new ButtonBuilder()
           .setCustomId('chaldea_action_cook_select')
           .setLabel('🔥 Start Cooking')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId('chaldea_action_stir')
-          .setLabel('🥄 Stir Pot')
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('chaldea_action_plate')
-          .setLabel('🍽️ Plate Dish')
-          .setStyle(ButtonStyle.Success)
+          .setStyle(ButtonStyle.Danger)
       );
+
+      // Dedicated range buttons for each active pot on the ranges
+      const sortedPots = [...world.stovePots].sort((a, b) => a.rangeIndex - b.rangeIndex);
+      for (const pot of sortedPots) {
+        if (pot.status === 'simmering') {
+          actionButtons.push(
+            new ButtonBuilder()
+              .setCustomId(`chaldea_stove_stir_range:${pot.rangeIndex}`)
+              .setLabel(`🥄 Stir R#${pot.rangeIndex} (${pot.recipeName.slice(0, 10)})`)
+              .setStyle(ButtonStyle.Primary)
+          );
+        } else if (pot.status === 'ready') {
+          actionButtons.push(
+            new ButtonBuilder()
+              .setCustomId(`chaldea_stove_plate_range:${pot.rangeIndex}`)
+              .setLabel(`🍽️ Plate R#${pot.rangeIndex} (${pot.recipeName.slice(0, 10)})`)
+              .setStyle(ButtonStyle.Success)
+          );
+        } else if (pot.status === 'burnt') {
+          actionButtons.push(
+            new ButtonBuilder()
+              .setCustomId(`chaldea_stove_dump_range:${pot.rangeIndex}`)
+              .setLabel(`🗑️ Dump R#${pot.rangeIndex}`)
+              .setStyle(ButtonStyle.Secondary)
+          );
+        }
+      }
     } else if (room.id === 'dining_hall') {
       actionButtons.push(
         new ButtonBuilder()
@@ -1135,19 +1170,76 @@ export async function handleChaldeaGlobalInteraction(
     return true;
   }
 
-  // 3. Button: Stir Pot
+  // 3. Button: Stir Pot (General)
   if (interaction.isButton() && customId === 'chaldea_action_stir') {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await interaction.deferUpdate();
     const res = stirStovePot(discordId);
-    await interaction.editReply({ content: res.message });
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
     return true;
   }
 
-  // 4. Button: Plate Dish
+  // 3b. Button: Stir Specific Range (e.g. chaldea_stove_stir_range:1)
+  if (interaction.isButton() && customId.startsWith('chaldea_stove_stir_range:')) {
+    await interaction.deferUpdate();
+    const rangeIndex = parseInt(customId.replace('chaldea_stove_stir_range:', ''), 10);
+    const res = stirStovePot(discordId, rangeIndex);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 4. Button: Plate Dish (General)
   if (interaction.isButton() && customId === 'chaldea_action_plate') {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await interaction.deferUpdate();
     const res = plateFinishedDish(discordId);
-    await interaction.editReply({ content: res.message });
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 4b. Button: Plate Specific Range (e.g. chaldea_stove_plate_range:1)
+  if (interaction.isButton() && customId.startsWith('chaldea_stove_plate_range:')) {
+    await interaction.deferUpdate();
+    const rangeIndex = parseInt(customId.replace('chaldea_stove_plate_range:', ''), 10);
+    const res = plateFinishedDish(discordId, rangeIndex);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // 4c. Button: Dump Burnt Pot on Range (e.g. chaldea_stove_dump_range:1)
+  if (interaction.isButton() && customId.startsWith('chaldea_stove_dump_range:')) {
+    await interaction.deferUpdate();
+    const rangeIndex = parseInt(customId.replace('chaldea_stove_dump_range:', ''), 10);
+    const res = dumpBurntPot(discordId, rangeIndex);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
     return true;
   }
 
@@ -1229,23 +1321,40 @@ export async function handleChaldeaGlobalInteraction(
 
   // 7. Button: Start Stove Cooking Select
   if (interaction.isButton() && customId === 'chaldea_action_cook_select') {
+    const world = getCafeteriaWorldSnapshot();
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const maxRanges = getStoveCapacity(master);
+    const occupied = new Set(world.stovePots.map(p => p.rangeIndex));
+    const freeSlots = [];
+    for (let r = 1; r <= maxRanges; r++) {
+      if (!occupied.has(r)) freeSlots.push(r);
+    }
+
+    if (freeSlots.length === 0) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: `❌ **All ${maxRanges} stove ranges are currently occupied!**\nStir, plate, or dump an existing pot on the ranges first.`
+      });
+      return true;
+    }
+
     const select = new StringSelectMenuBuilder()
       .setCustomId('chaldea_cook_recipe_execute')
-      .setPlaceholder('Select a dish to place on the gas range...');
+      .setPlaceholder(`Select a dish to place on free Range #${freeSlots[0]}...`);
 
     for (const [rId, recipe] of Object.entries(RECIPES_CATALOG)) {
       select.addOptions(
         new StringSelectMenuOptionBuilder()
           .setLabel(`${recipe.emoji} ${recipe.name}`)
           .setValue(rId)
-          .setDescription(`Cook Time: ${recipe.cookTimeSeconds}s • ${recipe.difficulty}`)
+          .setDescription(`Cook: ${recipe.cookTimeSeconds}s • Range #${freeSlots[0]}`)
       );
     }
 
     const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
     await interaction.reply({
       flags: MessageFlags.Ephemeral,
-      content: '🔥 **Select a dish to start simmering on the stove:**',
+      content: `🔥 **Commercial Ranges:** Open Stations: **Range #${freeSlots.join(', #')}**\nSelect a dish to start simmering on **Range #${freeSlots[0]}**:`,
       components: [row]
     });
     return true;
@@ -1256,6 +1365,12 @@ export async function handleChaldeaGlobalInteraction(
     await interaction.deferUpdate();
     const rId = interaction.values[0];
     const res = startStoveCooking(discordId, rId);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
     await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
     return true;
   }

@@ -306,6 +306,8 @@ export interface LocationCanvasOptions {
   customSpeakerName?: string;
   leftSpriteUrl?: string;
   leftSpriteName?: string;
+  allStovePots?: StoveCookingPot[];
+  stoveCapacity?: number;
 }
 
 /**
@@ -730,26 +732,174 @@ export async function renderChaldeaLocationCanvas(
     }
   }
 
-  // 5. Active Stove Pot Callout (If currently in kitchen_stove)
-  if (room.id === 'kitchen_stove' && activeStovePot) {
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(20, 122, 380, 56, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillText(`🔥 ${activeStovePot.recipeEmoji} ${activeStovePot.recipeName}`, 34, 146);
-
+  // 5. Commercial Stove Line & Range Station Rack (Rendered when in kitchen_stove)
+  if (room.id === 'kitchen_stove') {
+    const pots = options.allStovePots || (activeStovePot ? [activeStovePot] : []);
+    const capacity = options.stoveCapacity || 4;
     const now = Date.now();
-    const remSec = Math.max(0, Math.ceil((activeStovePot.readyAt - now) / 1000));
-    ctx.fillStyle = '#e2e8f0';
-    ctx.font = 'bold 14px sans-serif';
-    const potStatus = remSec > 0 ? `Simmering (${remSec}s left) • Stirs: ${activeStovePot.stirCount}` : `READY TO PLATE!`;
-    ctx.fillText(potStatus, 34, 168);
+
+    // Map pots by their rangeIndex (1..capacity)
+    const potsByRange = new Map<number, StoveCookingPot>();
+    for (const p of pots) {
+      if (typeof p.rangeIndex === 'number') {
+        potsByRange.set(p.rangeIndex, p);
+      }
+    }
+
+    // Grid layout: 2 columns, 2 rows (for 4 ranges)
+    const rackX = 20;
+    const rackY = 120;
+    const cardW = 260;
+    const cardH = 110;
+    const gapX = 14;
+    const gapY = 12;
+
+    for (let r = 1; r <= Math.min(4, capacity); r++) {
+      const col = (r - 1) % 2;
+      const row = Math.floor((r - 1) / 2);
+      const cx = rackX + col * (cardW + gapX);
+      const cy = rackY + row * (cardH + gapY);
+
+      const pot = potsByRange.get(r);
+
+      ctx.save();
+      if (!pot) {
+        // IDLE RANGE SLOT
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+        ctx.strokeStyle = 'rgba(71, 85, 105, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, cardW, cardH, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Burner Ring
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx + 34, cy + cardH / 2, 20, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(cx + 34, cy + cardH / 2, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`RANGE #${r} • IDLE`, cx + 66, cy + 38);
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'italic 12px sans-serif';
+        ctx.fillText(`Cold Burner Grate`, cx + 66, cy + 60);
+        ctx.fillText(`[Ready to Ignite]`, cx + 66, cy + 80);
+      } else if (pot.status === 'burnt') {
+        // BURNT RANGE SLOT
+        ctx.fillStyle = 'rgba(24, 24, 27, 0.94)';
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, cardW, cardH, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Burnt pot icon
+        ctx.fillStyle = '#ef4444';
+        ctx.font = '26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚫', cx + 34, cy + cardH / 2 + 8);
+
+        ctx.fillStyle = '#f87171';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`RANGE #${r}: BURNT!`, cx + 64, cy + 32);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(`${pot.recipeEmoji} ${pot.recipeName}`, cx + 64, cy + 54);
+
+        ctx.fillStyle = '#fca5a5';
+        ctx.font = '11px sans-serif';
+        ctx.fillText(`⚠️ Needs Scraped & Dumped`, cx + 64, cy + 74);
+        ctx.fillText(`Cook: @${pot.startedByUsername}`, cx + 64, cy + 92);
+      } else if (pot.status === 'ready') {
+        // READY TO PLATE RANGE SLOT
+        ctx.fillStyle = 'rgba(6, 78, 59, 0.9)';
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, cardW, cardH, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Golden glowing ready icon
+        ctx.fillStyle = '#34d399';
+        ctx.font = '26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('✨', cx + 34, cy + cardH / 2 + 8);
+
+        ctx.fillStyle = '#6ee7b7';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`RANGE #${r}: READY TO PLATE!`, cx + 64, cy + 30);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(`${pot.recipeEmoji} ${pot.recipeName}`, cx + 64, cy + 52);
+
+        const hasCookPriority = now < pot.cookPriorityUntil;
+        const remPrioSec = Math.max(1, Math.ceil((pot.cookPriorityUntil - now) / 1000));
+        ctx.fillStyle = hasCookPriority ? '#fef08a' : '#a7f3d0';
+        ctx.font = 'bold 11px sans-serif';
+        if (hasCookPriority) {
+          ctx.fillText(`🔒 Cook Priority: @${pot.startedByUsername} (${remPrioSec}s)`, cx + 64, cy + 72);
+        } else {
+          ctx.fillText(`🔓 Open to Anyone to Plate!`, cx + 64, cy + 72);
+        }
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '10px sans-serif';
+        ctx.fillText(`Quality: ${pot.qualityScore}/100 • Stirs: ${pot.stirCount}`, cx + 64, cy + 92);
+      } else {
+        // SIMMERING RANGE SLOT
+        ctx.fillStyle = 'rgba(30, 27, 75, 0.9)';
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, cardW, cardH, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // Flame and pot icon
+        ctx.fillStyle = '#f59e0b';
+        ctx.font = '26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🍲', cx + 34, cy + cardH / 2 + 8);
+
+        const remSec = Math.max(0, Math.ceil((pot.readyAt - now) / 1000));
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`RANGE #${r}: SIMMERING (${remSec}s)`, cx + 64, cy + 30);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(`${pot.recipeEmoji} ${pot.recipeName}`, cx + 64, cy + 52);
+
+        // Quality progress bar
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fillRect(cx + 64, cy + 62, 175, 6);
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(cx + 64, cy + 62, Math.min(175, Math.floor((pot.qualityScore / 100) * 175)), 6);
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '11px sans-serif';
+        ctx.fillText(`Cook: @${pot.startedByUsername} • Q: ${pot.qualityScore}/100`, cx + 64, cy + 84);
+        ctx.fillText(`Stirs: ${pot.stirCount} (Click to Stir)`, cx + 64, cy + 98);
+      }
+      ctx.restore();
+    }
   }
 
   // 6. Visual Novel Dialogue Box Ribbon (Bottom - 2x Scaled Large & Bold)
