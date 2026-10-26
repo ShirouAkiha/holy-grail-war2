@@ -27,6 +27,7 @@ import {
   ATTENDING_DOCTORS,
   CHALDEA_SHOP_CATALOG,
   CHALDEA_RANK_TIERS,
+  JUKEBOX_TRACKS,
   CafeteriaRoom 
 } from '../data/cafeteriaData';
 import { resolveAscensionSprite } from '../data/servantAscensions';
@@ -68,6 +69,14 @@ import {
   washFaceInRestroom,
   callImpeachmentVote,
   castImpeachmentVote,
+  addRoomStickyNote,
+  getRoomStickyNotes,
+  dropItemOnRoomCounter,
+  takeItemFromRoomCounter,
+  getRoomCounterItems,
+  getSandboxPropsState,
+  interactWithRoomProp,
+  executeCompanionServantAssist,
   StationedMaster
 } from '../engine/cafeteriaEngine';
 import { 
@@ -386,25 +395,93 @@ export async function buildChaldeaViewportResponse(
       `\n\n📜 **Recent Room Activity:**\n${roomEventsSummary}`
     )
     .setColor(roomHazard.stage === 4 ? 0x991b1b : roomHazard.stage === 3 ? 0xef4444 : roomHazard.stage === 2 ? 0xf59e0b : 0xd4af37)
-    .setImage('attachment://chaldea_viewport.png')
-    .addFields(
-      {
-        name: '🎒 Your Inventory',
-        value: invStr,
-        inline: false
-      },
-      {
-        name: '🌟 Active Community Cafeteria Buffs',
-        value: buffsStr,
-        inline: false
-      }
-    )
-    .setFooter({
-      text: `Chaldea Cafeteria MUD • Consequence Engine • Real-time Co-Op`
-    })
-    .setTimestamp();
+    .setImage('attachment://chaldea_viewport.png');
 
-  // 7. Interactive Buttons Row 1: Contextual Action Button Swap
+  // Sandbox Props & Environment Details
+  const sandboxProps = getSandboxPropsState();
+  let propsStatus = '';
+  if (room.id === 'dining_hall') {
+    const curTrack = JUKEBOX_TRACKS[sandboxProps.diningJukeboxTrack] || JUKEBOX_TRACKS.emiya_family;
+    const tableStatus = sandboxProps.dirtyTablesCount > 0
+      ? `⚠️ Sticky tables with dishes (${sandboxProps.dirtyTablesCount}) — Click Wipe Tables to clean!`
+      : `✨ Tables are spotless and sanitized!`;
+    const floralStatus = sandboxProps.floralCenterpieces ? `💐 Fresh garden floral centerpieces arranged.` : `🥀 No centerpieces arranged.`;
+    propsStatus = `🎶 **Jukebox Playing:** ${curTrack.emoji} **${curTrack.title}**\n• ${curTrack.perkDescription}\n🪑 **Tables:** ${tableStatus} • ${floralStatus}`;
+  } else if (room.id === 'greenhouse') {
+    const hybrids = sandboxProps.greenhouseHybrids || [];
+    const hybridStr = hybrids.length > 0
+      ? hybrids.map(h => {
+          const isReady = Date.now() >= h.readyAt;
+          const remSec = Math.max(0, Math.ceil((h.readyAt - Date.now()) / 1000));
+          const ing = INGREDIENT_CATALOG[h.resultIngId];
+          const ingName = ing ? ing.name : h.resultIngId;
+          const emoji = ing ? ing.emoji : '🌱';
+          return `• ${emoji} **${ingName}** (by @${h.plantedBy}): ${isReady ? '🟢 **READY TO HARVEST!**' : `⏳ Sprouting (${remSec}s)`}`;
+        }).join('\n')
+      : '*Experimental patch is ready for seeds.*';
+    propsStatus = `🌿 **Hydroponic Terraces:** Lush UV grow-lamps running.\n🌱 **Cross-Breeding Experimental Patch:**\n${hybridStr}`;
+  } else if (room.id === 'pantry') {
+    const stash = sandboxProps.hiddenSnackStash;
+    const stashNotice = stash
+      ? `🗝️ A loose floorboard smells suspiciously like delicious hot food! Someone hid a dish here!`
+      : `📦 Floorboard locker is currently empty.`;
+    propsStatus = `📦 **Storage Crates:** Unlabeled supply crates ready to rummage.\n${stashNotice}`;
+  } else if (room.id === 'kitchen_stove') {
+    const flameTitles = {
+      low_simmer: '🕯️ Low Simmer (Gentle, zero burn risk)',
+      standard: '🔥 Standard Heat (Balanced)',
+      overdrive: '⚡ Mana Burst Overdrive (2x Speed & 2x Burn Rate!)'
+    };
+    propsStatus = `🎛️ **Flame Tuning Dial:** **${flameTitles[sandboxProps.stoveFlameMode || 'standard']}**\n🪵 **Hearth:** Charred ash residue available to scrape.`;
+  } else if (room.id === 'staff_lounge') {
+    propsStatus = `🍵 **The Grand Kotatsu:** Warm blanket & tea kettle ready for Masters.\n📖 **Chaldea Kitchen Lore Grimoires:** Ready on the bookshelf.`;
+  }
+
+  // Room Countertop Items (Shared drop/take)
+  const counterItems = getRoomCounterItems(room.id);
+  const counterStr = counterItems.length > 0
+    ? counterItems.map(i => `${i.emoji} **${i.ingredientName}** x${i.count} *(by @${i.droppedBy})*`).join(' • ')
+    : '*Countertop is clear. Use `[ 📦 Drop Item ]` to place items here for teammates!*';
+
+  // Room Sticky Notes / Bulletin
+  const stickyNotes = getRoomStickyNotes(room.id);
+  const notesStr = stickyNotes.length > 0
+    ? stickyNotes.map(n => `• *" ${n.text} "* — **@${n.authorName}** (<t:${Math.floor(n.timestamp / 1000)}:R>)`).join('\n')
+    : '*No notes pinned yet. Click `[ 📝 Write Note ]` to pin a memo on this board!*';
+
+  roomEmbed.addFields(
+    {
+      name: '🎒 Your Inventory',
+      value: invStr,
+      inline: false
+    },
+    {
+      name: '🛠️ Room Environment & Props',
+      value: propsStatus || '*Standard facility room amenities.*',
+      inline: false
+    },
+    {
+      name: `🧺 Shared Countertop Storage (${counterItems.length}/6 slots)`,
+      value: counterStr,
+      inline: false
+    },
+    {
+      name: `📝 Room Bulletin & Sticky Notes (${stickyNotes.length}/5)`,
+      value: notesStr,
+      inline: false
+    },
+    {
+      name: '🌟 Active Community Cafeteria Buffs',
+      value: buffsStr,
+      inline: false
+    }
+  )
+  .setFooter({
+    text: `Chaldea Cafeteria MUD • Consequence Engine • Real-time Co-Op`
+  })
+  .setTimestamp();
+
+  // 7. Interactive Buttons Row 1: Contextual Station Action Buttons (Max 5)
   const actionButtons: ButtonBuilder[] = [];
 
   // Head Prefect Authority Button (Only unlocked by #1 Ranked Master)
@@ -412,7 +489,7 @@ export async function buildChaldeaViewportResponse(
     actionButtons.push(
       new ButtonBuilder()
         .setCustomId('chaldea_action_prefect_menu')
-        .setLabel('⚖️ Disciplinary Action')
+        .setLabel('⚖️ Prefect Action')
         .setStyle(ButtonStyle.Danger)
     );
   }
@@ -433,19 +510,15 @@ export async function buildChaldeaViewportResponse(
     actionButtons.push(
       new ButtonBuilder()
         .setCustomId('chaldea_action_bed_rest')
-        .setLabel(master.activeRecoveryType === 'bed_rest' ? '🛏️ Bed Rest (1 hr in Progress)' : '🛏️ Bed Rest (Free 1 hr)')
+        .setLabel(master.activeRecoveryType === 'bed_rest' ? '🛏️ Bed Rest (In Progress)' : '🛏️ Bed Rest (1 hr)')
         .setStyle(master.activeRecoveryType === 'bed_rest' ? ButtonStyle.Success : ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('chaldea_action_drink_salve')
-        .setLabel('🧪 Drink Burn Salve (Herbs)')
+        .setLabel('🧪 Burn Salve')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('chaldea_action_rejuvenate_sq')
         .setLabel('💎 Rejuvenate (500 SQ)')
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId('chaldea_action_switch_doctor')
-        .setLabel('🩺 Page Doctor')
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('chaldea_action_fruit_basket_select')
@@ -469,7 +542,7 @@ export async function buildChaldeaViewportResponse(
     actionButtons.push(
       new ButtonBuilder()
         .setCustomId('chaldea_action_repair_manual')
-        .setLabel(`🛠️ Repair Flues (Free ${roomHazard.repairsContributed}/${roomHazard.requiredRepairs || 3})`)
+        .setLabel(`🛠️ Repair (${roomHazard.repairsContributed}/${roomHazard.requiredRepairs || 3})`)
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId('chaldea_action_repair_sq')
@@ -497,17 +570,6 @@ export async function buildChaldeaViewportResponse(
             .setStyle(ButtonStyle.Secondary)
         );
       }
-    }
-
-    // Check if hero rescue button should be added (if other masters in room are coughing or fainted)
-    const rescuableFriends = roomMasters.filter(m => m.discordId !== master.discordId && (m.currentHp < m.maxHp || m.burnStatus === 'singed' || m.burnStatus === 'fainted'));
-    if (rescuableFriends.length > 0 && roomHazard.stage >= 3) {
-      actionButtons.push(
-        new ButtonBuilder()
-          .setCustomId('chaldea_action_rescue_select')
-          .setLabel('🚑 Drag Friend to Safety')
-          .setStyle(ButtonStyle.Success)
-      );
     }
 
     if (room.availableIngredients.length > 0) {
@@ -549,19 +611,19 @@ export async function buildChaldeaViewportResponse(
 
       // Dedicated range buttons for each active pot on the ranges
       const sortedPots = [...world.stovePots].sort((a, b) => a.rangeIndex - b.rangeIndex);
-      for (const pot of sortedPots) {
+      for (const pot of sortedPots.slice(0, 3)) {
         if (pot.status === 'simmering') {
           actionButtons.push(
             new ButtonBuilder()
               .setCustomId(`chaldea_stove_stir_range:${pot.rangeIndex}`)
-              .setLabel(`🥄 Stir R#${pot.rangeIndex} (${pot.recipeName.slice(0, 10)})`)
+              .setLabel(`🥄 Stir R#${pot.rangeIndex}`)
               .setStyle(ButtonStyle.Primary)
           );
         } else if (pot.status === 'ready') {
           actionButtons.push(
             new ButtonBuilder()
               .setCustomId(`chaldea_stove_plate_range:${pot.rangeIndex}`)
-              .setLabel(`🍽️ Plate R#${pot.rangeIndex} (${pot.recipeName.slice(0, 10)})`)
+              .setLabel(`🍽️ Plate R#${pot.rangeIndex}`)
               .setStyle(ButtonStyle.Success)
           );
         } else if (pot.status === 'burnt') {
@@ -597,36 +659,148 @@ export async function buildChaldeaViewportResponse(
     );
   }
 
-  // Always available utility actions
-  if (unreadNotifs.length > 0) {
-    actionButtons.push(
-      new ButtonBuilder()
-        .setCustomId('chaldea_action_clear_notifs')
-        .setLabel(`🔔 Clear Alerts (${unreadNotifs.length})`)
-        .setStyle(ButtonStyle.Danger)
+  // Row 1: Station Actions (Max 5 buttons)
+  const stationRow = actionButtons.length > 0
+    ? new ActionRowBuilder<ButtonBuilder>().addComponents(actionButtons.slice(0, 5))
+    : null;
+
+  // 8. Row 2: Dynamic Sandbox Props & Environment Select Menu
+  const sandboxMenu = new StringSelectMenuBuilder()
+    .setCustomId('chaldea_select_room_sandbox_prop')
+    .setPlaceholder(`🔍 Explore Room Props & Sandbox Environment (${room.shortName})...`);
+
+  if (room.id === 'dining_hall') {
+    sandboxMenu.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🍳 Jukebox: Emiya Family (-15% Wait)')
+        .setValue('dining_jukebox:emiya_family')
+        .setDescription("Play gentle acoustic melodies that soothe waiting patrons"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎷 Jukebox: Midnight Jazz (+10% Quality)')
+        .setValue('dining_jukebox:jazz_cafe')
+        .setDescription("Play smooth bistro jazz to boost dish culinary quality"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎪 Jukebox: Carnival Phantasm (+25% CMP)')
+        .setValue('dining_jukebox:carnival_phantasm')
+        .setDescription("Play hyperactive brass for +25% bonus CMP earned"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('⚔️ Jukebox: Grand Battle (+1 Harvest Yield)')
+        .setValue('dining_jukebox:grand_battle')
+        .setDescription("Play symphonic orchestra for +1 bonus foraging yield"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🧽 Wipe & Sanitize Dining Tables (+15 CMP)')
+        .setValue('dining_wipe')
+        .setDescription("Clear sticky bowls & sanitize tables to attract 5★ patrons"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('💐 Set Floral Centerpieces (+20 CMP)')
+        .setValue('dining_floral')
+        .setDescription("Arrange fresh garden blooms on every dining table")
+    );
+  } else if (room.id === 'greenhouse') {
+    sandboxMenu.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('✂️ Pruning Shears (Foliage & Phantasmal Dew)')
+        .setValue('greenhouse_prune')
+        .setDescription("Trim yellow leaves & collect shimmering Phantasmal Dew"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🌱 Cross-Breeding Patch (Fuse 2 Seeds)')
+        .setValue('greenhouse_crossbreed_plant')
+        .setDescription("Plant two apron ingredients to grow a rare hybrid"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🌾 Harvest Hybrids (+25 CMP/FP)')
+        .setValue('greenhouse_crossbreed_harvest')
+        .setDescription("Collect mature hybrid crops from the experimental patch")
+    );
+  } else if (room.id === 'pantry') {
+    sandboxMenu.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📦 Rummage Unlabeled Crates (Scavenger Hunt)')
+        .setValue('pantry_rummage')
+        .setDescription("Search crates for salt, rare cooking wine, aged cheese, or Fou!"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🗝️ Secret Floorboard Locker: Hide Carried Dish')
+        .setValue('pantry_stash_dish')
+        .setDescription("Hide your plated dish under loose boards away from hungry eyes"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🕵️ Search Floorboards for Hidden Snacks')
+        .setValue('pantry_search_stash')
+        .setDescription("Sniff out and heist dishes hidden by other Masters")
+    );
+  } else if (room.id === 'kitchen_stove') {
+    sandboxMenu.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🔥 Flame Control: Toggle Simmer / Standard / Overdrive')
+        .setValue('stove_toggle_flame')
+        .setDescription("Adjust burner flames between Low Simmer, Standard, and Overdrive"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🪵 Scrape Hearth Charcoal (+10 CMP)')
+        .setValue('stove_scrape_charcoal')
+        .setDescription("Scrape purified charcoal residue from the ovens")
+    );
+  } else if (room.id === 'staff_lounge') {
+    sandboxMenu.addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🍵 Grand Kotatsu: Serve Green Tea to all Masters')
+        .setValue('lounge_tea')
+        .setDescription("Brew warm Uji matcha for everyone sitting around the kotatsu (+20 FP)"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('🎲 Roll Dice Duel (2d6 Challenge)')
+        .setValue('lounge_dice')
+        .setDescription("Roll a pair of dice at the kotatsu table for games with friends"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel('📖 Read Chaldea Kitchen Lore & Grimoires')
+        .setValue('lounge_lore')
+        .setDescription("Browse hilarious kitchen memoirs by Bedivere, Emiya, Kotomine, etc.")
     );
   }
 
-  actionButtons.push(
+  // Universal sandbox options available in all rooms
+  sandboxMenu.addOptions(
+    new StringSelectMenuOptionBuilder()
+      .setLabel('📝 Write Note on Room Bulletin')
+      .setValue('general_write_note')
+      .setDescription("Pin a persistent note on this room's corkboard"),
+    new StringSelectMenuOptionBuilder()
+      .setLabel('📦 Drop Item onto Room Counter')
+      .setValue('general_drop_counter')
+      .setDescription("Leave an ingredient on the shared counter for teammates"),
+    new StringSelectMenuOptionBuilder()
+      .setLabel('🧺 Pick Up Item from Room Counter')
+      .setValue('general_take_counter')
+      .setDescription("Take a shared item sitting on this room's countertop"),
+    new StringSelectMenuOptionBuilder()
+      .setLabel('🛒 Visit Chaldea Supply Shop')
+      .setValue('facility_shop')
+      .setDescription("Purchase permanent station upgrades and supplies"),
+    new StringSelectMenuOptionBuilder()
+      .setLabel('🏆 View CMP Rankings & Hierarchy')
+      .setValue('facility_rankings')
+      .setDescription("Inspect Master ranks, Prefect titles, and merit scores"),
+    new StringSelectMenuOptionBuilder()
+      .setLabel('📌 Set AFK / Station Status Memo')
+      .setValue('facility_status')
+      .setDescription("Update your public speech bubble or toggle AFK mode")
+  );
+
+  const sandboxRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(sandboxMenu);
+
+  // 9. Row 3: Social & Companion Sandbox Action Buttons (5 Buttons)
+  const socialRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId('chaldea_action_shop_open')
-      .setLabel('🛒 Chaldea Shop')
+      .setCustomId('chaldea_action_companion_assist')
+      .setLabel('🤝 Servant Assist')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId('chaldea_action_write_note')
+      .setLabel('📝 Write Note')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId('chaldea_action_rankings')
-      .setLabel('🏆 Rankings')
+      .setCustomId('chaldea_action_drop_counter')
+      .setLabel('📦 Drop Item')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId('chaldea_action_station_modal')
-      .setLabel('📌 AFK Status')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('chaldea_action_impeach_start')
-      .setLabel('🏛️ Impeach')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('chaldea_action_guide')
-      .setLabel('📖 Guide')
+      .setCustomId('chaldea_action_take_counter')
+      .setLabel('🧺 Take Counter')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('chaldea_action_refresh')
@@ -634,12 +808,7 @@ export async function buildChaldeaViewportResponse(
       .setStyle(ButtonStyle.Secondary)
   );
 
-  const actionRows: ActionRowBuilder<any>[] = [];
-  for (let i = 0; i < actionButtons.length; i += 5) {
-    actionRows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(actionButtons.slice(i, i + 5)));
-  }
-
-  // 8. Row 2: Room Movement Select Menu
+  // 10. Row 4: Room Movement Select Menu
   const roomSelect = new StringSelectMenuBuilder()
     .setCustomId('chaldea_select_move')
     .setPlaceholder(`🚪 Move to Another Room (Currently in ${room.shortName})...`);
@@ -658,9 +827,15 @@ export async function buildChaldeaViewportResponse(
 
   const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(roomSelect);
 
+  const finalComponents: ActionRowBuilder<any>[] = [];
+  if (stationRow) finalComponents.push(stationRow);
+  finalComponents.push(sandboxRow);
+  finalComponents.push(socialRow);
+  finalComponents.push(selectRow);
+
   return {
     embeds: [mapEmbed, roomEmbed],
-    components: [...actionRows, selectRow],
+    components: finalComponents,
     files: [mapAttachment, viewportAttachment]
   };
 }
@@ -1871,6 +2046,244 @@ export async function handleChaldeaGlobalInteraction(
       files: payload.files
     });
     await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // -------------------------------------------------------------
+  // SANDBOX HANDLERS: ROOM BULLETIN & STICKY NOTES
+  // -------------------------------------------------------------
+
+  if ((interaction.isButton() && customId === 'chaldea_action_write_note') ||
+      (interaction.isStringSelectMenu() && customId === 'chaldea_select_room_sandbox_prop' && interaction.values[0] === 'general_write_note')) {
+    const modal = new ModalBuilder()
+      .setCustomId('chaldea_modal_write_note')
+      .setTitle('📝 Chaldea Bulletin — Write Sticky Note');
+
+    const input = new TextInputBuilder()
+      .setCustomId('chaldea_input_note_text')
+      .setLabel('Message to Pin (Max 180 chars)')
+      .setStyle(TextInputStyle.Paragraph)
+      .setPlaceholder('e.g. Diced onions are reserved for the beef curry! -@Master')
+      .setMaxLength(180)
+      .setMinLength(2)
+      .setRequired(true);
+
+    modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+    await interaction.showModal(modal);
+    return true;
+  }
+
+  if (interaction.isModalSubmit() && customId === 'chaldea_modal_write_note') {
+    await interaction.deferUpdate();
+    const noteText = interaction.fields.getTextInputValue('chaldea_input_note_text');
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const res = addRoomStickyNote(discordId, master.currentRoomId, noteText);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl, res.message);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    return true;
+  }
+
+  // -------------------------------------------------------------
+  // SANDBOX HANDLERS: COMPANION SERVANT ASSIST
+  // -------------------------------------------------------------
+
+  if (interaction.isButton() && customId === 'chaldea_action_companion_assist') {
+    await interaction.deferUpdate();
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const dbMaster = await getMaster(discordId);
+    const activeServant = dbMaster?.servants?.find((s: any) => s.id === dbMaster.activeServantId) || dbMaster?.servants?.[0];
+    const sName = master.companionServantName || activeServant?.nickname || activeServant?.template?.name || 'Heroic Spirit';
+    const sClass = activeServant?.template?.class || activeServant?.class || 'Saber';
+
+    const res = executeCompanionServantAssist(discordId, sClass, sName);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl, res.message);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    return true;
+  }
+
+  // -------------------------------------------------------------
+  // SANDBOX HANDLERS: DROPPABLE WORLD ITEMS & SHARED COUNTERTOPS
+  // -------------------------------------------------------------
+
+  if ((interaction.isButton() && customId === 'chaldea_action_drop_counter') ||
+      (interaction.isStringSelectMenu() && customId === 'chaldea_select_room_sandbox_prop' && interaction.values[0] === 'general_drop_counter')) {
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const items = Object.entries(master.inventory || {}).filter(([_, count]) => count > 0);
+    if (items.length === 0) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: '📦 Your apron pockets are empty! Harvest or gather ingredients first.'
+      });
+      return true;
+    }
+
+    const select = new StringSelectMenuBuilder()
+      .setCustomId('chaldea_select_drop_counter')
+      .setPlaceholder('Select an ingredient to place on the room counter...');
+
+    for (const [id, count] of items.slice(0, 25)) {
+      const ing = INGREDIENT_CATALOG[id];
+      const name = ing ? ing.name : id;
+      const emoji = ing ? ing.emoji : '📦';
+      select.addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel(`${emoji} ${name} (You have: ${count})`)
+          .setValue(id)
+          .setDescription(`Place 1x ${name} on the shared room countertop`)
+      );
+    }
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      content: '📦 **Drop Ingredient onto Countertop:**\nTeammates stationed in this room can pick this item up:',
+      components: [row]
+    });
+    return true;
+  }
+
+  if (interaction.isStringSelectMenu() && customId === 'chaldea_select_drop_counter') {
+    await interaction.deferUpdate();
+    const ingId = interaction.values[0];
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const res = dropItemOnRoomCounter(discordId, master.currentRoomId, ingId, 1);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl, res.message);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  if ((interaction.isButton() && customId === 'chaldea_action_take_counter') ||
+      (interaction.isStringSelectMenu() && customId === 'chaldea_select_room_sandbox_prop' && interaction.values[0] === 'general_take_counter')) {
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const counterItems = getRoomCounterItems(master.currentRoomId);
+    if (counterItems.length === 0) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: '🧺 The countertop in this room is completely clear. No items have been left here.'
+      });
+      return true;
+    }
+
+    const select = new StringSelectMenuBuilder()
+      .setCustomId('chaldea_select_take_counter')
+      .setPlaceholder('Select an item to pick up from the countertop...');
+
+    for (const item of counterItems.slice(0, 25)) {
+      select.addOptions(
+        new StringSelectMenuOptionBuilder()
+          .setLabel(`${item.emoji} ${item.ingredientName} x${item.count}`)
+          .setValue(item.ingredientId)
+          .setDescription(`Dropped by @${item.droppedBy}`)
+      );
+    }
+
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+    await interaction.reply({
+      flags: MessageFlags.Ephemeral,
+      content: '🧺 **Pick Up Shared Item from Counter:**\nSelect an ingredient to take into your apron:',
+      components: [row]
+    });
+    return true;
+  }
+
+  if (interaction.isStringSelectMenu() && customId === 'chaldea_select_take_counter') {
+    await interaction.deferUpdate();
+    const ingId = interaction.values[0];
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+    const res = takeItemFromRoomCounter(discordId, master.currentRoomId, ingId, 1);
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl, res.message);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
+    return true;
+  }
+
+  // -------------------------------------------------------------
+  // SANDBOX HANDLERS: ROOM-SPECIFIC PROPS SELECT MENU
+  // -------------------------------------------------------------
+
+  if (interaction.isStringSelectMenu() && customId === 'chaldea_select_room_sandbox_prop') {
+    const val = interaction.values[0];
+    const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
+
+    if (val === 'facility_shop') {
+      const embed = new EmbedBuilder()
+        .setTitle('🛒 Chaldea Cafeteria Supply Shop')
+        .setDescription(
+          `**Your Balance:** \`${master.friendPoints || 0} FP\` • \`${master.meritPoints || 0} CMP\`\n\n` +
+          `• 🍳 **Commercial Range Expander:** \`1,200 FP\` (Increases max stove slots)\n` +
+          `• 🔪 **Marble Prep Counter Extender:** \`800 FP\`\n` +
+          `• 💡 **Magical UV Hydroponic Lamp:** \`1,000 FP\``
+        )
+        .setColor(0x3b82f6);
+      await interaction.reply({ flags: MessageFlags.Ephemeral, embeds: [embed] });
+      return true;
+    }
+
+    if (val === 'facility_rankings') {
+      const lb = getChaldeaRankLeaderboard();
+      const prefect = getHeadPrefect();
+      const pName = prefect ? `@${prefect.username}` : 'Vacant';
+      const embed = new EmbedBuilder()
+        .setTitle('🏆 Chaldea Campus Merit Points (CMP) Leaderboard')
+        .setDescription(
+          `👑 **Current Head Prefect:** **${pName}**\n\n` +
+          lb.slice(0, 10).map((m, idx) => `**#${idx + 1}** ${m.isHeadPrefect ? '👑 ' : ''}**${m.username}** — \`${m.meritPoints || 0} CMP\` [${m.companionServantName}]`).join('\n')
+        )
+        .setColor(0xd4af37);
+      await interaction.reply({ flags: MessageFlags.Ephemeral, embeds: [embed] });
+      return true;
+    }
+
+    if (val === 'facility_status') {
+      const modal = new ModalBuilder()
+        .setCustomId('chaldea_modal_station_status')
+        .setTitle('📌 Chaldea Station & Status');
+      const input = new TextInputBuilder()
+        .setCustomId('chaldea_input_status_text')
+        .setLabel('Custom Status / Speech Bubble')
+        .setStyle(TextInputStyle.Short)
+        .setValue(master.statusText || '')
+        .setMaxLength(60)
+        .setRequired(true);
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+      await interaction.showModal(modal);
+      return true;
+    }
+
+    // Environmental prop interaction
+    await interaction.deferUpdate();
+    let res: { success: boolean; message: string };
+
+    if (val.startsWith('dining_jukebox:')) {
+      const trackId = val.replace('dining_jukebox:', '');
+      res = interactWithRoomProp(discordId, master.currentRoomId, 'dining_jukebox', trackId);
+    } else {
+      res = interactWithRoomProp(discordId, master.currentRoomId, val);
+    }
+
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl, res.message);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
     return true;
   }
 

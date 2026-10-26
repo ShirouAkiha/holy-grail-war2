@@ -11,6 +11,9 @@ import {
   ATTENDING_DOCTORS,
   CHALDEA_SHOP_CATALOG,
   CHALDEA_RANK_TIERS,
+  JUKEBOX_TRACKS,
+  CHALDEA_KITCHEN_LORE,
+  JukeboxTrack,
   ChaldeaRankTier,
   CafeteriaRoom, 
   Ingredient, 
@@ -73,6 +76,7 @@ export interface StationedMaster {
   lockedUntil?: number;
   swirliesReceived?: number;
   timesImpeached?: number;
+  lastCompanionAssistAt?: number;
 }
 
 export interface StoveCookingPot {
@@ -140,6 +144,46 @@ export interface RoomHazard {
   requiredRepairs: number;    // e.g. 3
 }
 
+export interface RoomStickyNote {
+  id: string;
+  authorId: string;
+  authorName: string;
+  text: string;
+  timestamp: number;
+}
+
+export interface RoomCounterItem {
+  ingredientId: string;
+  ingredientName: string;
+  emoji: string;
+  count: number;
+  droppedBy: string;
+  droppedAt: number;
+}
+
+export interface RoomSandboxPropsState {
+  diningJukeboxTrack: string;
+  dirtyTablesCount: number;
+  floralCenterpieces: boolean;
+  stoveFlameMode: 'low_simmer' | 'standard' | 'overdrive';
+  hiddenSnackStash: {
+    dishName: string;
+    recipeEmoji: string;
+    qualityScore: number;
+    hiddenBy: string;
+    hiddenAt: number;
+  } | null;
+  greenhouseHybrids: Array<{
+    id: string;
+    seed1: string;
+    seed2: string;
+    plantedBy: string;
+    plantedAt: number;
+    readyAt: number;
+    resultIngId: string;
+  }>;
+}
+
 export interface CafeteriaWorldState {
   masters: Record<string, StationedMaster>;
   sharedPrepBasin: SharedPrepBasinItem[];
@@ -161,6 +205,9 @@ export interface CafeteriaWorldState {
     expiresAt: number;
     status: 'active' | 'passed' | 'failed';
   };
+  roomNotes: Record<string, RoomStickyNote[]>;
+  roomCounters: Record<string, RoomCounterItem[]>;
+  sandboxProps: RoomSandboxPropsState;
 }
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
@@ -178,7 +225,17 @@ let worldState: CafeteriaWorldState = {
   sharedFridgeVault: {},
   roomHazards: {},
   restroomDoorLockedUntil: undefined,
-  activeImpeachment: undefined
+  activeImpeachment: undefined,
+  roomNotes: {},
+  roomCounters: {},
+  sandboxProps: {
+    diningJukeboxTrack: 'emiya_family',
+    dirtyTablesCount: 1,
+    floralCenterpieces: false,
+    stoveFlameMode: 'standard',
+    hiddenSnackStash: null,
+    greenhouseHybrids: []
+  }
 };
 
 function ensureDirectories() {
@@ -210,7 +267,17 @@ function loadCafeteriaStateFromDisk() {
             sharedFridgeVault: parsed.sharedFridgeVault || {},
             roomHazards: parsed.roomHazards || {},
             restroomDoorLockedUntil: parsed.restroomDoorLockedUntil,
-            activeImpeachment: parsed.activeImpeachment
+            activeImpeachment: parsed.activeImpeachment,
+            roomNotes: parsed.roomNotes || {},
+            roomCounters: parsed.roomCounters || {},
+            sandboxProps: parsed.sandboxProps || {
+              diningJukeboxTrack: 'emiya_family',
+              dirtyTablesCount: 1,
+              floralCenterpieces: false,
+              stoveFlameMode: 'standard',
+              hiddenSnackStash: null,
+              greenhouseHybrids: []
+            }
           };
           return;
         }
@@ -233,7 +300,17 @@ function loadCafeteriaStateFromDisk() {
             sharedFridgeVault: parsed.sharedFridgeVault || {},
             roomHazards: parsed.roomHazards || {},
             restroomDoorLockedUntil: parsed.restroomDoorLockedUntil,
-            activeImpeachment: parsed.activeImpeachment
+            activeImpeachment: parsed.activeImpeachment,
+            roomNotes: parsed.roomNotes || {},
+            roomCounters: parsed.roomCounters || {},
+            sandboxProps: parsed.sandboxProps || {
+              diningJukeboxTrack: 'emiya_family',
+              dirtyTablesCount: 1,
+              floralCenterpieces: false,
+              stoveFlameMode: 'standard',
+              hiddenSnackStash: null,
+              greenhouseHybrids: []
+            }
           };
           return;
         }
@@ -1971,3 +2048,618 @@ export function castImpeachmentVote(voterId: string, voteType: 'impeach' | 'supp
     message: `🗳️ **VOTE RECORDED (${voteType.toUpperCase()})!**\n• Current Impeach Votes: **${vote.impeachVotes.length} / 5 needed to dethrone**\n• Current Support Votes: **${vote.supportVotes.length}**\n• Time Remaining: **${Math.ceil((vote.expiresAt - now) / 60000)} minute(s)**`
   };
 }
+
+// -------------------------------------------------------------
+// SANDBOX ENGINE: ROOM WHITEBOARDS & STICKY NOTES
+// -------------------------------------------------------------
+
+export function addRoomStickyNote(
+  discordId: string,
+  roomId: string,
+  text: string
+): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) {
+    return { success: false, message: 'You must check into the cafeteria first!' };
+  }
+  const cleanText = (text || '').trim();
+  if (cleanText.length < 2) {
+    return { success: false, message: 'Sticky note message is too short (min 2 characters).' };
+  }
+  if (cleanText.length > 180) {
+    return { success: false, message: 'Sticky note message is too long (max 180 characters).' };
+  }
+
+  if (!worldState.roomNotes) {
+    worldState.roomNotes = {};
+  }
+  if (!worldState.roomNotes[roomId]) {
+    worldState.roomNotes[roomId] = [];
+  }
+
+  const now = Date.now();
+  const twelveHours = 12 * 60 * 60 * 1000;
+  // Expire notes older than 12 hours
+  worldState.roomNotes[roomId] = worldState.roomNotes[roomId].filter(
+    n => now - n.timestamp < twelveHours
+  );
+
+  // Keep max 5 notes per room
+  if (worldState.roomNotes[roomId].length >= 5) {
+    worldState.roomNotes[roomId].shift();
+  }
+
+  const note: RoomStickyNote = {
+    id: `note_${now}_${Math.random().toString(36).substring(2, 6)}`,
+    authorId: discordId,
+    authorName: master.username,
+    text: cleanText,
+    timestamp: now
+  };
+
+  worldState.roomNotes[roomId].push(note);
+  const rName = CAFETERIA_ROOMS[roomId]?.shortName || roomId;
+  addCafeteriaActivity(`📝 **@${master.username}** pinned a note to the **${rName}** bulletin: "${cleanText}"`, roomId);
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `📌 **NOTE PINNED TO THE BOARD!**\n*"${cleanText}"*\n— **@${master.username}** in ${rName}`
+  };
+}
+
+export function getRoomStickyNotes(roomId: string): RoomStickyNote[] {
+  if (!worldState.roomNotes || !worldState.roomNotes[roomId]) {
+    return [];
+  }
+  const now = Date.now();
+  const twelveHours = 12 * 60 * 60 * 1000;
+  return worldState.roomNotes[roomId].filter(n => now - n.timestamp < twelveHours);
+}
+
+// -------------------------------------------------------------
+// SANDBOX ENGINE: DROPPABLE WORLD ITEMS & SHARED COUNTERS
+// -------------------------------------------------------------
+
+export function dropItemOnRoomCounter(
+  discordId: string,
+  roomId: string,
+  ingredientId: string,
+  count: number = 1
+): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) {
+    return { success: false, message: 'You must check into the cafeteria first!' };
+  }
+  if (master.currentRoomId !== roomId) {
+    return { success: false, message: 'You can only place items on the counter of your current room!' };
+  }
+
+  const playerQty = master.inventory[ingredientId] || 0;
+  if (playerQty < count || count <= 0) {
+    return { success: false, message: `You do not have enough of that ingredient in your apron!` };
+  }
+
+  if (!worldState.roomCounters) {
+    worldState.roomCounters = {};
+  }
+  if (!worldState.roomCounters[roomId]) {
+    worldState.roomCounters[roomId] = [];
+  }
+
+  const ing = INGREDIENT_CATALOG[ingredientId];
+  const ingName = ing ? ing.name : ingredientId;
+  const emoji = ing ? ing.emoji : '📦';
+
+  // Check if counter has room (max 6 distinct items or stack)
+  const existing = worldState.roomCounters[roomId].find(i => i.ingredientId === ingredientId);
+  if (!existing && worldState.roomCounters[roomId].length >= 6) {
+    return { success: false, message: 'The room countertop is full! (Max 6 distinct items allowed)' };
+  }
+
+  // Deduct from player
+  master.inventory[ingredientId] -= count;
+  if (master.inventory[ingredientId] <= 0) {
+    delete master.inventory[ingredientId];
+  }
+
+  // Add to counter
+  if (existing) {
+    existing.count += count;
+    existing.droppedAt = Date.now();
+    existing.droppedBy = master.username;
+  } else {
+    worldState.roomCounters[roomId].push({
+      ingredientId,
+      ingredientName: ingName,
+      emoji,
+      count,
+      droppedBy: master.username,
+      droppedAt: Date.now()
+    });
+  }
+
+  const rName = CAFETERIA_ROOMS[roomId]?.shortName || roomId;
+  addCafeteriaActivity(`📦 **@${master.username}** placed **${count}x ${emoji} ${ingName}** on the ${rName} counter.`, roomId);
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `📦 Placed **${count}x ${emoji} ${ingName}** on the **${rName}** countertop! Anyone in this room can now pick it up.`
+  };
+}
+
+export function takeItemFromRoomCounter(
+  discordId: string,
+  roomId: string,
+  ingredientId: string,
+  count: number = 1
+): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) {
+    return { success: false, message: 'You must check into the cafeteria first!' };
+  }
+  if (master.currentRoomId !== roomId) {
+    return { success: false, message: 'You can only pick up items in your current room!' };
+  }
+
+  if (!worldState.roomCounters || !worldState.roomCounters[roomId]) {
+    return { success: false, message: 'There are no items on the countertop in this room!' };
+  }
+
+  const itemIndex = worldState.roomCounters[roomId].findIndex(i => i.ingredientId === ingredientId);
+  if (itemIndex === -1) {
+    return { success: false, message: 'That item is no longer on the countertop!' };
+  }
+
+  const item = worldState.roomCounters[roomId][itemIndex];
+  const takeQty = Math.min(count, item.count);
+  item.count -= takeQty;
+
+  if (item.count <= 0) {
+    worldState.roomCounters[roomId].splice(itemIndex, 1);
+  }
+
+  // Add to master inventory
+  master.inventory[ingredientId] = (master.inventory[ingredientId] || 0) + takeQty;
+
+  const rName = CAFETERIA_ROOMS[roomId]?.shortName || roomId;
+  addCafeteriaActivity(`🧺 **@${master.username}** picked up **${takeQty}x ${item.emoji} ${item.ingredientName}** from the ${rName} counter.`, roomId);
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🧺 Picked up **${takeQty}x ${item.emoji} ${item.ingredientName}** from the countertop into your apron!`
+  };
+}
+
+export function getRoomCounterItems(roomId: string): RoomCounterItem[] {
+  if (!worldState.roomCounters || !worldState.roomCounters[roomId]) {
+    return [];
+  }
+  return worldState.roomCounters[roomId];
+}
+
+// -------------------------------------------------------------
+// SANDBOX ENGINE: ROOM SPECIFIC PROPS & ENVIRONMENTAL TINKERING
+// -------------------------------------------------------------
+
+export function getSandboxPropsState(): RoomSandboxPropsState {
+  if (!worldState.sandboxProps) {
+    worldState.sandboxProps = {
+      diningJukeboxTrack: 'emiya_family',
+      dirtyTablesCount: 1,
+      floralCenterpieces: false,
+      stoveFlameMode: 'standard',
+      hiddenSnackStash: null,
+      greenhouseHybrids: []
+    };
+  }
+  return worldState.sandboxProps;
+}
+
+export function interactWithRoomProp(
+  discordId: string,
+  roomId: string,
+  actionId: string,
+  extraArg?: string
+): { success: boolean; message: string } {
+  const master = worldState.masters[discordId];
+  if (!master) {
+    return { success: false, message: 'You must check into the cafeteria first!' };
+  }
+  if (master.currentRoomId !== roomId) {
+    return { success: false, message: 'You must be stationed in this room to interact with its props!' };
+  }
+
+  const props = getSandboxPropsState();
+
+  // Dining Hall: Jukebox
+  if (actionId === 'dining_jukebox') {
+    const trackId = extraArg || 'emiya_family';
+    const track = JUKEBOX_TRACKS[trackId] || JUKEBOX_TRACKS.emiya_family;
+    props.diningJukeboxTrack = track.id;
+    addCafeteriaActivity(`🎵 **@${master.username}** tuned the Dining Hall Jukebox to **${track.emoji} ${track.title}**! Perk active: ${track.perkDescription}`, roomId);
+    saveCafeteriaStateToDisk();
+    return {
+      success: true,
+      message: `🎵 **JUKEBOX TUNED!**\nNow playing: **${track.emoji} ${track.title}** by *${track.artist}*\n• **Ambient Perk:** ${track.perkDescription}`
+    };
+  }
+
+  // Dining Hall: Wipe Tables
+  if (actionId === 'dining_wipe') {
+    props.dirtyTablesCount = 0;
+    master.meritPoints = (master.meritPoints || 0) + 15;
+    master.friendPoints = (master.friendPoints || 0) + 15;
+    addCafeteriaActivity(`🧽 **@${master.username}** wiped and sanitized all the dining tables (+15 CMP).`, roomId);
+    saveCafeteriaStateToDisk();
+    return {
+      success: true,
+      message: `🧽 **TABLES SPOTLESS & SANITIZED!**\nYou wiped away sticky tea stains and cleared leftover bowls.\n• **Reward:** +15 CMP & +15 Friend Points\n• **Perk:** Spotless tables attract high-rarity 5★ visiting Servant patrons!`
+    };
+  }
+
+  // Dining Hall: Floral Centerpiece
+  if (actionId === 'dining_floral') {
+    props.floralCenterpieces = true;
+    master.meritPoints = (master.meritPoints || 0) + 20;
+    master.friendPoints = (master.friendPoints || 0) + 20;
+    addCafeteriaActivity(`💐 **@${master.username}** arranged fresh garden floral centerpieces on all dining tables (+20 CMP).`, roomId);
+    saveCafeteriaStateToDisk();
+    return {
+      success: true,
+      message: `💐 **FLORAL CENTERPIECES ARRANGED!**\nFreshly cut garden blooms and lavender now grace each dining table.\n• **Reward:** +20 CMP & +20 Friend Points\n• **Aura:** Dining Hall mood is uplifted!`
+    };
+  }
+
+  // Sacred Greenhouse: Pruning Shears
+  if (actionId === 'greenhouse_prune') {
+    const gotDewdrop = Math.random() < 0.65;
+    master.friendPoints = (master.friendPoints || 0) + 15;
+    let extraText = '';
+    if (gotDewdrop) {
+      master.inventory['phantasmal_dewdrop'] = (master.inventory['phantasmal_dewdrop'] || 0) + 1;
+      extraText = `\n• **Bonus Drop:** Found 1x 💧 **Phantasmal Dewdrop** shimmering among the trimmed leaves!`;
+    }
+    addCafeteriaActivity(`✂️ **@${master.username}** pruned overgrown hydroponic foliage in the Sacred Greenhouse.`, roomId);
+    saveCafeteriaStateToDisk();
+    return {
+      success: true,
+      message: `✂️ **HYDROPHONIC FOLIAGE PRUNED!**\nYou carefully snipped away yellowed leaves and cleared stray caterpillars.\n• **Reward:** +15 Friend Points${extraText}`
+    };
+  }
+
+  // Sacred Greenhouse: Cross-Breeding Patch (Plant)
+  if (actionId === 'greenhouse_crossbreed_plant') {
+    // Check if player has at least two produce/honey/ingredient items
+    const availablePantryIngs = Object.keys(master.inventory || {}).filter(k => (master.inventory[k] || 0) > 0);
+    if (availablePantryIngs.length < 2) {
+      return {
+        success: false,
+        message: '🌱 You need at least 2 different ingredients in your apron to cross-breed in the experimental patch!'
+      };
+    }
+    const seed1 = availablePantryIngs[0];
+    const seed2 = availablePantryIngs[1];
+
+    master.inventory[seed1] -= 1;
+    if (master.inventory[seed1] <= 0) delete master.inventory[seed1];
+    master.inventory[seed2] -= 1;
+    if (master.inventory[seed2] <= 0) delete master.inventory[seed2];
+
+    const isGolden = (seed1 === 'chaldean_carrot' && seed2 === 'sweet_honey') || (seed2 === 'chaldean_carrot' && seed1 === 'sweet_honey') || Math.random() < 0.5;
+    const resultIngId = isGolden ? 'golden_honey_carrot' : 'cursed_mandrake_radish';
+    const resultName = isGolden ? 'Golden Honey-Carrot' : 'Cursed Mandrake Radish';
+
+    const hybridId = `hybrid_${Date.now()}`;
+    props.greenhouseHybrids.push({
+      id: hybridId,
+      seed1,
+      seed2,
+      plantedBy: master.username,
+      plantedAt: Date.now(),
+      readyAt: Date.now() + 60 * 1000, // Ready in 1 minute!
+      resultIngId
+    });
+
+    addCafeteriaActivity(`🌱 **@${master.username}** cross-bred **${seed1}** + **${seed2}** in the Sacred Greenhouse hybrid patch!`, roomId);
+    saveCafeteriaStateToDisk();
+
+    return {
+      success: true,
+      message: `🌱 **CROSS-BREED PLANTED!**\nYou fused **${seed1}** and **${seed2}** in the nutrient-rich hydroponic bed!\n• **Target Crop:** **${resultName}**\n• **Harvest Window:** Ready in **1 minute**! Select *[🌾 Harvest Hybrids]* once mature.`
+    };
+  }
+
+  // Sacred Greenhouse: Cross-Breeding Patch (Harvest)
+  if (actionId === 'greenhouse_crossbreed_harvest') {
+    const now = Date.now();
+    const readyIndex = props.greenhouseHybrids.findIndex(h => now >= h.readyAt);
+    if (readyIndex === -1) {
+      const pending = props.greenhouseHybrids[0];
+      if (pending) {
+        const remSec = Math.max(1, Math.ceil((pending.readyAt - now) / 1000));
+        return { success: false, message: `⏳ The hybrid sprout is still germinating! (${remSec}s remaining).` };
+      }
+      return { success: false, message: '🌾 No cross-bred hybrids are currently growing in the patch. Plant one first!' };
+    }
+
+    const hybrid = props.greenhouseHybrids.splice(readyIndex, 1)[0];
+    const ing = INGREDIENT_CATALOG[hybrid.resultIngId];
+    const ingName = ing ? ing.name : hybrid.resultIngId;
+    const emoji = ing ? ing.emoji : '✨';
+
+    master.inventory[hybrid.resultIngId] = (master.inventory[hybrid.resultIngId] || 0) + 1;
+    master.meritPoints = (master.meritPoints || 0) + 25;
+    master.friendPoints = (master.friendPoints || 0) + 25;
+
+    addCafeteriaActivity(`🌾 **@${master.username}** harvested a rare **${emoji} ${ingName}** from the hybrid patch (+25 CMP)!`, roomId);
+    saveCafeteriaStateToDisk();
+
+    return {
+      success: true,
+      message: `🌾 **SUCCESSFUL HYBRID HARVEST!**\nYou harvested **1x ${emoji} ${ingName}** (originally planted by @${hybrid.plantedBy})!\n• **Reward:** +25 CMP & +25 Friend Points\n• **Added to Apron:** ${emoji} ${ingName}`
+    };
+  }
+
+  // Pantry & Dry Vault: Rummage Unlabeled Crates
+  if (actionId === 'pantry_rummage') {
+    const roll = Math.random();
+    let dropId = 'szechuan_peppercorn';
+    let dropName = 'Fiery Mapo Peppercorns';
+    let dropEmoji = '🌶️';
+    let fouFound = false;
+
+    if (roll < 0.08) {
+      // 8% Sleeping Fou!
+      fouFound = true;
+      master.friendPoints = (master.friendPoints || 0) + 60;
+      master.meritPoints = (master.meritPoints || 0) + 20;
+    } else if (roll < 0.35) {
+      // 27% Rare cheese or wine
+      if (Math.random() < 0.5) {
+        dropId = 'aged_cheddar';
+        dropName = 'Aged Clock Tower Cheddar';
+        dropEmoji = '🧀';
+      } else {
+        dropId = 'vintage_cooking_wine';
+        dropName = 'Vintage Chaldean Red';
+        dropEmoji = '🍷';
+      }
+      master.inventory[dropId] = (master.inventory[dropId] || 0) + 1;
+    } else {
+      // Common pantry dry items
+      dropId = Math.random() < 0.5 ? 'szechuan_peppercorn' : 'miyama_rice';
+      dropName = dropId === 'miyama_rice' ? 'Miyama White Rice' : 'Fiery Mapo Peppercorns';
+      dropEmoji = dropId === 'miyama_rice' ? '🍚' : '🌶️';
+      master.inventory[dropId] = (master.inventory[dropId] || 0) + 2;
+    }
+
+    if (fouFound) {
+      addCafeteriaActivity(`🐾 **@${master.username}** startled a sleeping Fou in the pantry crates! Fou chattered happily and dropped +60 FP!`, roomId);
+      saveCafeteriaStateToDisk();
+      return {
+        success: true,
+        message: `🐾 **FOU DISCOVERED IN THE CRATES!**\n*"Fou! Fou-kyu?!"*\nA curled up Fou was taking a cozy afternoon nap inside a dry grain basket! He nudges your hand affectionally before darting through the hallway.\n• **Reward:** +60 Friend Points & +20 CMP!`
+      };
+    }
+
+    addCafeteriaActivity(`🔍 **@${master.username}** rummaged dusty crates in the Pantry and unearthed **${dropEmoji} ${dropName}**.`, roomId);
+    saveCafeteriaStateToDisk();
+
+    return {
+      success: true,
+      message: `🔍 **CRATE SCAVENGE SUCCESS!**\nYou unlatched a dusty wooden crate in the corner and pulled out:\n• **Found:** **${dropEmoji} ${dropName}**\n• Stashed directly into your pantry apron!`
+    };
+  }
+
+  // Pantry & Dry Vault: Secret Snack Stash (Floorboard Locker)
+  if (actionId === 'pantry_stash_dish') {
+    if (!master.activePlatedDish) {
+      return { success: false, message: 'You must be holding a plated dish to hide it in the secret floorboard locker!' };
+    }
+    const dish = master.activePlatedDish;
+    props.hiddenSnackStash = {
+      dishName: dish.recipeName,
+      recipeEmoji: dish.recipeEmoji,
+      qualityScore: dish.qualityScore,
+      hiddenBy: master.username,
+      hiddenAt: Date.now()
+    };
+    master.activePlatedDish = undefined;
+    addCafeteriaActivity(`🗝️ **@${master.username}** covertly stashed a dish under the Pantry floorboards!`, roomId);
+    saveCafeteriaStateToDisk();
+    return {
+      success: true,
+      message: `🗝️ **SECRET SNACK STASHED!**\nYou tucked away **${dish.recipeEmoji} ${dish.dishName || dish.recipeName}** into the hidden floorboard cavity! Sneaky Masters can try to sniff it out, or you can retrieve it later.`
+    };
+  }
+
+  // Pantry & Dry Vault: Search Floorboards for Hidden Snacks
+  if (actionId === 'pantry_search_stash') {
+    if (!props.hiddenSnackStash) {
+      return {
+        success: false,
+        message: '🕵️ You gently tapped along the floorboards, but the secret compartment is completely empty.'
+      };
+    }
+    const stash = props.hiddenSnackStash;
+    master.activePlatedDish = {
+      recipeId: 'stashed_dish',
+      recipeName: stash.dishName,
+      recipeEmoji: stash.recipeEmoji,
+      qualityScore: stash.qualityScore,
+      platedAt: Date.now(),
+      cooksInvolved: [stash.hiddenBy]
+    };
+    props.hiddenSnackStash = null;
+    addCafeteriaActivity(`🕵️ **HEIST! @${master.username}** found and snatched the secret stash of **${stash.recipeEmoji} ${stash.dishName}** hidden by @${stash.hiddenBy}!`, roomId);
+    saveCafeteriaStateToDisk();
+    return {
+      success: true,
+      message: `🕵️ **FLOORBOARD HEIST SUCCESS!**\nYou located the loose floorboard and extracted **${stash.recipeEmoji} ${stash.dishName}** (Quality: ${stash.qualityScore}/100) hidden by **@${stash.hiddenBy}**!\n• The dish is now in your hands ready to serve!`
+    };
+  }
+
+  // Stoves & Ovens: Flame Tuning
+  if (actionId === 'stove_toggle_flame') {
+    const modes: Array<'low_simmer' | 'standard' | 'overdrive'> = ['standard', 'overdrive', 'low_simmer'];
+    const currentIdx = modes.indexOf(props.stoveFlameMode || 'standard');
+    const nextMode = modes[(currentIdx + 1) % modes.length];
+    props.stoveFlameMode = nextMode;
+
+    const descriptions = {
+      low_simmer: '🕯️ Low Simmer (Slow, zero burn risk, gentle infusion)',
+      standard: '🔥 Standard Heat (Balanced cooking speed and attention)',
+      overdrive: '⚡ Mana Burst Overdrive (2x Faster cooking, 2x faster burn rate!)'
+    };
+
+    addCafeteriaActivity(`🔥 **@${master.username}** adjusted the Stove flame dials to **${nextMode.toUpperCase()}**!`, roomId);
+    saveCafeteriaStateToDisk();
+
+    return {
+      success: true,
+      message: `🔥 **STOVE FLAME TUNED!**\nNew Flame Level: **${descriptions[nextMode]}**`
+    };
+  }
+
+  // Stoves & Ovens: Scrape Charcoal & Ash
+  if (actionId === 'stove_scrape_charcoal') {
+    master.inventory['purified_charcoal'] = (master.inventory['purified_charcoal'] || 0) + 1;
+    master.meritPoints = (master.meritPoints || 0) + 10;
+    addCafeteriaActivity(`🪵 **@${master.username}** cleaned oven hearths and scraped 1x Purified Charcoal (+10 CMP).`, roomId);
+    saveCafeteriaStateToDisk();
+    return {
+      success: true,
+      message: `🪵 **CHARCOAL SCRAPED!**\nYou scraped pure hardwood charcoal residue from the commercial ovens.\n• **Acquired:** 1x 🪵 **Purified Hearth Charcoal**\n• Useful for water filtration, seasoning black buns, and alchemy!`
+    };
+  }
+
+  // Staff Lounge: Kotatsu Tea
+  if (actionId === 'lounge_tea') {
+    const loungeMasters = Object.values(worldState.masters).filter(m => m.currentRoomId === 'staff_lounge');
+    for (const m of loungeMasters) {
+      m.friendPoints = (m.friendPoints || 0) + 20;
+    }
+    master.meritPoints = (master.meritPoints || 0) + 15;
+    addCafeteriaActivity(`🍵 **@${master.username}** served a steaming pot of Ceremonial Uji Matcha to all ${loungeMasters.length} Masters at the Grand Kotatsu!`, roomId);
+    saveCafeteriaStateToDisk();
+    return {
+      success: true,
+      message: `🍵 **TEA SERVED AT THE KOTATSU!**\nYou brewed a fragrant pot of steaming green tea and poured a cup for everyone gathered around the kotatsu blanket.\n• **Gathered Masters (${loungeMasters.length}):** Received +20 Friend Points each!\n• **Host Reward:** +15 CMP`
+    };
+  }
+
+  // Staff Lounge: Dice Duel
+  if (actionId === 'lounge_dice') {
+    const d1 = Math.floor(Math.random() * 6) + 1;
+    const d2 = Math.floor(Math.random() * 6) + 1;
+    const total = d1 + d2;
+    addCafeteriaActivity(`🎲 **@${master.username}** tossed the dice at the Kotatsu table: **[${d1}] + [${d2}] = ${total}**!`, roomId);
+    saveCafeteriaStateToDisk();
+    return {
+      success: true,
+      message: `🎲 **DICE ROLLED AT THE KOTATSU!**\n• **Roll:** 🎲 **${d1}** and 🎲 **${d2}**\n• **Total:** **${total}**!\nChallenge other stationed Masters to beat your roll!`
+    };
+  }
+
+  // Staff Lounge: Read Kitchen Lore
+  if (actionId === 'lounge_lore') {
+    const randomLore = CHALDEA_KITCHEN_LORE[Math.floor(Math.random() * CHALDEA_KITCHEN_LORE.length)];
+    return {
+      success: true,
+      message: `${randomLore}`
+    };
+  }
+
+  return { success: false, message: `Unknown sandbox action: ${actionId}` };
+}
+
+// -------------------------------------------------------------
+// SANDBOX ENGINE: INTERACTIVE SERVANT COMPANION ASSIST
+// -------------------------------------------------------------
+
+export function executeCompanionServantAssist(
+  discordId: string,
+  servantClass: string = 'Saber',
+  servantName: string = 'Heroic Spirit'
+): { success: boolean; message: string; cooldownRemainingMs?: number } {
+  const master = worldState.masters[discordId];
+  if (!master) {
+    return { success: false, message: 'You must check into the cafeteria first!' };
+  }
+
+  const now = Date.now();
+  const COOLDOWN_MS = 15 * 60 * 1000; // 15-minute cooldown
+  const lastUsed = master.lastCompanionAssistAt || 0;
+  if (now - lastUsed < COOLDOWN_MS) {
+    const remainingMs = COOLDOWN_MS - (now - lastUsed);
+    const remMinutes = Math.ceil(remainingMs / 60000);
+    return {
+      success: false,
+      message: `⏳ **COMPANION RESTING!**\n**${master.companionServantName || servantName}** is catching their breath. Cooldown remaining: **${remMinutes} minute(s)**.`,
+      cooldownRemainingMs: remainingMs
+    };
+  }
+
+  const sClass = (servantClass || 'Saber').toLowerCase();
+  const sName = master.companionServantName || servantName;
+  let assistDetail = '';
+
+  if (sClass.includes('saber') || sClass.includes('berserker')) {
+    // Rapid Chop: Slices 3 vegetables immediately
+    master.inventory['chaldean_carrot'] = (master.inventory['chaldean_carrot'] || 0) + 2;
+    master.inventory['fresh_scallions'] = (master.inventory['fresh_scallions'] || 0) + 2;
+    assistDetail = `⚔️ **Rapid Swordwork & Brute Slicing:** **${sName}** cleanly chopped and prepped 2x Chaldean Carrots and 2x Fresh Scallions for your apron!`;
+  } else if (sClass.includes('caster')) {
+    // Mystic Flame Control: Protects all simmering pots from burning for 15 minutes
+    let potCount = 0;
+    for (const pot of worldState.stovePots) {
+      if (pot.status === 'simmering') {
+        pot.burnsAt += 15 * 60 * 1000;
+        pot.qualityScore = Math.min(100, pot.qualityScore + 10);
+        potCount++;
+      }
+    }
+    assistDetail = `🔮 **Mystic Flame Barrier:** **${sName}** channeled a boundary ward over the stove ranges, extending simmering burn windows by +15 minutes for ${potCount} active pot(s)!`;
+  } else if (sClass.includes('archer')) {
+    // Keen-Eyed Foraging Sight: Finds 3 free harvest items
+    master.inventory['holy_eden_fruit'] = (master.inventory['holy_eden_fruit'] || 0) + 1;
+    master.inventory['wild_forest_mushroom'] = (master.inventory['wild_forest_mushroom'] || 0) + 2;
+    assistDetail = `🎯 **Clairvoyant Forager:** **${sName}** spotted high-grade ingredients from across the facility: 1x Golden Eden Apple and 2x Wild Forest Mushrooms!`;
+  } else if (sClass.includes('rider')) {
+    // Expedited Courier: Adds speed and bonus friend points
+    master.friendPoints = (master.friendPoints || 0) + 120;
+    master.meritPoints = (master.meritPoints || 0) + 30;
+    assistDetail = `🐎 **Chaldea Express Courier:** **${sName}** mounted up and made high-speed pantry runs across all corridors (+120 FP & +30 CMP)!`;
+  } else if (sClass.includes('assassin')) {
+    // Shadow Scavenger: Unearths rare cheese or wine
+    master.inventory['aged_cheddar'] = (master.inventory['aged_cheddar'] || 0) + 1;
+    master.meritPoints = (master.meritPoints || 0) + 25;
+    assistDetail = `🗡️ **Presence Concealment Infiltration:** **${sName}** slipped behind the high vaults undetected and snatched 1x Aged Clock Tower Cheddar!`;
+  } else if (sClass.includes('lancer')) {
+    // Skewer Precision: Dragon meat slice
+    master.inventory['dragon_steak'] = (master.inventory['dragon_steak'] || 0) + 1;
+    master.meritPoints = (master.meritPoints || 0) + 20;
+    assistDetail = `🔱 **Spear Skewer Artistry:** **${sName}** executed lightning thrusts, carving 1x Prime Wyvern Ribeye with surgical precision!`;
+  } else {
+    // Extra classes (Ruler, Avenger, MoonCancer, Pretender, Shielder)
+    master.friendPoints = (master.friendPoints || 0) + 100;
+    master.meritPoints = (master.meritPoints || 0) + 35;
+    assistDetail = `✨ **Noble Heroic Spirit Aegis:** **${sName}** blessed the cafeteria kitchen with high prana radiance (+100 FP & +35 CMP)!`;
+  }
+
+  // Grant Bond & Friend points
+  master.friendPoints = (master.friendPoints || 0) + 50;
+  master.lastCompanionAssistAt = now;
+
+  addCafeteriaActivity(`🤝 **@${master.username}** and **${sName}** performed a synchronized Companion Assist! (+50 Bond/FP)`, master.currentRoomId);
+  saveCafeteriaStateToDisk();
+
+  return {
+    success: true,
+    message: `🤝 **COMPANION SERVANT ASSIST EXECUTED!**\n${assistDetail}\n\n💖 **Bond Strengthened:** +50 Friend & Bond Points gained with **${sName}**!\n⏳ *Next assist available in 15 minutes.*`
+  };
+}
+

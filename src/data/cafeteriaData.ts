@@ -388,8 +388,126 @@ export const INGREDIENT_CATALOG: Record<string, Ingredient> = {
     rarity: 2,
     locationId: 'staff_lounge',
     cooldownSeconds: 40
+  },
+  purified_charcoal: {
+    id: 'purified_charcoal',
+    name: 'Purified Hearth Charcoal',
+    category: 'special',
+    description: 'Fine mineral charcoal scraped from clean ovens. Essential for water filtration and seasoning black buns.',
+    emoji: '🪵',
+    rarity: 2,
+    locationId: 'kitchen_stove',
+    cooldownSeconds: 30
+  },
+  phantasmal_dewdrop: {
+    id: 'phantasmal_dewdrop',
+    name: 'Phantasmal Dewdrop',
+    category: 'special',
+    description: 'Shimmering magical dew harvested from greenhouse leaves at dawn.',
+    emoji: '💧',
+    rarity: 3,
+    locationId: 'greenhouse',
+    cooldownSeconds: 45
+  },
+  golden_honey_carrot: {
+    id: 'golden_honey_carrot',
+    name: 'Golden Honey-Carrot Hybrid',
+    category: 'produce',
+    description: 'A miraculous sweet cross-breed glowing with amber mana.',
+    emoji: '🥕✨',
+    rarity: 4,
+    locationId: 'greenhouse',
+    cooldownSeconds: 60
+  },
+  cursed_mandrake_radish: {
+    id: 'cursed_mandrake_radish',
+    name: 'Cursed Mandrake Radish',
+    category: 'produce',
+    description: 'A screeching root cross-bred under hydroponic lights. Packs immense umami.',
+    emoji: '🌱💀',
+    rarity: 3,
+    locationId: 'greenhouse',
+    cooldownSeconds: 45
+  },
+  aged_cheddar: {
+    id: 'aged_cheddar',
+    name: 'Aged Clock Tower Cheddar',
+    category: 'staple',
+    description: 'Sharp, crumbly aged cheese unearthed from dry storage crates.',
+    emoji: '🧀',
+    rarity: 3,
+    locationId: 'pantry',
+    cooldownSeconds: 45
+  },
+  vintage_cooking_wine: {
+    id: 'vintage_cooking_wine',
+    name: 'Vintage Chaldean Red',
+    category: 'special',
+    description: 'A dusty bottle of cooking wine aged in subterranean cellars.',
+    emoji: '🍷',
+    rarity: 3,
+    locationId: 'pantry',
+    cooldownSeconds: 60
   }
 };
+
+export interface JukeboxTrack {
+  id: string;
+  title: string;
+  artist: string;
+  emoji: string;
+  description: string;
+  perkDescription: string;
+  perkType: 'impatience_reduction' | 'quality_boost' | 'cmp_bonus' | 'forage_boost';
+}
+
+export const JUKEBOX_TRACKS: Record<string, JukeboxTrack> = {
+  emiya_family: {
+    id: 'emiya_family',
+    title: "Today's Menu for the Emiya Family (OST)",
+    artist: 'Chaldea Broadcast',
+    emoji: '🍳',
+    description: 'Gentle, acoustic guitar melodies that soothe the heart and bring peaceful domestic vibes.',
+    perkDescription: '✨ -15% Patron Impatience Countdown (Servants wait longer with a smile)',
+    perkType: 'impatience_reduction'
+  },
+  jazz_cafe: {
+    id: 'jazz_cafe',
+    title: 'Midnight Chaldean Jazz Lounge',
+    artist: 'Salieri & Mozart Quartet',
+    emoji: '🎷',
+    description: 'Smooth double-bass and mellow piano chords creating an upscale Parisian bistro mood.',
+    perkDescription: '✨ +10% Dish Culinary Quality bonus when plating',
+    perkType: 'quality_boost'
+  },
+  carnival_phantasm: {
+    id: 'carnival_phantasm',
+    title: 'Super Affection (Carnival Phantasm OP)',
+    artist: 'Neco-Arc & The Student Council',
+    emoji: '🎪',
+    description: 'Hyperactive upbeat brass and circus trumpets that throw the cafeteria into joyous chaos!',
+    perkDescription: '✨ +25% Chaldea Merit Points (CMP) earned from all room activities',
+    perkType: 'cmp_bonus'
+  },
+  grand_battle: {
+    id: 'grand_battle',
+    title: 'Grand Battle Symphonic Suite',
+    artist: 'Chaldea Philharmonic Orchestra',
+    emoji: '⚔️',
+    description: 'Pounding timpani and soaring strings that make even chopping carrots feel like saving humanity.',
+    perkDescription: '✨ +1 Bonus Yield on all room forage and rummage harvests',
+    perkType: 'forage_boost'
+  }
+};
+
+export const CHALDEA_KITCHEN_LORE: string[] = [
+  '📖 **Vol 1: "Handling the King of Knights\' Appetite" by Sir Bedivere**\n*"Never attempt to replace genuine roast meat with mashed tubers. The ahoge twitches when deceived, and Excalibur begins to hum."*',
+  '📖 **Vol 2: "The Art of the Kitchen Knife" by Anonymous Red Archer**\n*"Trace, on. Reinforce the edge with structural grasping magic. A clean cut seals the cellular walls of the onion so your Master does not weep."*',
+  '📖 **Vol 3: "Spice as Penance" by Father Kotomine**\n*"Tears shed while consuming Mapo Tofu are not sorrow, but the soul shedding earthly attachments. Do not reach for the milk; embrace the burning."*',
+  '📖 **Vol 4: "Sparrow\'s Guide to Kitchen Hygiene" by Beni-enma**\n*"A dirty kitchen floor brings disgrace to the Enma-tei! If I catch a Master leaving burned rice crust on the range, the dechi tongue-shears will come out, dechi!"*',
+  '📖 **Vol 5: "Golden Royal Dining Protocol" by Gilgamesh**\n*"A king does not dine upon mere fuel; he consumes the very concept of abundance. If the wine lacks the sparkle of Babylonian vineyards, it shall be cast into the void."*',
+  '📖 **Vol 6: "The Nurse\'s Sterilization Manifesto" by Florence Nightingale**\n*"Boil the pans at 100 degrees Celsius for 20 minutes! Bacteria is the enemy of all Masters! If any mold is detected, amputation of the affected pantry shelf is mandatory!"*'
+];
 
 export const RECIPES_CATALOG: Record<string, Recipe> = {
   golden_curry: {
