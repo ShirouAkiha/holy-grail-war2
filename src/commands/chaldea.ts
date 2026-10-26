@@ -323,8 +323,12 @@ export async function buildChaldeaViewportResponse(
     ? world.activeCommunityBuffs.map(b => `✨ **${b.title}**: ${b.description}`).join('\n')
     : 'None active (Serve dishes to patrons to unlock buffs!)';
 
-  // 5b. Room Event Log (Top 6 campus-wide activity entries so everyone sees disciplinary, hazard, & kitchen events)
-  const roomActivities = (world.recentActivityFeed || []).slice(0, 6);
+  // 5b. Room Event Log:
+  // Shows activities local to this specific room (a.roomId === room.id),
+  // PLUS global broadcast events (major announcements, prefect discipline, heroic rescues, campus-wide hazards).
+  const roomActivities = (world.recentActivityFeed || [])
+    .filter(a => a.roomId === 'global' || a.roomId === room.id)
+    .slice(0, 6);
   const roomEventsSummary = roomActivities.length > 0
     ? roomActivities.map(a => `• <t:${Math.floor(a.timestamp / 1000)}:R> ${a.text}`).join('\n')
     : '*No recent events recorded in this sector.*';

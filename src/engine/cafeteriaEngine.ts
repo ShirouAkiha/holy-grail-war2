@@ -1215,7 +1215,7 @@ export function addCafeteriaActivity(text: string, roomId: string): void {
     text,
     roomId
   });
-  if (worldState.recentActivityFeed.length > 25) {
+  if (worldState.recentActivityFeed.length > 200) {
     worldState.recentActivityFeed.pop();
   }
 }
@@ -1636,7 +1636,7 @@ export function performHeroRescue(rescuerId: string, targetId: string): { succes
   const fpEarned = isParacelsusActive ? 150 : 100;
   rescuer.friendPoints = (rescuer.friendPoints || 0) + fpEarned;
 
-  addCafeteriaActivity(`🚑 **HEROIC RESCUE!** Master **${rescuer.username}** dashed through the flames and dragged unconscious **${target.username}** out of ${currentRoom} to the Infirmary!`, currentRoom);
+  addCafeteriaActivity(`🚑 **HEROIC RESCUE!** Master **${rescuer.username}** dashed through the flames and dragged unconscious **${target.username}** out of ${currentRoom} to the Infirmary!`, 'global');
   saveCafeteriaStateToDisk();
 
   return {
