@@ -1,0 +1,9 @@
+src/commands/chaldea.ts(2165,45): error TS2339: Property 'class' does not exist on type 'ServantTemplate'.
+src/commands/chaldea.ts(2165,69): error TS2339: Property 'class' does not exist on type 'MasterServantInstance'.
+src/commands/chaldea.ts(2409,64): error TS2551: Property 'isHeadPrefect' does not exist on type '{ discordId: string; username: string; cmp: number; rank: number; title: string; emoji: string; isPrefect: boolean; }'. Did you mean 'isPrefect'?
+src/commands/chaldea.ts(2409,117): error TS2339: Property 'meritPoints' does not exist on type '{ discordId: string; username: string; cmp: number; rank: number; title: string; emoji: string; isPrefect: boolean; }'.
+src/commands/chaldea.ts(2409,146): error TS2339: Property 'companionServantName' does not exist on type '{ discordId: string; username: string; cmp: number; rank: number; title: string; emoji: string; isPrefect: boolean; }'.
+src/data/cafeteriaData.ts(395,5): error TS2322: Type '"special"' is not assignable to type '"produce" | "staple" | "protein" | "spice" | "delicacy"'.
+src/data/cafeteriaData.ts(405,5): error TS2322: Type '"special"' is not assignable to type '"produce" | "staple" | "protein" | "spice" | "delicacy"'.
+src/data/cafeteriaData.ts(445,5): error TS2322: Type '"special"' is not assignable to type '"produce" | "staple" | "protein" | "spice" | "delicacy"'.
+src/engine/cafeteriaEngine.ts(2475,93): error TS2339: Property 'dishName' does not exist on type '{ recipeId: string; recipeName: string; recipeEmoji: string; qualityScore: number; platedAt: number; cooksInvolved: string[]; }'.

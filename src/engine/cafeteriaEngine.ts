@@ -2472,7 +2472,7 @@ export function interactWithRoomProp(
     saveCafeteriaStateToDisk();
     return {
       success: true,
-      message: `🗝️ **SECRET SNACK STASHED!**\nYou tucked away **${dish.recipeEmoji} ${dish.dishName || dish.recipeName}** into the hidden floorboard cavity! Sneaky Masters can try to sniff it out, or you can retrieve it later.`
+      message: `🗝️ **SECRET SNACK STASHED!**\nYou tucked away **${dish.recipeEmoji} ${dish.recipeName}** into the hidden floorboard cavity! Sneaky Masters can try to sniff it out, or you can retrieve it later.`
     };
   }
 

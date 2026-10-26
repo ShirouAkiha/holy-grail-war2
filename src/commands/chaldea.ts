@@ -2096,8 +2096,8 @@ export async function handleChaldeaGlobalInteraction(
     const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
     const dbMaster = await getMaster(discordId);
     const activeServant = dbMaster?.servants?.find((s: any) => s.id === dbMaster.activeServantId) || dbMaster?.servants?.[0];
-    const sName = master.companionServantName || activeServant?.nickname || activeServant?.template?.name || 'Heroic Spirit';
-    const sClass = activeServant?.template?.class || activeServant?.class || 'Saber';
+    const sName = master.companionServantName || (activeServant as any)?.nickname || (activeServant as any)?.template?.name || 'Heroic Spirit';
+    const sClass = (activeServant as any)?.servantClass || (activeServant as any)?.template?.servantClass || (activeServant as any)?.className || (activeServant as any)?.class || 'Saber';
 
     const res = executeCompanionServantAssist(discordId, sClass, sName);
     const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl, res.message);
@@ -2244,7 +2244,7 @@ export async function handleChaldeaGlobalInteraction(
         .setTitle('🏆 Chaldea Campus Merit Points (CMP) Leaderboard')
         .setDescription(
           `👑 **Current Head Prefect:** **${pName}**\n\n` +
-          lb.slice(0, 10).map((m, idx) => `**#${idx + 1}** ${m.isHeadPrefect ? '👑 ' : ''}**${m.username}** — \`${m.meritPoints || 0} CMP\` [${m.companionServantName}]`).join('\n')
+          lb.slice(0, 10).map((m, idx) => `**#${idx + 1}** ${m.isPrefect ? '👑 ' : ''}**${m.username}** — \`${m.cmp || 0} CMP\` [${m.emoji} ${m.title}]`).join('\n')
         )
         .setColor(0xd4af37);
       await interaction.reply({ flags: MessageFlags.Ephemeral, embeds: [embed] });

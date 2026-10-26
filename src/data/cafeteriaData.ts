@@ -392,7 +392,7 @@ export const INGREDIENT_CATALOG: Record<string, Ingredient> = {
   purified_charcoal: {
     id: 'purified_charcoal',
     name: 'Purified Hearth Charcoal',
-    category: 'special',
+    category: 'delicacy',
     description: 'Fine mineral charcoal scraped from clean ovens. Essential for water filtration and seasoning black buns.',
     emoji: '🪵',
     rarity: 2,
@@ -402,7 +402,7 @@ export const INGREDIENT_CATALOG: Record<string, Ingredient> = {
   phantasmal_dewdrop: {
     id: 'phantasmal_dewdrop',
     name: 'Phantasmal Dewdrop',
-    category: 'special',
+    category: 'delicacy',
     description: 'Shimmering magical dew harvested from greenhouse leaves at dawn.',
     emoji: '💧',
     rarity: 3,
@@ -442,7 +442,7 @@ export const INGREDIENT_CATALOG: Record<string, Ingredient> = {
   vintage_cooking_wine: {
     id: 'vintage_cooking_wine',
     name: 'Vintage Chaldean Red',
-    category: 'special',
+    category: 'delicacy',
     description: 'A dusty bottle of cooking wine aged in subterranean cellars.',
     emoji: '🍷',
     rarity: 3,
