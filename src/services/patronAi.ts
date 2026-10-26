@@ -16,32 +16,39 @@ export async function generatePatronFoodReview(
   patron: ServantPatron,
   recipe: Recipe,
   qualityScore: number,
-  cooksInvolved: string[]
+  cooksInvolved: string[],
+  patronMood?: string,
+  orderedCravingName?: string
 ): Promise<PatronReviewResult> {
   const isCraveMatch = patron.cravingRecipeId === recipe.id;
   const baseStars = isCraveMatch
     ? (qualityScore >= 85 ? 5 : 4)
-    : (qualityScore >= 80 ? 4 : qualityScore >= 65 ? 3 : 2);
+    : 1; // Wrong order always gets 1 star!
 
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (apiKey && apiKey.trim().length > 0) {
     try {
       const ai = new GoogleGenAI({ apiKey });
-      const prompt = `You are roleplaying as the Fate/Grand Order Heroic Spirit ${patron.name} (${patron.servantClass}), acting as a food critic/patron in the Chaldea Cafeteria.
+      const prompt = isCraveMatch
+        ? `You are roleplaying as the Fate/Grand Order Heroic Spirit ${patron.name} (${patron.servantClass}), dining in the Chaldea Cafeteria in a ${patronMood || 'pleased'} mood.
 Your personality: ${patron.personality}
 Title: ${patron.criticTitle}
 
-The Masters of Chaldea (${cooksInvolved.join(', ')}) just served you a freshly cooked dish:
+The Masters of Chaldea (${cooksInvolved.join(', ')}) just served you EXACTLY what you craved:
 - Dish Name: ${recipe.name} (${recipe.emoji})
 - Dish Description: ${recipe.description}
-- Culinary Preparation Score: ${qualityScore} / 100
-- Does this match your specific craving?: ${isCraveMatch ? 'YES, EXACT MATCH!' : 'No, alternative dish'}
+- Culinary Quality Score: ${qualityScore} / 100
 
-Write an authentic, immersive, in-character food review in 2-3 sentences.
-Include your reaction to the taste, presentation, and heat.
-End your review by awarding a star rating between 1 and 5 stars.
-Keep it strictly under 60 words, in quotes. Do not include markdown headers or meta-text.`;
+Write an authentic, immersive, enthusiastic in-character food review in 2-3 sentences praising the taste, aroma, and presentation. End with star rating. Keep under 60 words, in quotes.`
+        : `You are roleplaying as the Fate/Grand Order Heroic Spirit ${patron.name} (${patron.servantClass}), dining in the Chaldea Cafeteria in a ${patronMood || 'hungry'} mood.
+Your personality: ${patron.personality}
+Title: ${patron.criticTitle}
+
+You ordered: "${orderedCravingName || patron.cravingName}"
+The Masters of Chaldea (${cooksInvolved.join(', ')}) brought you the WRONG DISH: "${recipe.name} (${recipe.emoji})"!
+
+Write a hilarious, dramatic, canon-accurate in-character reaction expressing indignation, shock, or comedic disappointment at the Master mixing up your order ticket. Keep under 60 words, in quotes.`;
 
       const genPromise = ai.models.generateContent({
         model: 'gemini-3.8-flash',
@@ -56,7 +63,7 @@ Keep it strictly under 60 words, in quotes. Do not include markdown headers or m
           patronName: patron.name,
           ratingStars: baseStars,
           critiqueText: `“${text}”`,
-          verdictTitle: baseStars >= 4 ? 'Glorious Feast Approved!' : 'Stern Culinary Verdict',
+          verdictTitle: isCraveMatch ? 'Glorious Feast Approved!' : '❌ Order Mix-Up Reprimand!',
           isAiGenerated: true
         };
       }
@@ -66,14 +73,17 @@ Keep it strictly under 60 words, in quotes. Do not include markdown headers or m
   }
 
   // Fallback to high-fidelity canonical quote
-  const quotes = baseStars >= 4 ? patron.fallbackPraiseQuotes : patron.fallbackCritiqueQuotes;
+  const quotes = isCraveMatch
+    ? (baseStars >= 4 ? patron.fallbackPraiseQuotes : patron.fallbackCritiqueQuotes)
+    : (patron.fallbackWrongOrderQuotes && patron.fallbackWrongOrderQuotes.length > 0 ? patron.fallbackWrongOrderQuotes : patron.fallbackCritiqueQuotes);
+  
   const chosenQuote = quotes[Math.floor(Math.random() * quotes.length)];
 
   return {
     patronName: patron.name,
     ratingStars: baseStars,
     critiqueText: `“${chosenQuote}”`,
-    verdictTitle: baseStars >= 4 ? 'Chaldea Kitchen Triumph!' : 'Apprentice Kitchen Lesson',
+    verdictTitle: isCraveMatch ? 'Chaldea Kitchen Triumph!' : '❌ Order Ticket Mix-Up!',
     isAiGenerated: false
   };
 }

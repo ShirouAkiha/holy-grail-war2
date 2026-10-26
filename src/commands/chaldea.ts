@@ -243,13 +243,22 @@ export async function buildChaldeaViewportResponse(
     }
   } else if (room.id === 'dining_hall') {
     if (world.activePatronOrders.length > 0) {
-      stationDetails = world.activePatronOrders.map(o => {
+      const moodEmojis: Record<string, string> = {
+        ravenous: '🔥',
+        critical: '🌶️',
+        impatient: '⏳',
+        curious: '✨'
+      };
+      stationDetails = `🍽️ **Seated Patron Table Orders:**\n` + world.activePatronOrders.map(o => {
         const patron = VISITING_PATRONS.find(p => p.id === o.patronId);
         const remMin = Math.max(0, Math.ceil((o.expiresAt - Date.now()) / 60000));
-        return `🍽️ **${patron ? patron.name : 'Visiting Servant'}** craving **${patron ? patron.cravingName : 'Feast'}** (${remMin}m left)`;
+        const tNum = o.tableNumber || 1;
+        const mood = o.mood || 'ravenous';
+        const emoji = moodEmojis[mood] || '✨';
+        return `• **Table #${tNum}:** **${patron ? patron.name : 'Visiting Servant'}** (${patron ? patron.servantClass : 'Servant'}) — Craving: **${patron ? patron.cravingName : 'Feast'}** | Mood: *${mood.toUpperCase()}* ${emoji} (${remMin}m left)`;
       }).join('\n');
     } else {
-      stationDetails = `🍽️ Tables are set. Visiting patrons arrive periodically!`;
+      stationDetails = `🍽️ All tables are set. Visiting patrons arrive periodically!`;
     }
   } else if (room.id === 'infirmary') {
     const docId = master.attendingDoctorId || 'nightingale';
@@ -290,10 +299,8 @@ export async function buildChaldeaViewportResponse(
     ? world.activeCommunityBuffs.map(b => `✨ **${b.title}**: ${b.description}`).join('\n')
     : 'None active (Serve dishes to patrons to unlock buffs!)';
 
-  // 5b. Room Event Log (Top 6 room-isolated + campus-wide global broadcast activity entries)
-  const roomActivities = (world.recentActivityFeed || [])
-    .filter(a => !a.roomId || a.roomId === 'global' || a.roomId === 'all' || a.roomId === room.id)
-    .slice(0, 6);
+  // 5b. Room Event Log (Top 6 campus-wide activity entries so everyone sees disciplinary, hazard, & kitchen events)
+  const roomActivities = (world.recentActivityFeed || []).slice(0, 6);
   const roomEventsSummary = roomActivities.length > 0
     ? roomActivities.map(a => `• <t:${Math.floor(a.timestamp / 1000)}:R> ${a.text}`).join('\n')
     : '*No recent events recorded in this sector.*';
@@ -1264,23 +1271,39 @@ export async function handleChaldeaGlobalInteraction(
       return true;
     }
 
+    const world = getCafeteriaWorldSnapshot();
+    const seatedOrders = (world.activePatronOrders || []).filter(o => !o.served);
+
+    if (seatedOrders.length === 0) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: '🍽️ There are currently no active visiting patrons seated at tables in the Dining Hall! Wait a moment for patrons to arrive.'
+      });
+      return true;
+    }
+
     const select = new StringSelectMenuBuilder()
       .setCustomId('chaldea_serve_patron_execute')
-      .setPlaceholder('Select a visiting Servant patron in the dining hall...');
+      .setPlaceholder('Select a seated Servant patron in the dining hall...');
 
-    for (const patron of VISITING_PATRONS) {
+    for (const order of seatedOrders) {
+      const patron = VISITING_PATRONS.find(p => p.id === order.patronId);
+      if (!patron) continue;
+      const tNum = order.tableNumber || 1;
+      const mood = order.mood || 'ravenous';
+
       select.addOptions(
         new StringSelectMenuOptionBuilder()
-          .setLabel(`${patron.name} (${patron.servantClass})`)
+          .setLabel(`Table #${tNum}: ${patron.name} (${patron.servantClass})`)
           .setValue(patron.id)
-          .setDescription(`Craving: ${patron.cravingName.slice(0, 45)}`)
+          .setDescription(`Craving: ${patron.cravingName.slice(0, 35)} [${mood.toUpperCase()}]`)
       );
     }
 
     const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
     await interaction.reply({
       flags: MessageFlags.Ephemeral,
-      content: `🍽️ **Carrying:** ${master.activePlatedDish.recipeEmoji} **${master.activePlatedDish.recipeName}**\nPresent this meal to which visiting patron?`,
+      content: `🍽️ **Carrying:** ${master.activePlatedDish.recipeEmoji} **${master.activePlatedDish.recipeName}**\nSelect a seated patron table to present this meal:`,
       components: [row]
     });
     return true;
@@ -1288,27 +1311,38 @@ export async function handleChaldeaGlobalInteraction(
 
   // 8b. Execute Serving Patron (With Gemini AI review!)
   if (interaction.isStringSelectMenu() && customId === 'chaldea_serve_patron_execute') {
-    await interaction.deferReply();
+    await interaction.deferUpdate();
     const patronId = interaction.values[0];
     const patron = VISITING_PATRONS.find(p => p.id === patronId);
     const master = getOrCreateStationedMaster(discordId, username, avatarUrl);
 
     if (!patron || !master.activePlatedDish) {
-      await interaction.editReply({ content: 'Patron or plated dish missing.' });
+      await interaction.followUp({ flags: MessageFlags.Ephemeral, content: 'Patron or plated dish missing.' });
       return true;
     }
 
+    const world = getCafeteriaWorldSnapshot();
+    const activeOrder = world.activePatronOrders.find(o => o.patronId === patronId && !o.served);
     const recipe = RECIPES_CATALOG[master.activePlatedDish.recipeId];
-    // Generate Gemini AI critique
+
+    // Generate Gemini AI critique with mood and craving match context
     const aiReview = await generatePatronFoodReview(
       patron,
       recipe,
       master.activePlatedDish.qualityScore,
-      master.activePlatedDish.cooksInvolved
+      master.activePlatedDish.cooksInvolved,
+      activeOrder?.mood,
+      patron.cravingName
     );
 
     const res = serveDishToPatron(discordId, patronId, aiReview.critiqueText, aiReview.ratingStars);
-    await interaction.editReply({ content: res.message });
+    const payload = await buildChaldeaViewportResponse(discordId, username, avatarUrl);
+    await interaction.editReply({
+      embeds: payload.embeds,
+      components: payload.components,
+      files: payload.files
+    });
+    await interaction.followUp({ flags: MessageFlags.Ephemeral, content: res.message });
     return true;
   }
 

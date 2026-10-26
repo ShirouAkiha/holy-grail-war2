@@ -109,6 +109,8 @@ export interface ActivePatronOrder {
   expiresAt: number;
   served: boolean;
   servedBy?: string;
+  tableNumber?: number;
+  mood?: 'ravenous' | 'critical' | 'impatient' | 'curious';
 }
 
 export interface CafeteriaBuff {
@@ -273,14 +275,18 @@ function seedInitialPatronOrders() {
         recipeId: p1.cravingRecipeId,
         arrivedAt: Date.now(),
         expiresAt: Date.now() + 25 * 60 * 1000,
-        served: false
+        served: false,
+        tableNumber: 1,
+        mood: 'ravenous'
       },
       {
         patronId: p2.id,
         recipeId: p2.cravingRecipeId,
         arrivedAt: Date.now(),
         expiresAt: Date.now() + 35 * 60 * 1000,
-        served: false
+        served: false,
+        tableNumber: 2,
+        mood: 'critical'
       }
     ];
   }
@@ -782,7 +788,7 @@ export function serveDishToPatron(
   patronId: string,
   aiCritiqueText?: string,
   starRating?: number
-): { success: boolean; message: string; rewards?: { sqShards: number; friendPoints: number; buff?: CafeteriaBuff } } {
+): { success: boolean; message: string; rewards?: { sqShards: number; friendPoints: number; buff?: CafeteriaBuff }; isCraveMatch?: boolean } {
   const master = worldState.masters[discordId];
   if (!master) return { success: false, message: 'Master record not found.' };
 
@@ -801,16 +807,41 @@ export function serveDishToPatron(
   const recipe = RECIPES_CATALOG[dish.recipeId];
   const isCraveMatch = patron.cravingRecipeId === dish.recipeId;
 
-  // Base score calculation
-  const stars = starRating || (isCraveMatch ? (dish.qualityScore >= 85 ? 5 : 4) : (dish.qualityScore >= 80 ? 4 : 3));
-  const sqReward = stars === 5 ? 3 : stars >= 4 ? 2 : 1;
-  const fpReward = stars * 150;
-
-  // Clear plated dish
+  // Clear plated dish & update master stats
   delete master.activePlatedDish;
   master.totalDishesServed += 1;
   master.lastActivityAt = Date.now();
   master.statusText = `Served ${dish.recipeName} to ${patron.name}`;
+
+  // Remove the active order ticket for this patron
+  worldState.activePatronOrders = worldState.activePatronOrders.filter(o => o.patronId !== patronId);
+
+  if (!isCraveMatch) {
+    // WRONG DISH CONSEQUENCE
+    const stars = 1;
+    master.meritPoints = (master.meritPoints || 0) + 2; // +2 CMP effort consolation
+    const fallbackQuote = patron.fallbackWrongOrderQuotes
+      ? patron.fallbackWrongOrderQuotes[Math.floor(Math.random() * patron.fallbackWrongOrderQuotes.length)]
+      : `“What is this?! I distinctly ordered ${patron.cravingName}, not ${dish.recipeName}!”`;
+
+    addCafeteriaActivity(`❌ **${master.username}** served wrong dish **${dish.recipeEmoji} ${dish.recipeName}** to **${patron.name}** (Craving: ${patron.cravingName})! Rating: ★☆☆☆☆ (1/5 Stars) (+2 CMP Consolation)`, 'dining_hall');
+    saveCafeteriaStateToDisk();
+
+    return {
+      success: true,
+      isCraveMatch: false,
+      message: `💢 **WRONG DISH DELIVERED TO ${patron.name.toUpperCase()}!**\n★☆☆☆☆ (**1 / 5 Stars** — Rejected Order)\n\n${aiCritiqueText || `“${fallbackQuote}”`}\n\n⚠️ **Order Reprimand:**\n• **0 Saint Quartz**\n• **0 Friend Points**\n• **No Community Buff Activated**\n• **+2 Chaldea Merit Points (CMP)** *(Effort Consolation)*\n\n*${patron.name} left the table unsatisfied after taking a single bite!*`,
+      rewards: {
+        sqShards: 0,
+        friendPoints: 0
+      }
+    };
+  }
+
+  // EXACT CRAVE MATCH
+  const stars = starRating || (dish.qualityScore >= 85 ? 5 : 4);
+  const sqReward = stars === 5 ? 3 : stars >= 4 ? 2 : 1;
+  const fpReward = stars * 150;
 
   // Apply community buff if recipe exists
   let awardedBuff: CafeteriaBuff | undefined;
@@ -823,16 +854,8 @@ export function serveDishToPatron(
       bonusPercent: recipe.buffEffect.statBonusPercent || 15,
       expiresAt: Date.now() + (recipe.buffEffect.durationHours || 4) * 3600 * 1000
     };
-    // Keep max 3 active buffs
     worldState.activeCommunityBuffs.unshift(awardedBuff);
     if (worldState.activeCommunityBuffs.length > 3) worldState.activeCommunityBuffs.pop();
-  }
-
-  // Update order status if matching
-  const matchingOrder = worldState.activePatronOrders.find(o => o.patronId === patronId && !o.served);
-  if (matchingOrder) {
-    matchingOrder.served = true;
-    matchingOrder.servedBy = master.username;
   }
 
   // Award +15 Chaldea Merit Points (CMP)
@@ -843,7 +866,8 @@ export function serveDishToPatron(
 
   return {
     success: true,
-    message: `✨ **Meal Presented to ${patron.name}!**\n${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} (**${stars} / 5 Stars**)\n\n${aiCritiqueText || `“${patron.fallbackPraiseQuotes[0]}”`}\n\n🎁 **Rewards Granted to Team:**\n• **+${sqReward} Saint Quartz Shard(s)**\n• **+${fpReward} Friend Points**\n• **+15 Chaldea Merit Points (CMP)**\n${awardedBuff ? `• **Community Buff:** ${awardedBuff.title} (*${awardedBuff.description}*)` : ''}`,
+    isCraveMatch: true,
+    message: `✨ **EXACT CRAVING DELIVERED TO ${patron.name.toUpperCase()}!**\n${'★'.repeat(stars)}${'☆'.repeat(5 - stars)} (**${stars} / 5 Stars**)\n\n${aiCritiqueText || `“${patron.fallbackPraiseQuotes[0]}”`}\n\n🎁 **Rewards Granted to Team:**\n• **+${sqReward} Saint Quartz Shard(s)**\n• **+${fpReward} Friend Points**\n• **+15 Chaldea Merit Points (CMP)**\n${awardedBuff ? `• **Community Buff Activated:** ${awardedBuff.title} (*${awardedBuff.description}*)` : ''}`,
     rewards: {
       sqShards: sqReward,
       friendPoints: fpReward,

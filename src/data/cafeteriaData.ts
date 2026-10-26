@@ -57,6 +57,7 @@ export interface ServantPatron {
   criticTitle: string;
   fallbackPraiseQuotes: string[];
   fallbackCritiqueQuotes: string[];
+  fallbackWrongOrderQuotes: string[];
 }
 
 export interface AttendingDoctor {
@@ -612,6 +613,10 @@ export const VISITING_PATRONS: ServantPatron[] = [
     fallbackCritiqueQuotes: [
       'The meat is somewhat tough, Master... But do not worry. As a knight, I shall not leave a single grain of rice behind.',
       'A commendable effort, but the portion size is far too modest for an active knight in service!'
+    ],
+    fallbackWrongOrderQuotes: [
+      'What is this, Master?! I specifically requested a mountain of Golden Curry, not this! A King cannot charge into battle without proper carbohydrates!',
+      'Where is my curry?! As much as I appreciate food, bringing me the wrong dish when my stomach is roaring is treason-level negligence!'
     ]
   },
   {
@@ -630,6 +635,10 @@ export const VISITING_PATRONS: ServantPatron[] = [
     fallbackCritiqueQuotes: [
       'Faint... far too faint. It lacks the agony of true redemption. Pour another bottle of chili extract immediately.',
       'Tolerable, but where is the suffering? A mild meal has no place in the confessional.'
+    ],
+    fallbackWrongOrderQuotes: [
+      'What is the meaning of this sweet, mild dish? Where is the excruciating Szechuan spice? You have deprived me of my righteous suffering, Master...',
+      'This lacks any trace of chili extract. A sweet meal in place of Mapo Tofu Hellfire is a profound sin. Pray for forgiveness.'
     ]
   },
   {
@@ -648,6 +657,10 @@ export const VISITING_PATRONS: ServantPatron[] = [
     fallbackCritiqueQuotes: [
       'What is this sloppy plating-dechi?! The dashi was boiled on too high a flame, clouding the sacred broth! Clean your station at once!',
       'Disastrous timing! The noodles grew soggy while you were idling! A cook’s mind must be sharper than their blade-dechi!'
+    ],
+    fallbackWrongOrderQuotes: [
+      'Chirp?! I ordered Precision Coastal Dashi Udon, but you brought me this mismatched plate-dechi?! Back to the prep counter at once!',
+      'Disastrous service-dechi! Bringing a customer the wrong dish violates the sacred laws of Enma-tei! Zero stars-dechi!'
     ]
   },
   {
@@ -666,6 +679,10 @@ export const VISITING_PATRONS: ServantPatron[] = [
     fallbackCritiqueQuotes: [
       'You dare offer such pedestrian fare to the King of Heroes?! The crust lacks the crispness of fine Sumerian bronze! Away with it!',
       'Hmph. Merely passable. Do not let your pride inflate, mongrel. You have much further to reach perfection.'
+    ],
+    fallbackWrongOrderQuotes: [
+      'AHAHAHA! Are you attempting a comedy routine, mongrel?! You dare present this commoner meal when I demanded the Eden Tart of the Golden Sun?!',
+      'Insolence! To bring the King of Heroes an unrequested dish... Gate of Babylon would open for lesser offenses! Take it away!'
     ]
   },
   {
@@ -684,6 +701,10 @@ export const VISITING_PATRONS: ServantPatron[] = [
     fallbackCritiqueQuotes: [
       'The pan wasn’t hot enough when you poured the eggs; they stuck to the side. Always preheat properly and mind the butter browning point.',
       'Edible, but rough around the edges. Come back to the prep counter and let’s review proper wrist flicking for the fold.'
+    ],
+    fallbackWrongOrderQuotes: [
+      'Master, I distinctly ordered Silky Fluffy Omurice. Mixing up order tickets at the serving counter is an amateur mistake. Check the board next time.',
+      'Sigh... As your senior in the kitchen, I\'m disappointed. Always double-check what the patron ordered before plating.'
     ]
   }
 ];
